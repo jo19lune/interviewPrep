@@ -1,7 +1,23 @@
 import os
+import json
 from pydantic_settings import BaseSettings
 from typing import List
 from pydantic import AnyHttpUrl
+
+
+def parse_frontend_urls(raw_value: str | None) -> list[str]:
+    if not raw_value:
+        return ["http://localhost:3000"]
+
+    raw_value = raw_value.strip()
+    if raw_value.startswith("[") and raw_value.endswith("]"):
+        try:
+            parsed = json.loads(raw_value)
+            return [str(url).strip() for url in parsed if str(url).strip()]
+        except json.JSONDecodeError:
+            raw_value = raw_value[1:-1]
+
+    return [url.strip().strip('"').strip("'") for url in raw_value.split(",") if url.strip()]
 
 
 class Settings(BaseSettings):
@@ -36,12 +52,7 @@ class Settings(BaseSettings):
     debug: bool = os.getenv("DEBUG", "True").lower() in ["true", "1"]
 
     # Frontend
-    frontend_url: List[AnyHttpUrl] = [
-        url.strip()
-        for url in os.getenv(
-            "FRONTEND_URL", "http://localhost:3000"
-        ).split(",")
-    ]
+    frontend_url: List[AnyHttpUrl] = parse_frontend_urls(os.getenv("FRONTEND_URL", "http://localhost:3000"))
 
     # Serveur
     port: int = int(os.getenv("PORT", 8000))
