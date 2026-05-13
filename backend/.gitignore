@@ -33,6 +33,7 @@ MANIFEST
 .env
 .env.local
 .env.*.local
+.env.docker
 
 # IDE
 .vscode/
