@@ -1,6 +1,6 @@
 """Schémas Pydantic pour validation/réponses utilisateur"""
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
@@ -30,9 +30,8 @@ class UserResponse(BaseModel):
     niveau: Optional[str] = None
     est_actif: bool
     cree_le: datetime
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserProfileUpdate(BaseModel):

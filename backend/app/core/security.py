@@ -11,13 +11,19 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Middleware de sécurité basé sur le schéma Bearer
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
     db: AsyncSession = Depends(get_db)
 ) -> User:
     """Extraire l'utilisateur courant du JWT token"""
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authenticated",
+        )
+
     token = credentials.credentials
     
     try:

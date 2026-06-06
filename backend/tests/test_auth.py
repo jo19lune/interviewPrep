@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from uuid import uuid4
 
 from app.main import app
@@ -16,13 +17,15 @@ from app.services.auth_service import hash_password
 # Configuration de la BD de test
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 async def test_db():
     """Créer une BD de test"""
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
-        future=True
+        future=True,
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
     )
     
     async with engine.begin() as conn:

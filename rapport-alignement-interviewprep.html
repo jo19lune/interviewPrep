@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>InterviewPrep – Rapport d'alignement Flutter / Maquette / Backend</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+
+  :root {
+    --navy: #001A5E;
+    --blue: #4A90E2;
+    --blue-light: #68ABFF;
+    --green: #94F990;
+    --green-dark: #005313;
+    --bg: #F7F9FF;
+    --white: #FFFFFF;
+    --surface: #EDF4FF;
+    --border: #C5C5D2;
+    --text: #091D2E;
+    --muted: #454650;
+    --red: #BA1A1A;
+    --red-bg: #FFDAD6;
+    --amber: #C17400;
+    --amber-bg: #FFEFC5;
+    --mono: 'DM Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 48px 64px 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: -60px; right: -60px;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: rgba(74,144,226,.15);
+    pointer-events: none;
+  }
+  header .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 999px;
+    padding: 4px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 2.6rem;
+    font-weight: 800;
+    line-height: 1.15;
+    max-width: 700px;
+    margin-bottom: 16px;
+  }
+  header p {
+    opacity: .75;
+    max-width: 560px;
+    font-size: 15px;
+  }
+  .meta {
+    margin-top: 28px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .meta-item {
+    background: rgba(255,255,255,.1);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .meta-item strong { display: block; font-family: var(--mono); font-size: 10px; opacity:.6; margin-bottom: 2px; text-transform: uppercase; letter-spacing:.05em; }
+
+  /* ─── LAYOUT ─── */
+  main { max-width: 1100px; margin: 0 auto; padding: 56px 40px 80px; }
+
+  /* ─── TOC ─── */
+  .toc {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 56px;
+  }
+  .toc h2 { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; color: var(--navy); margin-bottom: 16px; }
+  .toc ol { padding-left: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 40px; }
+  .toc li { font-size: 13px; }
+  .toc a { color: var(--blue); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* ─── SECTION ─── */
+  section { margin-bottom: 56px; }
+  .section-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--blue);
+    background: #EDF4FF;
+    border: 1px solid #C0D9FF;
+    border-radius: 6px;
+    padding: 3px 10px;
+    margin-bottom: 10px;
+  }
+  h2.section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: var(--navy);
+    margin-bottom: 6px;
+  }
+  .section-desc { color: var(--muted); max-width: 720px; margin-bottom: 28px; font-size: 14px; }
+
+  /* ─── SCREEN CARDS ─── */
+  .screen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px,1fr)); gap: 20px; }
+  .screen-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .screen-card-header {
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .screen-name { font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--navy); }
+  .badge { border-radius: 6px; padding: 2px 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing:.04em; }
+  .badge-ok { background:#DCFCE7; color:#166534; }
+  .badge-warn { background: var(--amber-bg); color: var(--amber); }
+  .badge-danger { background: var(--red-bg); color: var(--red); }
+  .badge-info { background:#EDF4FF; color: var(--navy); }
+  .screen-card-body { padding: 16px 18px; }
+  .screen-card-body ul { padding-left: 18px; }
+  .screen-card-body li { font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+  .screen-card-body li strong { color: var(--text); }
+
+  /* ─── COMPARE TABLE ─── */
+  .compare-table { width: 100%; border-collapse: collapse; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,26,94,.06); }
+  .compare-table thead { background: var(--navy); color: #fff; }
+  .compare-table thead th { padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing:.05em; }
+  .compare-table tbody tr { background: var(--white); border-bottom: 1px solid var(--border); }
+  .compare-table tbody tr:nth-child(even) { background: #F7F9FF; }
+  .compare-table td { padding: 12px 16px; font-size: 13px; vertical-align: top; }
+  .compare-table td:first-child { font-family: var(--mono); font-weight: 500; color: var(--navy); white-space: nowrap; }
+  .compare-table .ok { color: #166534; }
+  .compare-table .warn { color: var(--amber); }
+  .compare-table .danger { color: var(--red); font-weight: 600; }
+
+  /* ─── CODE BLOCKS ─── */
+  .code-block {
+    background: #0F1E3C;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 16px 0;
+  }
+  .code-block-header {
+    background: rgba(255,255,255,.06);
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .code-filename { font-family: var(--mono); font-size: 11px; color: rgba(255,255,255,.5); }
+  .code-lang { font-family: var(--mono); font-size: 10px; color: var(--blue-light); background: rgba(104,171,255,.12); padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
+  pre {
+    padding: 20px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: #C7D6F0;
+  }
+  .hl-comment { color: #546E99; font-style: italic; }
+  .hl-key { color: #79B8FF; }
+  .hl-str { color: #9ECBFF; }
+  .hl-kw { color: #F97583; }
+  .hl-fn { color: #B392F0; }
+  .hl-num { color: #79B8FF; }
+  .hl-ok { color: #94F990; }
+  .hl-new { color: #FFD57E; }
+
+  /* ─── CALLOUTS ─── */
+  .callout {
+    border-left: 4px solid;
+    padding: 14px 18px;
+    border-radius: 0 10px 10px 0;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+  .callout-warn { border-color: var(--amber); background: var(--amber-bg); }
+  .callout-danger { border-color: var(--red); background: var(--red-bg); }
+  .callout-ok { border-color: #22C55E; background: #DCFCE7; }
+  .callout-info { border-color: var(--blue); background: #EDF4FF; }
+  .callout strong { display: block; margin-bottom: 4px; }
+
+  /* ─── STEPS ─── */
+  .steps { display: flex; flex-direction: column; gap: 16px; }
+  .step { display: flex; gap: 16px; align-items: flex-start; }
+  .step-num {
+    flex-shrink: 0;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--navy);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .step-content { flex: 1; }
+  .step-content h4 { font-size: 14px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+  .step-content p { font-size: 13px; color: var(--muted); }
+
+  /* ─── PRIORITY TABLE ─── */
+  .priority-grid { display: grid; gap: 12px; }
+  .priority-item {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .priority-badge {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .p1 { background: #FEE2E2; }
+  .p2 { background: var(--amber-bg); }
+  .p3 { background: #DCFCE7; }
+  .priority-item h4 { font-size: 13px; font-weight: 700; color: var(--navy); margin-bottom: 3px; }
+  .priority-item p { font-size: 12px; color: var(--muted); }
+
+  hr.divider { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+  footer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 32px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="tag">📋 Rapport technique · InterviewPrep</div>
+  <h1>Alignement Flutter × Maquette × Backend</h1>
+  <p>Analyse complète des écarts entre l'app Flutter, la maquette React et le backend FastAPI — avec les actions concrètes à mener pour chaque couche.</p>
+  <div class="meta">
+    <div class="meta-item"><strong>Flutter</strong>interviewprep.zip</div>
+    <div class="meta-item"><strong>Maquette</strong>maquette-interviewprep-ai.zip</div>
+    <div class="meta-item"><strong>Backend</strong>backend.zip · FastAPI · Port 9000</div>
+    <div class="meta-item"><strong>Date</strong>Mai 2026</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- TOC -->
+  <div class="toc">
+    <h2>📑 Table des matières</h2>
+    <ol>
+      <li><a href="#architecture">Vue d'ensemble de l'architecture</a></li>
+      <li><a href="#screens">Écran par écran : Flutter vs Maquette</a></li>
+      <li><a href="#json-mapping">Mapping JSON Flutter ↔ Backend</a></li>
+      <li><a href="#backend-cors">CORS & accessibilité multi-plateforme</a></li>
+      <li><a href="#backend-tokens">Gestion des tokens (Refresh)</a></li>
+      <li><a href="#backend-endpoints">Endpoints manquants / à compléter</a></li>
+      <li><a href="#backend-simulation">Simulation IA : streaming SSE</a></li>
+      <li><a href="#flutter-actions">Actions Flutter prioritaires</a></li>
+      <li><a href="#backend-actions">Actions Backend prioritaires</a></li>
+    </ol>
+  </div>
+
+  <!-- 1. ARCHITECTURE -->
+  <section id="architecture">
+    <div class="section-label">01 · Architecture</div>
+    <h2 class="section-title">Vue d'ensemble</h2>
+    <p class="section-desc">Les trois projets partagent la même logique métier mais ne sont pas encore branchés ensemble. Voici l'état actuel vs la cible.</p>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>Composant</th><th>Technologie</th><th>État</th><th>Remarque clé</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Backend API</td>
+          <td>FastAPI + PostgreSQL + Redis</td>
+          <td><span class="badge badge-warn">Partiel</span></td>
+          <td>Routes structurées, logique IA à compléter, CORS trop restrictif</td>
+        </tr>
+        <tr>
+          <td>Flutter Mobile / Windows</td>
+          <td>Flutter 3 + Riverpod + GoRouter + Dio</td>
+          <td><span class="badge badge-warn">Squelette</span></td>
+          <td>Services créés, écrans non branchés sur l'API, données hardcodées</td>
+        </tr>
+        <tr>
+          <td>Maquette Web</td>
+          <td>React + Vite + TailwindCSS + Framer Motion</td>
+          <td><span class="badge badge-ok">Référence</span></td>
+          <td>UI complète avec vraie logique IA Gemini — sert de spécification visuelle</td>
+        </tr>
+        <tr>
+          <td>Port backend</td>
+          <td>—</td>
+          <td><span class="badge badge-ok">Cohérent</span></td>
+          <td><code>.env.example</code> et Flutter API client : tous les deux sur <strong>9000</strong></td>
+        </tr>
+        <tr>
+          <td>Authentification</td>
+          <td>JWT HS256</td>
+          <td><span class="badge badge-warn">Partiel</span></td>
+          <td>Le <code>refresh_token</code> est retourné mais non stocké par Flutter</td>
+        </tr>
+        <tr>
+          <td>Streaming IA (simulation)</td>
+          <td>SSE (Server-Sent Events)</td>
+          <td><span class="badge badge-danger">Non implémenté</span></td>
+          <td><code>GET /simulation/stream/{id}</code> retourne un TODO dans le backend</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 2. SCREENS -->
+  <section id="screens">
+    <div class="section-label">02 · Écrans</div>
+    <h2 class="section-title">Flutter vs Maquette — Écran par écran</h2>
+    <p class="section-desc">Comparaison de chaque page : ce qui existe dans Flutter, ce que la maquette montre en plus, et ce qui doit être adapté.</p>
+
+    <div class="screen-grid">
+
+      <!-- AUTH -->
+      <div class="screen-card">
+        <div class="screen-card-header">
+          <span class="screen-name">Auth (Login + Register)</span>
+          <span class="badge badge-warn">À compléter</span>
+        </div>
+        <div class="screen-card-body">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px"><strong>Flutter :</strong> 2 écrans séparés, form fonctionnel, branché Riverpod.</p>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px"><strong>Maquette ajoute :</strong></p>
+          <ul>
+            <li>Toggle <strong>Login / Register</strong> dans un seul écran</li>
+            <li>Boutons <strong>Google</strong> et <strong>SSO LinkedIn</strong> (UI uniquement)</li>
+            <li>Bannière IA animée en bas ("Master your next interview")</li>
+            <li>Animation <code>motion</code> à l'apparition de la carte</li>
+            <li>Affichage d'erreur inline avec icône <code>ShieldAlert</code></li>
+          </ul>
+          <div class="callout callout-info" style="margin-top:12px">
+            <strong>Action Flutter</strong> Fusionner login_screen + register_screen en un seul écran à bascule. Ajouter la bannière AI et le meilleur affichage d'erreur.
+          </div>
+        </div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div class="screen-card">
+        <div class="screen-card-header">
+          <span class="screen-name">Dashboard</span>
+          <span class="badge badge-danger">Données hardcodées</span>
+        </div>
+        <div class="screen-card-body">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px"><strong>Flutter :</strong> Structure correcte, mais tout est hardcodé ("Alex", 78%, 12 sessions).</p>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px"><strong>Maquette :</strong></p>
+          <ul>
+            <li>Appelle <code>GET /auth/me</code> → affiche le vrai <code>prenom + nom</code></li>
+            <li>Appelle <code>GET /progress/me</code> → score réel, nb sessions</li>
+            <li>Cercle de progression <strong>animé</strong> (SVG dashoffset)</li>
+            <li>Section "Personalized" avec recommandations dynamiques</li>
+            <li>Layout <strong>bento grid</strong> responsive 2 colonnes</li>
+          </ul>
+          <div class="callout callout-warn" style="margin-top:12px">
+            <strong>Action Flutter</strong> Brancher <code>DashboardService</code> et <code>AuthService.me()</code> via Riverpod providers. Remplacer toutes les valeurs hardcodées.
+          </div>
+        </div>
+      </div>
+
+      <!-- EXERCISES -->
+      <div class="screen-card">
+        <div class="screen-card-header">
+          <span class="screen-name">Exercises</span>
+          <span class="badge badge-danger">Non branché API</span>
+        </div>
+        <div class="screen-card-body">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px"><strong>Flutter :</strong> 3 cartes hardcodées (QCM, Logique, RH). <code>ExerciseService</code> existe mais non utilisé.</p>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px"><strong>Maquette ajoute :</strong></p>
+          <ul>
+            <li>Chargement dynamique depuis <code>GET /exercises</code></li>
+            <li>Filtres par <strong>domaine</strong> et <strong>difficulté</strong></li>
+            <li>Chips de catégories cliquables</li>
+            <li>Navigation vers détail de l'exercice</li>
+            <li>Bouton "Start Random" → <code>GET /exercises/random/get</code></li>
+          </ul>
+          <div class="callout callout-warn" style="margin-top:12px">
+            <strong>Action Flutter</strong> Utiliser <code>ExerciseService.getExercises()</code> dans un <code>FutureProvider</code> Riverpod. Afficher les exercices réels avec filtres.
+          </div>
+        </div>
+      </div>
+
+      <!-- SIMULATION -->
+      <div class="screen-card">
+        <div class="screen-card-header">
+          <span class="screen-name">Simulation IA</span>
+          <span class="badge badge-danger">Écran vide</span>
+        </div>
+        <div class="screen-card-body">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px"><strong>Flutter :</strong> Écran "Ready for interview?" avec bouton Start sans logique.</p>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px"><strong>Maquette — fonctionnalités complètes :</strong></p>
+          <ul>
+            <li>Interface <strong>chat</strong> avec historique de messages</li>
+            <li>Saisie texte + <strong>micro (speech-to-text)</strong></li>
+            <li>Timer de session en temps réel</li>
+            <li>Panneau <strong>Settings</strong> (modèle, température, top-k)</li>
+            <li>Sélecteur de <strong>Scénarios</strong> (rôle + entreprise + questions)</li>
+            <li>Coach IA avec <strong>tips contextuels</strong></li>
+            <li>Panneau <strong>Feedback</strong> animé en fin de session (score, forces, axes)</li>
+          </ul>
+          <div class="callout callout-danger" style="margin-top:12px">
+            <strong>Action Flutter — Refactoring majeur</strong> Reconstruire <code>SimulationScreen</code> en StatefulWidget avec chat, timer, et intégration des endpoints <code>/simulation/start</code>, <code>/simulation/answer</code>, <code>/simulation/finish</code>.
+          </div>
+        </div>
+      </div>
+
+      <!-- STATISTICS -->
+      <div class="screen-card">
+        <div class="screen-card-header">
+          <span class="screen-name">Statistics / Analytics</span>
+          <span class="badge badge-danger">Placeholder vide</span>
+        </div>
+        <div class="screen-card-body">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px"><strong>Flutter :</strong> <code>StatisticsScreen</code> = icône + 2 lignes de texte.</p>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px"><strong>Maquette — Analytics complet :</strong></p>
+          <ul>
+            <li>Graphique <strong>score dans le temps</strong> (courbe)</li>
+            <li>Graphique <strong>domaines</strong> (radar ou barres)</li>
+            <li>Cartes KPI (meilleur score, streak, sessions totales)</li>
+            <li>Historique de sessions récentes avec statuts</li>
+            <li>Bouton export PDF → <code>GET /progress/export</code></li>
+          </ul>
+          <div class="callout callout-warn" style="margin-top:12px">
+            <strong>Action Flutter</strong> Construire la page depuis <code>DashboardService.getDetailedStats()</code> + <code>getSessionHistory()</code>. Utiliser le package <code>fl_chart</code>.
+          </div>
+        </div>
+      </div>
+
+      <!-- PROFILE -->
+      <div class="screen-card">
+        <div class="screen-card-header">
+          <span class="screen-name">Profile</span>
+          <span class="badge badge-danger">Absent (remplacé par About)</span>
+        </div>
+        <div class="screen-card-body">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px"><strong>Flutter :</strong> <code>AboutScreen</code> générique à la place du profil.</p>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px"><strong>Maquette — Profile complet :</strong></p>
+          <ul>
+            <li>Avatar + nom + email</li>
+            <li>Formulaire édition (<code>PUT /profile/update</code>)</li>
+            <li>Sélection domaine cible + niveau</li>
+            <li>Section <strong>Danger Zone</strong> → <code>DELETE /auth/me</code></li>
+          </ul>
+          <div class="callout callout-warn" style="margin-top:12px">
+            <strong>Action Flutter</strong> Créer <code>ProfileScreen</code> et un <code>ProfileService</code> appelant <code>/profile/me</code> et <code>/profile/update</code>. Remplacer la route <code>/about</code>.
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /screen-grid -->
+  </section>
+
+  <hr class="divider" />
+
+  <!-- 3. JSON MAPPING -->
+  <section id="json-mapping">
+    <div class="section-label">03 · JSON / Sérialisation</div>
+    <h2 class="section-title">Mapping des champs Flutter ↔ Backend</h2>
+    <p class="section-desc">Le backend retourne du <strong>snake_case</strong>. Flutter utilise <code>json_serializable</code> avec des champs <strong>camelCase</strong>. Sans configuration explicite, la désérialisation échouera silencieusement.</p>
+
+    <div class="callout callout-danger">
+      <strong>🚨 Problème critique</strong>
+      <code>Exercise.dureeSec</code> tentera de lire <code>"dureeSec"</code> dans le JSON alors que l'API retourne <code>"duree_sec"</code>. Idem pour <code>creeLe</code>, <code>commenceLe</code>, <code>utilisateurId</code>, etc. Les objets seront partiellement nuls sans erreur visible.
+    </div>
+
+    <table class="compare-table" style="margin-top:20px">
+      <thead>
+        <tr><th>Modèle Flutter</th><th>Champ Dart (camelCase)</th><th>JSON Backend (snake_case)</th><th>Solution</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Exercise</td>
+          <td><code>dureeSec</code></td>
+          <td><code>duree_sec</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>Exercise</td>
+          <td><code>creeLe</code></td>
+          <td><code>cree_le</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>Session</td>
+          <td><code>utilisateurId</code></td>
+          <td><code>utilisateur_id</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>Session</td>
+          <td><code>exerciceId</code></td>
+          <td><code>exercice_id</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>Session</td>
+          <td><code>commenceLe</code></td>
+          <td><code>commence_le</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>Session</td>
+          <td><code>termineLe</code></td>
+          <td><code>termine_le</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>StartSimulationResponse</td>
+          <td><code>sessionId</code></td>
+          <td><code>session_id</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>StartSimulationResponse</td>
+          <td><code>exerciseTitle</code></td>
+          <td><code>exercise_title</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>UserProgress</td>
+          <td><code>totalSessions</code></td>
+          <td><code>total_sessions</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>UserProgress</td>
+          <td><code>avgScore</code></td>
+          <td><code>avg_score</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>UserProgress</td>
+          <td><code>bestScore</code></td>
+          <td><code>best_score</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>UserProgress</td>
+          <td><code>lastSessionDate</code></td>
+          <td><code>last_session_date</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>Feedback</td>
+          <td><code>sessionId</code></td>
+          <td><code>session_id</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>Feedback</td>
+          <td><code>scoreGlobal</code></td>
+          <td><code>score_global</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>Feedback</td>
+          <td><code>pointsForts</code></td>
+          <td><code>points_forts</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>Feedback</td>
+          <td><code>genereLe</code></td>
+          <td><code>genere_le</code></td>
+          <td class="danger">@JsonKey requis</td>
+        </tr>
+        <tr>
+          <td>Session</td>
+          <td><code>score</code> (double, non-nullable)</td>
+          <td><code>score: float</code> (peut être null si EN_COURS)</td>
+          <td class="warn">Rendre nullable <code>double?</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:16px;font-size:13px;color:var(--muted)"><strong>Solution globale recommandée</strong> — ajouter <code>fieldRename</code> au niveau de l'annotation <code>@JsonSerializable</code> :</p>
+
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="code-filename">lib/core/models/exercise.dart</span>
+        <span class="code-lang">Dart</span>
+      </div>
+      <pre><span class="hl-new">@JsonSerializable(fieldRename: FieldRename.snake)</span>
+<span class="hl-kw">class</span> <span class="hl-fn">Exercise</span> {
+  <span class="hl-kw">final</span> <span class="hl-key">String</span> id;
+  <span class="hl-kw">final</span> <span class="hl-key">String</span> titre;
+  <span class="hl-kw">final</span> <span class="hl-key">String</span>? description;
+  <span class="hl-kw">final</span> <span class="hl-key">String</span> domaine;
+  <span class="hl-kw">final</span> <span class="hl-key">String</span> difficulte;
+  <span class="hl-kw">final</span> <span class="hl-key">int</span> dureeSec;        <span class="hl-comment">// ← lira "duree_sec" automatiquement</span>
+  <span class="hl-kw">final</span> List&lt;<span class="hl-key">dynamic</span>&gt; questions;
+  <span class="hl-kw">final</span> List&lt;<span class="hl-key">String</span>&gt;? etiquettes;
+  <span class="hl-kw">final</span> <span class="hl-key">DateTime</span> creeLe;       <span class="hl-comment">// ← lira "cree_le"</span>
+  ...
+}
+
+<span class="hl-comment">// Puis regénérer les .g.dart :</span>
+<span class="hl-comment">// flutter pub run build_runner build --delete-conflicting-outputs</span></pre>
+    </div>
+
+    <p style="font-size:13px;color:var(--muted)">Appliquer <code>@JsonSerializable(fieldRename: FieldRename.snake)</code> sur <strong>toutes les classes</strong> de modèle : <code>Exercise</code>, <code>Session</code>, <code>UserProgress</code>, <code>StartSimulationResponse</code>, <code>Feedback</code>.</p>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- 4. CORS -->
+  <section id="backend-cors">
+    <div class="section-label">04 · Backend</div>
+    <h2 class="section-title">CORS & accessibilité multi-plateforme</h2>
+    <p class="section-desc">Le CORS actuel n'accepte que <code>http://localhost:3000</code>. Cela bloque Flutter Web et potentiellement le dev mobile. Voici les origines à autoriser selon la cible de déploiement.</p>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>Plateforme</th><th>CORS nécessaire ?</th><th>URL d'origine</th><th>Config backend</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Android Emulator</td>
+          <td><span class="ok">Non (natif)</span></td>
+          <td><code>10.0.2.2:9000</code></td>
+          <td>Pas de CORS mais l'IP doit être joignable</td>
+        </tr>
+        <tr>
+          <td>Android physique</td>
+          <td><span class="ok">Non (natif)</span></td>
+          <td>IP locale machine</td>
+          <td>Mettre <code>baseUrl</code> = IP du PC en dev</td>
+        </tr>
+        <tr>
+          <td>Windows Desktop</td>
+          <td><span class="ok">Non (natif)</span></td>
+          <td><code>localhost:9000</code> ou <code>127.0.0.1:9000</code></td>
+          <td>Pas de CORS, mais changer <code>10.0.2.2</code> → <code>localhost</code></td>
+        </tr>
+        <tr>
+          <td><strong>Flutter Web</strong></td>
+          <td><span class="danger">Oui (navigateur)</span></td>
+          <td><code>http://localhost:5173</code> (Vite dev)</td>
+          <td class="danger">Ajouter explicitement dans <code>FRONTEND_URL</code></td>
+        </tr>
+        <tr>
+          <td>Flutter Web (prod)</td>
+          <td><span class="danger">Oui (navigateur)</span></td>
+          <td>domaine hébergé</td>
+          <td class="danger">Ajouter le domaine HTTPS dans <code>FRONTEND_URL</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="code-block" style="margin-top:20px">
+      <div class="code-block-header">
+        <span class="code-filename">.env (dev local)</span>
+        <span class="code-lang">ENV</span>
+      </div>
+      <pre><span class="hl-comment"># Avant (trop restrictif)</span>
+FRONTEND_URL=http://localhost:3000
+
+<span class="hl-comment"># Après — couvre maquette, flutter web, et éventuels autres ports</span>
+<span class="hl-new">FRONTEND_URL=http://localhost:3000,http://localhost:5173,http://localhost:8080,http://localhost:4000</span></pre>
+    </div>
+
+    <div class="callout callout-info">
+      <strong>Pour un déploiement mobile en production</strong> Le CORS n'est pas nécessaire pour les apps natives (Android/iOS/Windows). Mais dès que Flutter Web est ciblé, chaque domaine de déploiement doit être dans <code>FRONTEND_URL</code>.
+    </div>
+
+    <p style="margin-top:16px;font-size:13px;color:var(--muted)">Il faut aussi corriger le <code>baseUrl</code> dans Flutter selon la plateforme :</p>
+
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="code-filename">lib/core/network/api_client.dart</span>
+        <span class="code-lang">Dart</span>
+      </div>
+      <pre><span class="hl-kw">import</span> <span class="hl-str">'dart:io'</span>;
+<span class="hl-kw">import</span> <span class="hl-str">'package:flutter/foundation.dart'</span>;
+
+<span class="hl-kw">class</span> <span class="hl-fn">ApiClient</span> {
+  <span class="hl-kw">static</span> <span class="hl-key">String</span> <span class="hl-kw">get</span> baseUrl {
+    <span class="hl-comment">// Priorité : variable d'environnement de build</span>
+    <span class="hl-kw">const</span> envUrl = String.fromEnvironment(<span class="hl-str">'API_BASE_URL'</span>);
+    <span class="hl-kw">if</span> (envUrl.isNotEmpty) <span class="hl-kw">return</span> envUrl;
+
+    <span class="hl-kw">if</span> (kIsWeb) {
+      <span class="hl-kw">return</span> <span class="hl-str">'http://localhost:9000'</span>;     <span class="hl-comment">// Flutter Web</span>
+    }
+    <span class="hl-kw">if</span> (Platform.isAndroid) {
+      <span class="hl-kw">return</span> <span class="hl-str">'http://10.0.2.2:9000'</span>;     <span class="hl-comment">// Émulateur Android</span>
+    }
+    <span class="hl-kw">return</span> <span class="hl-str">'http://localhost:9000'</span>;       <span class="hl-comment">// Windows, iOS, macOS</span>
+  }
+  ...
+}</pre>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- 5. TOKENS -->
+  <section id="backend-tokens">
+    <div class="section-label">05 · Backend + Flutter</div>
+    <h2 class="section-title">Gestion du Refresh Token</h2>
+    <p class="section-desc">Le backend retourne un <code>access_token</code> (15 min) ET un <code>refresh_token</code> (24h). Flutter ne sauvegarde et n'utilise que l'access token — après 15 minutes, l'utilisateur sera déconnecté sans raison apparente.</p>
+
+    <div class="callout callout-danger">
+      <strong>Problème actuel</strong>
+      <code>auth_service.dart</code> lit uniquement <code>response.data['access_token']</code> et oublie le <code>refresh_token</code>. L'intercepteur Dio efface le token sur 401 mais ne tente pas de le renouveler.
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="code-filename">lib/core/network/api_client.dart — Intercepteur avec auto-refresh</span>
+        <span class="code-lang">Dart</span>
+      </div>
+      <pre><span class="hl-comment">// Dans AuthService.login() :</span>
+<span class="hl-kw">final</span> token = response.data[<span class="hl-str">'access_token'</span>];
+<span class="hl-new">final</span> <span class="hl-new">refreshToken = response.data['refresh_token'];</span>
+<span class="hl-kw">if</span> (token != null) await _apiClient.saveToken(token);
+<span class="hl-new">if (refreshToken != null) await _storage.write(key: 'refresh_token', value: refreshToken);</span>
+
+<span class="hl-comment">// Dans l'intercepteur onError de ApiClient :</span>
+onError: (DioException e, handler) <span class="hl-kw">async</span> {
+  <span class="hl-kw">if</span> (e.response?.statusCode == <span class="hl-num">401</span>) {
+    <span class="hl-new">final refreshToken = await _storage.read(key: 'refresh_token');</span>
+    <span class="hl-new">if (refreshToken != null) {</span>
+    <span class="hl-new">  try {</span>
+    <span class="hl-new">    final resp = await Dio().post('$baseUrl/auth/refresh',</span>
+    <span class="hl-new">      data: {'refresh_token': refreshToken});</span>
+    <span class="hl-new">    await saveToken(resp.data['access_token']);</span>
+    <span class="hl-new">    // Rejouer la requête originale</span>
+    <span class="hl-new">    e.requestOptions.headers['Authorization'] = 'Bearer ${resp.data['access_token']}';</span>
+    <span class="hl-new">    return handler.resolve(await dio.fetch(e.requestOptions));</span>
+    <span class="hl-new">  } catch (_) {</span>
+    <span class="hl-new">    await _storage.deleteAll(); // Session expirée → logout</span>
+    <span class="hl-new">  }</span>
+    <span class="hl-new">}</span>
+  }
+  <span class="hl-kw">return</span> handler.next(e);
+},</pre>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- 6. ENDPOINTS MANQUANTS -->
+  <section id="backend-endpoints">
+    <div class="section-label">06 · Backend</div>
+    <h2 class="section-title">Endpoints manquants ou incomplets</h2>
+    <p class="section-desc">La maquette React appelle des routes qui n'existent pas dans le backend FastAPI. Voici l'inventaire complet.</p>
+
+    <table class="compare-table">
+      <thead>
+        <tr><th>Endpoint</th><th>Méthode</th><th>Utilisé par</th><th>État backend</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>/auth/login</td>
+          <td>POST</td>
+          <td>Flutter + Maquette</td>
+          <td><span class="badge badge-ok">Implémenté</span></td>
+        </tr>
+        <tr>
+          <td>/auth/register</td>
+          <td>POST</td>
+          <td>Flutter + Maquette</td>
+          <td><span class="badge badge-ok">Implémenté</span></td>
+        </tr>
+        <tr>
+          <td>/auth/refresh</td>
+          <td>POST</td>
+          <td>Flutter (à ajouter)</td>
+          <td><span class="badge badge-ok">Implémenté</span></td>
+        </tr>
+        <tr>
+          <td>/auth/me</td>
+          <td>GET</td>
+          <td>Flutter + Maquette</td>
+          <td><span class="badge badge-ok">Implémenté</span></td>
+        </tr>
+        <tr>
+          <td>/profile/me</td>
+          <td>GET</td>
+          <td>Flutter (à créer)</td>
+          <td><span class="badge badge-ok">Implémenté</span></td>
+        </tr>
+        <tr>
+          <td>/profile/update</td>
+          <td>PUT</td>
+          <td>Flutter (à créer)</td>
+          <td><span class="badge badge-ok">Implémenté</span></td>
+        </tr>
+        <tr>
+          <td>/exercises</td>
+          <td>GET</td>
+          <td>Flutter + Maquette</td>
+          <td><span class="badge badge-ok">Implémenté</span></td>
+        </tr>
+        <tr>
+          <td>/exercises/random/get</td>
+          <td>GET</td>
+          <td>Flutter (à brancher)</td>
+          <td><span class="badge badge-warn">Implémenté — attention à l'ordre des routes</span></td>
+        </tr>
+        <tr>
+          <td>/progress/me</td>
+          <td>GET</td>
+          <td>Flutter (DashboardService)</td>
+          <td><span class="badge badge-warn">Implémenté — score nullable non géré</span></td>
+        </tr>
+        <tr>
+          <td>/progress/history</td>
+          <td>GET</td>
+          <td>Flutter (DashboardService)</td>
+          <td><span class="badge badge-ok">Implémenté</span></td>
+        </tr>
+        <tr>
+          <td>/progress/stats</td>
+          <td>GET</td>
+          <td>Flutter (DashboardService)</td>
+          <td><span class="badge badge-warn">Partiel — TODO domaine manquant</span></td>
+        </tr>
+        <tr>
+          <td>/progress/export</td>
+          <td>GET</td>
+          <td>Maquette Analytics</td>
+          <td><span class="badge badge-warn">TODO — retourne message vide</span></td>
+        </tr>
+        <tr>
+          <td>/simulation/start</td>
+          <td>POST</td>
+          <td>Flutter (SimulationService)</td>
+          <td><span class="badge badge-ok">Implémenté</span></td>
+        </tr>
+        <tr>
+          <td>/simulation/answer</td>
+          <td>POST</td>
+          <td>Flutter (SimulationService)</td>
+          <td><span class="badge badge-ok">Implémenté</span></td>
+        </tr>
+        <tr>
+          <td>/simulation/finish/{id}</td>
+          <td>POST</td>
+          <td>Flutter (SimulationService)</td>
+          <td><span class="badge badge-warn">Feedback hardcodé — score = 75</span></td>
+        </tr>
+        <tr>
+          <td>/simulation/stream/{id}</td>
+          <td>GET (SSE)</td>
+          <td>Maquette + Flutter (à implémenter)</td>
+          <td><span class="badge badge-danger">TODO — retourne message vide</span></td>
+        </tr>
+        <tr>
+          <td>/scenarios</td>
+          <td>GET + POST</td>
+          <td>Maquette Simulation uniquement</td>
+          <td><span class="badge badge-danger">N'existe pas dans le backend</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-warn" style="margin-top:20px">
+      <strong>⚠️ Bug potentiel — ordre des routes exercices</strong>
+      FastAPI résout les routes dans l'ordre de déclaration. Si <code>/exercises/{exercise_id}</code> est déclaré avant <code>/exercises/random/get</code>, FastAPI traitera "random" comme un UUID et retournera une erreur 422. Vérifier l'ordre dans <code>exercices.py</code> : <code>random/get</code> doit être déclaré EN PREMIER.
+    </div>
+
+    <p style="margin-top:20px;font-size:13px;font-weight:600;color:var(--navy)">Endpoint à créer : <code>/scenarios</code></p>
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="code-filename">app/routers/scenarios.py (nouveau fichier)</span>
+        <span class="code-lang">Python</span>
+      </div>
+      <pre><span class="hl-kw">from</span> fastapi <span class="hl-kw">import</span> APIRouter, Depends
+<span class="hl-kw">from</span> sqlalchemy.ext.asyncio <span class="hl-kw">import</span> AsyncSession
+<span class="hl-kw">from</span> app.data.database <span class="hl-kw">import</span> get_db
+<span class="hl-kw">from</span> app.core.security <span class="hl-kw">import</span> get_current_user
+<span class="hl-kw">from</span> app.models.user <span class="hl-kw">import</span> User
+<span class="hl-kw">from</span> pydantic <span class="hl-kw">import</span> BaseModel
+<span class="hl-kw">from</span> typing <span class="hl-kw">import</span> List, Optional
+<span class="hl-kw">import</span> uuid
+
+router = APIRouter(prefix=<span class="hl-str">"/scenarios"</span>, tags=[<span class="hl-str">"scenarios"</span>])
+
+<span class="hl-comment"># Simple stockage en mémoire pour commencer (migrer vers DB ensuite)</span>
+_scenarios: dict = {}
+
+<span class="hl-kw">class</span> <span class="hl-fn">ScenarioCreate</span>(BaseModel):
+    role: str
+    company: str
+    questions: Optional[List[str]] = []
+
+<span class="hl-kw">class</span> <span class="hl-fn">ScenarioResponse</span>(ScenarioCreate):
+    id: str
+
+@router.get(<span class="hl-str">""</span>, response_model=List[ScenarioResponse])
+<span class="hl-kw">async def</span> <span class="hl-fn">list_scenarios</span>(user: User = Depends(get_current_user)):
+    <span class="hl-kw">return</span> [s <span class="hl-kw">for</span> s <span class="hl-kw">in</span> _scenarios.values() <span class="hl-kw">if</span> s[<span class="hl-str">'user_id'</span>] == str(user.id)]
+
+@router.post(<span class="hl-str">""</span>, response_model=ScenarioResponse, status_code=<span class="hl-num">201</span>)
+<span class="hl-kw">async def</span> <span class="hl-fn">create_scenario</span>(body: ScenarioCreate, user: User = Depends(get_current_user)):
+    sid = str(uuid.uuid4())
+    scenario = {<span class="hl-str">"id"</span>: sid, <span class="hl-str">"user_id"</span>: str(user.id), **body.dict()}
+    _scenarios[sid] = scenario
+    <span class="hl-kw">return</span> scenario</pre>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- 7. STREAMING SSE -->
+  <section id="backend-simulation">
+    <div class="section-label">07 · Backend · IA</div>
+    <h2 class="section-title">Simulation IA — Streaming SSE</h2>
+    <p class="section-desc">La maquette utilise un stream de réponses IA en temps réel. Le backend a la route prête mais non implémentée. Voici l'implémentation complète avec Claude (Anthropic) ou OpenAI.</p>
+
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="code-filename">app/routers/simulation.py — stream_ai_response (complet)</span>
+        <span class="code-lang">Python</span>
+      </div>
+      <pre><span class="hl-kw">from</span> fastapi.responses <span class="hl-kw">import</span> StreamingResponse
+<span class="hl-kw">import</span> anthropic  <span class="hl-comment"># pip install anthropic</span>
+<span class="hl-kw">import</span> json
+
+<span class="hl-new">@router.get("/stream/{session_id}")</span>
+<span class="hl-kw">async def</span> <span class="hl-fn">stream_ai_response</span>(
+    session_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    <span class="hl-comment">"""Streaming SSE de la réponse IA — compatible EventSource (web) et Dio (mobile)"""</span>
+
+    result = <span class="hl-kw">await</span> db.execute(
+        select(Session).join(Exercice).where(
+            (Session.id == session_id) &
+            (Session.utilisateur_id == current_user.id)
+        )
+    )
+    session = result.scalars().first()
+    <span class="hl-kw">if not</span> session:
+        <span class="hl-kw">raise</span> HTTPException(<span class="hl-num">404</span>, <span class="hl-str">"Session not found"</span>)
+
+    exercice = <span class="hl-kw">await</span> db.get(Exercice, session.exercice_id)
+    reponses = session.reponses <span class="hl-kw">or</span> []
+
+    <span class="hl-comment"># Construire le prompt</span>
+    messages = []
+    <span class="hl-kw">for</span> rep <span class="hl-kw">in</span> reponses:
+        messages.append({<span class="hl-str">"role"</span>: <span class="hl-str">"user"</span>, <span class="hl-str">"content"</span>: rep[<span class="hl-str">"texte"</span>]})
+
+    <span class="hl-kw">async def</span> <span class="hl-fn">generate</span>():
+        client = anthropic.Anthropic(api_key=settings.openai_api_key)
+        <span class="hl-kw">with</span> client.messages.stream(
+            model=<span class="hl-str">"claude-sonnet-4-20250514"</span>,
+            max_tokens=<span class="hl-num">1024</span>,
+            system=<span class="hl-str">f"Tu es un recruteur qui mène un entretien pour le poste : {exercice.titre}. Pose des questions pertinentes basées sur les réponses du candidat."</span>,
+            messages=messages <span class="hl-kw">if</span> messages <span class="hl-kw">else</span> [{<span class="hl-str">"role"</span>: <span class="hl-str">"user"</span>, <span class="hl-str">"content"</span>: <span class="hl-str">"Commence l'entretien."</span>}]
+        ) <span class="hl-kw">as</span> stream:
+            <span class="hl-kw">for</span> text <span class="hl-kw">in</span> stream.text_stream:
+                <span class="hl-comment"># Format SSE standard</span>
+                <span class="hl-kw">yield</span> <span class="hl-str">f"data: {json.dumps({'text': text})}\n\n"</span>
+        <span class="hl-kw">yield</span> <span class="hl-str">"data: [DONE]\n\n"</span>
+
+    <span class="hl-kw">return</span> StreamingResponse(
+        generate(),
+        media_type=<span class="hl-str">"text/event-stream"</span>,
+        headers={
+            <span class="hl-str">"Cache-Control"</span>: <span class="hl-str">"no-cache"</span>,
+            <span class="hl-str">"X-Accel-Buffering"</span>: <span class="hl-str">"no"</span>,   <span class="hl-comment"># Désactive la mise en tampon nginx</span>
+            <span class="hl-str">"Connection"</span>: <span class="hl-str">"keep-alive"</span>,
+        }
+    )</pre>
+    </div>
+
+    <div class="callout callout-info">
+      <strong>Pour Flutter mobile/Windows</strong> Dio ne supporte pas EventSource nativement. Utiliser <code>dio.get(responseType: ResponseType.stream)</code> et lire le stream chunk par chunk côté Flutter.
+    </div>
+
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="code-filename">lib/features/simulation/services/simulation_service.dart — streamAI()</span>
+        <span class="code-lang">Dart</span>
+      </div>
+      <pre><span class="hl-new">Stream&lt;String&gt; streamAIResponse(String sessionId) async* {
+  final response = await _apiClient.dio.get(
+    '/simulation/stream/$sessionId',
+    options: Options(responseType: ResponseType.stream),
+  );
+  final stream = response.data.stream as Stream&lt;List&lt;int&gt;&gt;;
+  await for (final chunk in stream) {
+    final text = utf8.decode(chunk);
+    for (final line in text.split('\n')) {
+      if (line.startsWith('data: ') && !line.contains('[DONE]')) {
+        final json = jsonDecode(line.substring(6));
+        yield json['text'] as String;
+      }
+    }
+  }
+}</span></pre>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- 8. FLUTTER ACTIONS -->
+  <section id="flutter-actions">
+    <div class="section-label">08 · Plan d'action</div>
+    <h2 class="section-title">Actions Flutter — Ordre de priorité</h2>
+    <p class="section-desc">Voici les actions classées par impact / urgence pour aligner le Flutter avec la maquette.</p>
+
+    <div class="priority-grid">
+      <div class="priority-item">
+        <div class="priority-badge p1">🔴</div>
+        <div>
+          <h4>1. Corriger le JSON mapping (FieldRename.snake)</h4>
+          <p>Sans ça, aucune donnée réelle ne sera désérialisée correctement. Ajouter <code>@JsonSerializable(fieldRename: FieldRename.snake)</code> sur tous les modèles et relancer <code>build_runner</code>. Rendre <code>Session.score</code> nullable.</p>
+        </div>
+      </div>
+      <div class="priority-item">
+        <div class="priority-badge p1">🔴</div>
+        <div>
+          <h4>2. Implémenter le refresh token dans ApiClient</h4>
+          <p>Stocker <code>refresh_token</code> à la connexion. Ajouter l'intercepteur Dio qui le rejoue automatiquement en cas de 401. Sans ça, déconnexion au bout de 15 min.</p>
+        </div>
+      </div>
+      <div class="priority-item">
+        <div class="priority-badge p1">🔴</div>
+        <div>
+          <h4>3. Adapter baseUrl selon la plateforme</h4>
+          <p>Utiliser <code>kIsWeb</code> et <code>Platform.isAndroid</code> pour choisir le bon <code>baseUrl</code>. Actuellement hardcodé sur <code>10.0.2.2</code> qui ne fonctionne que sur émulateur Android.</p>
+        </div>
+      </div>
+      <div class="priority-item">
+        <div class="priority-badge p2">🟡</div>
+        <div>
+          <h4>4. Brancher Dashboard sur l'API réelle</h4>
+          <p>Créer des Riverpod <code>FutureProvider</code> pour <code>GET /auth/me</code> et <code>GET /progress/me</code>. Remplacer toutes les valeurs hardcodées dans <code>DashboardScreen</code>.</p>
+        </div>
+      </div>
+      <div class="priority-item">
+        <div class="priority-badge p2">🟡</div>
+        <div>
+          <h4>5. Brancher ExercisesScreen sur l'API</h4>
+          <p>Utiliser <code>ExerciseService.getExercises()</code> existant dans un provider. Afficher les exercices réels avec filtres par domaine et difficulté.</p>
+        </div>
+      </div>
+      <div class="priority-item">
+        <div class="priority-badge p2">🟡</div>
+        <div>
+          <h4>6. Reconstruire SimulationScreen</h4>
+          <p>Refactoriser en <code>ConsumerStatefulWidget</code> avec : sélection d'exercice, chat UI, timer, appels API (<code>start</code> → <code>answer</code> → <code>stream</code> → <code>finish</code>), affichage du feedback.</p>
+        </div>
+      </div>
+      <div class="priority-item">
+        <div class="priority-badge p3">🟢</div>
+        <div>
+          <h4>7. Créer ProfileScreen (remplace AboutScreen)</h4>
+          <p>Formulaire <code>PUT /profile/update</code> + sélecteurs domaine/niveau + bouton "Supprimer mon compte" (<code>DELETE /auth/me</code>). Ajouter route <code>/profile</code> dans <code>AppRouter</code>.</p>
+        </div>
+      </div>
+      <div class="priority-item">
+        <div class="priority-badge p3">🟢</div>
+        <div>
+          <h4>8. Construire StatisticsScreen avec graphiques</h4>
+          <p>Ajouter <code>fl_chart</code> dans <code>pubspec.yaml</code>. Utiliser <code>DashboardService.getDetailedStats()</code> et <code>getSessionHistory()</code> pour alimenter les graphiques score/domaines.</p>
+        </div>
+      </div>
+      <div class="priority-item">
+        <div class="priority-badge p3">🟢</div>
+        <div>
+          <h4>9. Améliorer LoginScreen selon la maquette</h4>
+          <p>Fusionner Login/Register en un écran toggle. Ajouter la bannière "AI Insight" et les boutons de connexion sociale (UI seulement dans un premier temps).</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <!-- 9. BACKEND ACTIONS -->
+  <section id="backend-actions">
+    <div class="section-label">09 · Plan d'action</div>
+    <h2 class="section-title">Actions Backend — Ordre de priorité</h2>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Étendre FRONTEND_URL pour Flutter Web</h4>
+          <p>Dans <code>.env</code> : ajouter <code>http://localhost:5173</code> et tous les ports de dev Flutter web. En production, ajouter le domaine HTTPS de l'app déployée.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Corriger l'ordre des routes exercices</h4>
+          <p>Dans <code>app/routers/exercices.py</code>, s'assurer que <code>GET /exercises/random/get</code> est déclaré AVANT <code>GET /exercises/{exercise_id}</code>. Sinon FastAPI essaie de parser "random" comme UUID → erreur 422.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Corriger <code>score</code> nullable dans Session</h4>
+          <p>Dans <code>app/models/session.py</code>, rendre <code>score</code> nullable (<code>Float, nullable=True, default=None</code>). Mettre à jour <code>SessionResponse</code> avec <code>score: Optional[float] = None</code>. Générer et appliquer une migration Alembic.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Implémenter le streaming SSE (<code>/simulation/stream/{id}</code>)</h4>
+          <p>Utiliser <code>anthropic</code> SDK avec <code>client.messages.stream()</code>. Retourner une <code>StreamingResponse</code> avec <code>media_type="text/event-stream"</code>. Ajouter <code>pip install anthropic</code> dans <code>requirements.txt</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <h4>Compléter <code>/simulation/finish</code> avec vrai feedback IA</h4>
+          <p>Remplacer le feedback hardcodé (score=75) par un appel IA qui analyse les <code>session.reponses</code> et génère un feedback structuré (score, points_forts, ameliorations, recommandations).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <h4>Créer le router <code>/scenarios</code></h4>
+          <p>Nouveau fichier <code>app/routers/scenarios.py</code> avec <code>GET /scenarios</code> et <code>POST /scenarios</code>. L'inclure dans <code>main.py</code>. Peut démarrer avec stockage en mémoire puis migrer vers table PostgreSQL.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">7</div>
+        <div class="step-content">
+          <h4>Compléter <code>GET /progress/stats</code></h4>
+          <p>Le domaine de l'exercice n'est pas récupéré (TODO dans le code). Faire un JOIN <code>Session → Exercice</code> pour grouper les stats par domaine réel.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">8</div>
+        <div class="step-content">
+          <h4>Implémenter <code>GET /progress/export</code> (optionnel)</h4>
+          <p>Générer un PDF de progression avec <code>reportlab</code> ou <code>weasyprint</code>. Retourner un <code>FileResponse</code>. Peut être différé après les fonctionnalités core.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-ok" style="margin-top:32px">
+      <strong>✅ Ce qui est déjà bien configuré</strong>
+      Le port 9000 est cohérent entre backend et Flutter. La structure FastAPI (routers, schemas, models, services) est propre et bien séparée. L'authentification JWT avec access + refresh token est correctement implémentée côté backend. Les migrations Alembic sont en place.
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Rapport généré automatiquement · InterviewPrep · Analyse Flutter + Maquette React + Backend FastAPI
+</footer>
+
+</body>
+</html>

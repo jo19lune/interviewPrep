@@ -1,6 +1,6 @@
 """Schémas Pydantic pour feedback"""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Any
 from datetime import datetime
 from uuid import UUID
@@ -15,6 +15,5 @@ class FeedbackResponse(BaseModel):
     ameliorations: Optional[List[Any]] = None
     recommandations: Optional[List[str]] = None
     genere_le: datetime
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)

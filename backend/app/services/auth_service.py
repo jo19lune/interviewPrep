@@ -141,3 +141,26 @@ async def refresh_access_token(token: str) -> TokenResponse:
         access_token=new_access_token,
         refresh_token=new_refresh_token
     )
+
+
+async def refresh_user_tokens(session: AsyncSession, token: str) -> Tuple[User, TokenResponse]:
+    """Valider un refresh token et retourner l'utilisateur avec une nouvelle paire de tokens."""
+    payload = decode_token(token)
+
+    if payload.get("token_type") != "refresh":
+        raise AuthenticationError("Invalid refresh token type")
+
+    user_id = payload.get("user_id")
+    if not user_id:
+        raise AuthenticationError("Invalid token payload")
+
+    user = await get_user_by_id(session, user_id)
+    if not user:
+        raise AuthenticationError("User not found")
+    if not user.est_actif:
+        raise AuthenticationError("User account is inactive")
+
+    return user, TokenResponse(
+        access_token=create_access_token(user_id),
+        refresh_token=create_refresh_token(user_id),
+    )

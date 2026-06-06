@@ -1,7 +1,6 @@
 """Modèle progression"""
 
-from sqlalchemy import Column, String, Float, Integer, ForeignKey, DateTime, Index
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, Float, Integer, ForeignKey, DateTime, Index, Uuid
 from sqlalchemy.orm import relationship
 from app.models.base import BaseModel
 
@@ -11,7 +10,7 @@ class Progression(BaseModel):
     __tablename__ = "progress"
     
     # Clé étrangère
-    utilisateur_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, unique=True, index=True)
+    utilisateur_id = Column(Uuid(as_uuid=True), ForeignKey("users.id"), nullable=False, unique=True, index=True)
     
     # Classification
     domaine = Column(String, nullable=True)  # Enum comme string
