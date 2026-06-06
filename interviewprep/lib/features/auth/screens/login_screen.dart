@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
+
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -202,51 +203,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           const SizedBox(height: 24),
 
-                          // Submit Button
-                          ElevatedButton(
-                            onPressed: _login,
-                            child: const Text('Log In'),
-                          ),
-                          
-                          const SizedBox(height: 24),
-                          
-                          // Divider
-                          Row(
-                            children: [
-                              const Expanded(child: Divider(color: AppTheme.outlineVariant)),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                child: Text('OR CONTINUE WITH', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold, color: AppTheme.outline)),
-                              ),
-                              const Expanded(child: Divider(color: AppTheme.outlineVariant)),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
+                          // Submit Button + Loading + (social logins supprimés)
+                          Consumer(
+                            builder: (context, ref, _) {
+                              final authState = ref.watch(authStateProvider);
+                              final isLoading = authState is AsyncLoading<void>;
 
-                          // Social Logins
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () {},
-                                  child: const Text('G', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () {},
-                                  child: const Icon(Icons.account_circle_outlined, size: 24),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: OutlinedButton(
-                                  onPressed: () {},
-                                  child: const Icon(Icons.apple, size: 24),
-                                ),
-                              ),
-                            ],
+                              return Column(
+                                children: [
+                                  SizedBox(
+                                    height: 48,
+                                    child: ElevatedButton(
+                                      onPressed: isLoading ? null : _login,
+                                      child: isLoading
+                                          ? const SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(strokeWidth: 2),
+                                            )
+                                          : const Text('Log In'),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),
