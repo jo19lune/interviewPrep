@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -14,8 +14,6 @@ from sqlalchemy.future import select
 from app.config.settings import settings
 from app.core.exceptions import AuthenticationError
 from app.models.user import User
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class TokenResponse(BaseModel):
@@ -37,23 +35,27 @@ class TokenData(BaseModel):
 def hash_password(password: str) -> str:
     """Hasher un mot de passe avec bcrypt.
 
-    bcrypt tronque à ~72 bytes (UTF-8) : on tronque *avant* passlib pour
-    éviter l'erreur "password cannot be longer than 72 bytes".
+    bcrypt impose une limite de 72 bytes pour le mot de passe.
+    On tronque avant hachage pour éviter l'erreur.
     """
 
     raw = password or ""
     raw_bytes = raw.encode("utf-8")
 
     if len(raw_bytes) > 72:
-        raw = raw_bytes[:72].decode("utf-8", errors="ignore")
+        raw_bytes = raw_bytes[:72]
 
-    return pwd_context.hash(raw)
+    return bcrypt.hashpw(raw_bytes, bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Vérifier un mot de passe contre son hash."""
 
-    return pwd_context.verify(plain_password, hashed_password)
+    raw = (plain_password or "").encode("utf-8")
+    if len(raw) > 72:
+        raw = raw[:72]
+
+    return bcrypt.checkpw(raw, hashed_password.encode("utf-8"))
 
 
 def create_access_token(
@@ -65,8 +67,6 @@ def create_access_token(
         expires_delta = timedelta(
             minutes=settings.access_token_expire_minutes
         )
-
-
     expire = datetime.now(timezone.utc) + expires_delta
     payload = {
         "user_id": str(user_id),
@@ -118,7 +118,9 @@ def decode_token(token: str) -> dict:
         raise AuthenticationError(f"Invalid token: {e}") from e
 
 
-async def get_user_by_id(session: AsyncSession, user_id: str) -> Optional[User]:
+async def get_user_by_id(
+    session: AsyncSession, user_id: str
+) -> Optional[User]:
     """Récupérer un utilisateur par ID."""
 
     from uuid import UUID
@@ -210,4 +212,3 @@ async def refresh_user_tokens(
         access_token=create_access_token(user_id),
         refresh_token=create_refresh_token(user_id),
     )
-
