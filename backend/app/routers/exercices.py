@@ -1,4 +1,4 @@
-"""Router exercices - Recuperation et gestion des exercices."""
+"""Router exercices - recuperation et generation dynamique."""
 
 import random
 from uuid import UUID
@@ -7,17 +7,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from app.config.settings import settings
 from app.core.enums import Domaine, Niveau
 from app.core.security import get_current_user
 from app.data.database import get_db
 from app.models.exercice import Exercice
 from app.models.user import User
 from app.schemas.exercice import ExerciceCreateRequest, ExerciceResponse
+from app.services.ai_service import AIService
 
 router = APIRouter(prefix="/exercises", tags=["exercises"])
 
 
-@router.get("", response_model=list[ExerciceResponse])
+@router.get("", response_model=list[ ExerciceResponse ])
 async def list_exercises(
     domaine: str = Query(None, description="Filtrer par domaine"),
     difficulte: str = Query(None, description="Filtrer par difficulte"),
@@ -119,6 +121,65 @@ async def create_exercise(
     await db.refresh(new_exercise)
 
     return ExerciceResponse.from_orm(new_exercise)
+
+
+@router.post("/generate", response_model=ExerciceResponse, status_code=status.HTTP_201_CREATED)
+async def generate_exercise(
+    domaine: str = Query(..., min_length=2, max_length=80),
+    difficulte: str = Query(..., min_length=2, max_length=80),
+    sujet: str = Query(None, min_length=0, max_length=160),
+    nombre_questions: int = Query(10, ge=1, le=30),
+    save: bool = Query(True),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generer dynamiquement un exercice via l'IA et l'enregistrer dans la base."""
+    if not settings.ai_feature_generate_exercises:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Dynamic exercise generation is disabled on this server",
+        )
+
+    domaine = _normalize_enum_filter(domaine, {item.value for item in Domaine}, "domaine")
+    difficulte = _normalize_enum_filter(difficulte, {item.value for item in Niveau}, "difficulte")
+
+    ai_service = AIService()
+    generated = await ai_service.generate_exercise(
+        domaine=domaine,
+        difficulte=difficulte,
+        sujet=sujet,
+        nombre_questions=nombre_questions,
+    )
+
+    exercise = Exercice(
+        titre=generated.get("titre", f"Simulation {domaine}"),
+        description=generated.get("description"),
+        domaine=domaine,
+        difficulte=difficulte,
+        duree_sec=int(generated.get("duree_sec") or 300),
+        questions=generated.get("questions") or [],
+        etiquettes=generated.get("etiquettes") or [domaine],
+        difficulte_estimee=0,
+    )
+
+    if save:
+        db.add(exercise)
+        await db.commit()
+        await db.refresh(exercise)
+        return ExerciceResponse.from_orm(exercise)
+
+    return ExerciceResponse.model_validate({
+        "id": UUID(int=0),
+        "titre": exercise.titre,
+        "description": exercise.description,
+        "domaine": exercise.domaine,
+        "difficulte": exercise.difficulte,
+        "duree_sec": exercise.duree_sec,
+        "questions": exercise.questions,
+        "etiquettes": exercise.etiquettes,
+        "difficulte_estimee": exercise.difficulte_estimee,
+        "cree_le": None,
+    })
 
 
 def _normalize_enum_filter(value: str | None, allowed: set[str], field_name: str) -> str | None:

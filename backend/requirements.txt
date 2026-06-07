@@ -33,6 +33,7 @@ starlette==1.0.0
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 uvicorn==0.46.0
+openai==1.54.0
 pytest==7.4.3
 pytest-asyncio==0.23.3
 pytest-cov==4.1.0

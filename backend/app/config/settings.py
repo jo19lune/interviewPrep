@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     anthropic_api_key: str = Field(default="", validation_alias="ANTHROPIC_API_KEY")
     openai_api_key: str = Field(default="", validation_alias="OPENAI_API_KEY")
     openai_models: List[str] = []
+    ai_provider: str = Field(default="auto", validation_alias="AI_PROVIDER")
+    ai_primary_model: str = Field(default="", validation_alias="AI_PRIMARY_MODEL")
+    ai_fallback_model: str = Field(default="", validation_alias="AI_FALLBACK_MODEL")
+    ai_feature_generate_exercises: bool = Field(default=True, validation_alias="AI_FEATURE_GENERATE_EXERCISES")
+    ai_feature_generate_questions: bool = Field(default=True, validation_alias="AI_FEATURE_GENERATE_QUESTIONS")
+    ai_feature_generate_feedback: bool = Field(default=True, validation_alias="AI_FEATURE_GENERATE_FEEDBACK")
 
     # Email
     email_host: str = Field(default="smtp.gmail.com", validation_alias="EMAIL_HOST")
@@ -99,6 +105,10 @@ class Settings(BaseSettings):
             for i in range(1, 13)
             if os.getenv(f"OPENAI_MODEL_ID_{i}")
         ]
+        if not self.ai_primary_model:
+            primary = os.getenv("OPENAI_MODEL_ID_1") or os.getenv("ANTHROPIC_MODEL")
+            if primary:
+                self.ai_primary_model = primary.strip()
 
 
 settings = Settings()
