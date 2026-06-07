@@ -7,11 +7,19 @@ import '../../../core/models/exercise.dart';
 class SimulationService {
   final ApiClient _apiClient = ApiClient();
 
-  Future<StartSimulationResponse> startSimulation(String exerciseId) async {
+  Future<StartSimulationResponse> startSimulation(
+    String exerciseId, {
+    String? subject,
+    int questionCount = 10,
+  }) async {
     try {
       final response = await _apiClient.dio.post(
         '/simulation/start',
-        queryParameters: {'exercice_id': exerciseId},
+        queryParameters: {
+          'exercice_id': exerciseId,
+          'nombre_questions': questionCount,
+          if (subject != null && subject.trim().isNotEmpty) 'sujet': subject.trim(),
+        },
       );
       return StartSimulationResponse.fromJson(response.data);
     } on DioException catch (e) {
@@ -70,6 +78,15 @@ class SimulationService {
       return response.data;
     } on DioException catch (e) {
       throw Exception(e.response?.data['detail'] ?? 'Erreur lors de la fin de la simulation');
+    }
+  }
+
+  Future<Map<String, dynamic>> cancelSimulation(String sessionId) async {
+    try {
+      final response = await _apiClient.dio.post('/simulation/cancel/$sessionId');
+      return response.data;
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['detail'] ?? 'Erreur lors de l annulation de la simulation');
     }
   }
 }

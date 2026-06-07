@@ -16,11 +16,14 @@ class SimulationScreen extends ConsumerStatefulWidget {
 
 class _SimulationScreenState extends ConsumerState<SimulationScreen> {
   final _textController = TextEditingController();
+  final _subjectController = TextEditingController();
   final _scrollController = ScrollController();
+  int _questionCount = 10;
 
   @override
   void dispose() {
     _textController.dispose();
+    _subjectController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -44,6 +47,41 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
     try {
       await notifier.sendAnswer(text);
       _scrollToBottom();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _cancelSimulation(SimulationNotifier notifier) async {
+    final shouldCancel = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Annuler la simulation ?'),
+        content: const Text('La session sera marquee comme annulee et aucun bilan ne sera genere.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Continuer'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
+            child: const Text('Annuler'),
+          ),
+        ],
+      ),
+    );
+    if (shouldCancel != true) return;
+
+    try {
+      await notifier.cancel();
+      if (mounted) {
+        context.go('/exercises');
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -257,12 +295,75 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.outlineVariant),
+                  ),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Personnaliser la simulation',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: AppTheme.primaryContainer,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: _subjectController,
+                        decoration: InputDecoration(
+                          labelText: 'Sujet ou domaine cible',
+                          hintText: 'Ex: Flutter, data science, RH, vente B2B...',
+                          filled: true,
+                          fillColor: AppTheme.surface,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Nombre de questions',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryContainer),
+                          ),
+                          Text(
+                            '$_questionCount',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.secondaryColor),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        value: _questionCount.toDouble(),
+                        min: 10,
+                        max: 30,
+                        divisions: 20,
+                        label: '$_questionCount questions',
+                        onChanged: (value) {
+                          setState(() => _questionCount = value.round());
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
                 state.isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton.icon(
                         onPressed: () async {
                           try {
-                            await notifier.start(exercise.id);
+                            await notifier.start(
+                              exercise.id,
+                              subject: _subjectController.text,
+                              questionCount: _questionCount,
+                            );
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -328,10 +429,8 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.exit_to_app, color: AppTheme.error),
-            onPressed: () {
-              notifier.reset();
-              context.go('/dashboard');
-            },
+            tooltip: 'Annuler',
+            onPressed: state.isLoading ? null : () => _cancelSimulation(notifier),
           ),
         ],
       ),
@@ -352,6 +451,20 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Live coaching', style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold, color: AppTheme.primaryContainer)),
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: state.questionCount == 0
+                            ? 0
+                            : (state.answerCount / state.questionCount).clamp(0, 1).toDouble(),
+                        backgroundColor: AppTheme.surfaceContainerLow,
+                        color: AppTheme.secondaryColor,
+                        minHeight: 6,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${state.answerCount}/${state.questionCount} questions repondues${state.subject == null || state.subject!.isEmpty ? '' : ' - ${state.subject}'}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.onSurfaceVariant),
+                      ),
                       const SizedBox(height: 8),
                       Text('Répondez avec confiance, structurez votre pensée, et laissez l’IA vous guider.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.onSurfaceVariant)),
                     ],
@@ -556,12 +669,37 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                   bottomRight: message.isUser ? Radius.zero : const Radius.circular(12),
                 ),
               ),
-              child: Text(
-                message.text,
-                style: TextStyle(
-                  color: message.isUser ? Colors.white : AppTheme.onSurface,
-                  fontSize: 14,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message.text,
+                    style: TextStyle(
+                      color: message.isUser ? Colors.white : AppTheme.onSurface,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (!message.isUser && message.scorePartiel != null) ...[
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _ScoreChip(label: 'Score', value: '${message.scorePartiel!.round()}%'),
+                        if (message.analysis != null)
+                          _ScoreChip(
+                            label: 'Structure',
+                            value: '${((message.analysis!['structure'] as num?)?.round() ?? 0)}%',
+                          ),
+                        if (message.analysis != null)
+                          _ScoreChip(
+                            label: 'Precision',
+                            value: '${((message.analysis!['precision'] as num?)?.round() ?? 0)}%',
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -818,6 +956,35 @@ class _MiniBadge extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.onSurface),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ScoreChip extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ScoreChip({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppTheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        '$label $value',
+        style: const TextStyle(
+          color: AppTheme.onSecondaryContainer,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );

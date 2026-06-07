@@ -14,6 +14,7 @@ class ChatMessage {
   final double? scorePartiel;
   final String? sentiment;
   final String? coachingTip;
+  final Map<String, dynamic>? analysis;
 
   ChatMessage({
     required this.text,
@@ -22,6 +23,7 @@ class ChatMessage {
     this.scorePartiel,
     this.sentiment,
     this.coachingTip,
+    this.analysis,
   });
 }
 
@@ -35,6 +37,9 @@ class SimulationState {
   final String? lastLiveCoachingTip;
   final double? lastClarityScore;
   final String? lastSentiment;
+  final String? subject;
+  final int questionCount;
+  final int answerCount;
 
   SimulationState({
     this.sessionId,
@@ -46,6 +51,9 @@ class SimulationState {
     this.lastLiveCoachingTip,
     this.lastClarityScore,
     this.lastSentiment,
+    this.subject,
+    this.questionCount = 10,
+    this.answerCount = 0,
   });
 
   SimulationState copyWith({
@@ -58,6 +66,9 @@ class SimulationState {
     String? lastLiveCoachingTip,
     double? lastClarityScore,
     String? lastSentiment,
+    String? subject,
+    int? questionCount,
+    int? answerCount,
     bool clearFeedback = false,
   }) {
     return SimulationState(
@@ -70,6 +81,9 @@ class SimulationState {
       lastLiveCoachingTip: lastLiveCoachingTip ?? this.lastLiveCoachingTip,
       lastClarityScore: lastClarityScore ?? this.lastClarityScore,
       lastSentiment: lastSentiment ?? this.lastSentiment,
+      subject: subject ?? this.subject,
+      questionCount: questionCount ?? this.questionCount,
+      answerCount: answerCount ?? this.answerCount,
     );
   }
 }
@@ -83,10 +97,18 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     state = SimulationState();
   }
 
-  Future<void> start(String exerciseId) async {
+  Future<void> start(
+    String exerciseId, {
+    String? subject,
+    int questionCount = 10,
+  }) async {
     state = state.copyWith(isLoading: true, clearFeedback: true, messages: []);
     try {
-      final response = await _service.startSimulation(exerciseId);
+      final response = await _service.startSimulation(
+        exerciseId,
+        subject: subject,
+        questionCount: questionCount,
+      );
       
       final firstMsg = ChatMessage(
         text: response.firstQuestion ?? "Bienvenue dans cette simulation d'entretien. Commençons par votre parcours. Pouvez-vous vous présenter ?",
@@ -99,6 +121,9 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
         exerciseTitle: response.exerciseTitle,
         messages: [firstMsg],
         isLoading: false,
+        subject: response.subject ?? subject,
+        questionCount: response.questionCount ?? questionCount,
+        answerCount: 0,
       );
     } catch (e) {
       state = state.copyWith(isLoading: false);
@@ -127,12 +152,17 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
       final clarity = (response['clarity_score'] as num?)?.toDouble() ?? 80.0;
       final sentiment = response['sentiment'] as String? ?? 'Confident';
       final tip = response['coaching_tip'] as String? ?? '';
+      final answerCount = (response['answer_count'] as num?)?.toInt() ?? state.answerCount + 1;
+      final analysis = response['analysis'] is Map<String, dynamic>
+          ? response['analysis'] as Map<String, dynamic>
+          : null;
       final nextQ = response['next_question'] as String? ?? 'Félicitations, simulation terminée !';
 
       state = state.copyWith(
         lastClarityScore: clarity,
         lastSentiment: sentiment,
         lastLiveCoachingTip: tip,
+        answerCount: answerCount,
       );
 
       var streamedText = '';
@@ -146,6 +176,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
             clarity: clarity,
             sentiment: sentiment,
             tip: tip,
+            analysis: analysis,
           );
         }
       } catch (_) {
@@ -158,6 +189,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
           clarity: clarity,
           sentiment: sentiment,
           tip: tip,
+          analysis: analysis,
         );
       }
 
@@ -199,11 +231,27 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     }
   }
 
+  Future<void> cancel() async {
+    if (state.sessionId == null) {
+      reset();
+      return;
+    }
+    state = state.copyWith(isLoading: true);
+    try {
+      await _service.cancelSimulation(state.sessionId!);
+      state = SimulationState();
+    } catch (e) {
+      state = state.copyWith(isLoading: false);
+      rethrow;
+    }
+  }
+
   void _upsertRecruiterMessage(
     String text, {
     required double clarity,
     required String sentiment,
     required String tip,
+    Map<String, dynamic>? analysis,
   }) {
     final messages = [...state.messages];
     if (messages.isNotEmpty && !messages.last.isUser) {
@@ -214,6 +262,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
         scorePartiel: clarity,
         sentiment: sentiment,
         coachingTip: tip,
+        analysis: analysis,
       );
     } else {
       messages.add(
@@ -224,6 +273,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
           scorePartiel: clarity,
           sentiment: sentiment,
           coachingTip: tip,
+          analysis: analysis,
         ),
       );
     }
