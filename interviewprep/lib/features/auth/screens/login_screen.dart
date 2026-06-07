@@ -34,8 +34,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         if (mounted) context.go('/dashboard');
       } catch (e) {
         if (mounted) {
+          final msg = e.toString().replaceAll('Exception: ', '').trim();
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+            SnackBar(content: Text(msg.isNotEmpty ? msg : 'Erreur de connexion')),
           );
         }
       }

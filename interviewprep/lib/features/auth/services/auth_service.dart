@@ -21,7 +21,9 @@ class AuthService {
       }
     } catch (e) {
       if (e is DioException) {
-        throw Exception(e.response?.data['detail'] ?? 'Erreur de connexion');
+        final data = e.response?.data;
+        final detail = (data is Map && data['detail'] != null) ? data['detail'] : null;
+        throw Exception(detail?.toString() ?? 'Erreur de connexion');
       }
       throw Exception('Erreur inattendue');
     }
@@ -51,7 +53,9 @@ class AuthService {
       }
     } catch (e) {
       if (e is DioException) {
-        throw Exception(e.response?.data['detail'] ?? 'Erreur d\'inscription');
+        final data = e.response?.data;
+        final detail = (data is Map && data['detail'] != null) ? data['detail'] : null;
+        throw Exception(detail?.toString() ?? 'Erreur d\'inscription');
       }
       throw Exception('Erreur inattendue');
     }
@@ -66,7 +70,9 @@ class AuthService {
       await _apiClient.dio.delete('/auth/me');
       await logout();
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors de la suppression du compte');
+      final data = e.response?.data;
+      final detail = (data is Map && data['detail'] != null) ? data['detail'] : null;
+      throw Exception(detail?.toString() ?? 'Erreur lors de la suppression du compte');
     } catch (e) {
       throw Exception('Erreur inattendue');
     }
