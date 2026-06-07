@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -26,6 +26,8 @@ router = APIRouter(prefix="/simulation", tags=["simulation"])
 @router.post("/start")
 async def start_simulation(
     exercice_id: UUID,
+    sujet: str | None = Query(None, min_length=2, max_length=160),
+    nombre_questions: int = Query(10, ge=10, le=30),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -44,7 +46,17 @@ async def start_simulation(
         exercice_id=exercice_id,
         commence_le=datetime.utcnow(),
         statut="EN_COURS",
-        reponses=[],
+        reponses=[
+            {
+                "type": "system",
+                "simulation_config": {
+                    "sujet": sujet.strip() if sujet else None,
+                    "nombre_questions": nombre_questions,
+                    "domaine": exercice.domaine,
+                    "difficulte": exercice.difficulte,
+                },
+            }
+        ],
     )
     ia_sim = SimulationIA(
         modele="claude-3-5-sonnet-20241022",
@@ -61,7 +73,9 @@ async def start_simulation(
         "session_id": str(session.id),
         "status": "started",
         "exercise_title": exercice.titre,
-        "first_question": _fallback_question(exercice, 0, []),
+        "first_question": await _generate_next_question(exercice, session.reponses or [], 0),
+        "subject": sujet.strip() if sujet else exercice.domaine,
+        "question_count": nombre_questions,
     }
 
 
@@ -106,9 +120,10 @@ async def submit_answer(
             detail="Exercise associated with session not found",
         )
 
-    current_q_index = len(session.reponses or [])
+    current_q_index = len(_user_responses(session.reponses or []))
     questions = exercice.questions or []
-    clarity_score, sentiment, coaching_tip = _score_answer(
+    current_question = questions[current_q_index].get("enonce") if current_q_index < len(questions) else None
+    clarity_score, sentiment, coaching_tip, analysis = _score_answer(
         questions[current_q_index] if current_q_index < len(questions) else None,
         reponse,
     )
@@ -117,11 +132,13 @@ async def submit_answer(
     updated_reponses.append(
         {
             "texte": reponse,
+            "question": current_question,
             "timestamp": datetime.utcnow().isoformat(),
             "index": current_q_index,
             "score_partiel": clarity_score,
             "sentiment": sentiment,
             "coaching_tip": coaching_tip,
+            "analysis": analysis,
         }
     )
     session.reponses = updated_reponses
@@ -138,6 +155,7 @@ async def submit_answer(
         "clarity_score": clarity_score,
         "sentiment": sentiment,
         "coaching_tip": coaching_tip,
+        "analysis": analysis,
         "next_question": next_question,
     }
 
@@ -167,7 +185,7 @@ async def stream_ai_response(
         )
 
     reponses = session.reponses or []
-    next_index = len(reponses)
+    next_index = len(_user_responses(reponses))
     question = await _generate_next_question(exercice, reponses, next_index)
 
     async def event_generator():
@@ -178,6 +196,42 @@ async def stream_ai_response(
         yield "event: done\ndata: {}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+@router.post("/cancel/{session_id}")
+async def cancel_simulation(
+    session_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Annuler une simulation active sans generer de feedback."""
+    result = await db.execute(
+        select(Session).where(
+            (Session.id == session_id) & (Session.utilisateur_id == current_user.id)
+        )
+    )
+    session = result.scalars().first()
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found",
+        )
+    if session.statut != "EN_COURS":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only active sessions can be cancelled",
+        )
+
+    session.statut = "ANNULEE"
+    session.termine_le = datetime.utcnow()
+    db.add(session)
+    await db.commit()
+
+    return {
+        "session_id": str(session.id),
+        "status": "cancelled",
+    }
 
 
 @router.post("/finish/{session_id}")
@@ -203,9 +257,10 @@ async def finish_simulation(
     session.statut = "TERMINEE"
     session.termine_le = datetime.utcnow()
 
+    user_reponses = _user_responses(session.reponses or [])
     scores = [
         r.get("score_partiel")
-        for r in (session.reponses or [])
+        for r in user_reponses
         if r.get("score_partiel") is not None
     ]
     global_score = float(sum(scores) / len(scores)) if scores else 75.0
@@ -255,7 +310,7 @@ async def finish_simulation(
     }
 
 
-def _score_answer(question: dict | None, reponse: str) -> tuple[float, str, str]:
+def _score_answer(question: dict | None, reponse: str) -> tuple[float, str, str, dict]:
     if question and question.get("type") == "qcm":
         correct_index = question.get("reponse_correcte")
         options = question.get("options", [])
@@ -272,6 +327,13 @@ def _score_answer(question: dict | None, reponse: str) -> tuple[float, str, str]
                 100.0,
                 "Confident",
                 f"Excellent, c'est la bonne reponse. {question.get('explication', '')}",
+                {
+                    "pertinence": 100,
+                    "structure": 90,
+                    "precision": 100,
+                    "exemples": 80,
+                    "profondeur": 90,
+                },
             )
 
         correct_text = ""
@@ -281,44 +343,78 @@ def _score_answer(question: dict | None, reponse: str) -> tuple[float, str, str]
             0.0,
             "Hesitant",
             f"La bonne reponse etait: {correct_text}. {question.get('explication', '')}",
+            {
+                "pertinence": 0,
+                "structure": 30,
+                "precision": 0,
+                "exemples": 20,
+                "profondeur": 20,
+            },
         )
 
     word_count = len(reponse.split())
     lowered = reponse.lower()
-    if word_count < 10:
+    has_personal_role = any(token in lowered for token in ("je", "mon", "ma", "mes", "nous", "j'"))
+    has_structure = any(token in lowered for token in ("situation", "tache", "action", "resultat", "d'abord", "ensuite", "enfin"))
+    has_metrics = bool(re.search(r"\d|%|kpi|delai|cout|temps|score|taux", lowered))
+    has_example = any(token in lowered for token in ("exemple", "projet", "cas", "experience", "client", "equipe"))
+    has_tradeoff = any(token in lowered for token in ("risque", "limite", "compromis", "priorite", "arbitrage", "impact"))
+
+    analysis = {
+        "pertinence": min(100, 35 + word_count * 2),
+        "structure": 80 if has_structure else (60 if word_count >= 25 else 40),
+        "precision": 85 if has_metrics else (65 if word_count >= 30 else 45),
+        "exemples": 85 if has_example else 45,
+        "profondeur": 80 if has_tradeoff else (65 if word_count >= 35 else 45),
+    }
+    if has_personal_role:
+        analysis["pertinence"] = min(100, analysis["pertinence"] + 10)
+
+    score = round(sum(analysis.values()) / len(analysis), 1)
+    if score < 55:
         return (
-            45.0,
+            score,
             "Hesitant",
-            "Votre reponse est courte. Ajoutez un exemple precis et structurez avec la methode STAR.",
+            "Votre reponse est trop generale. Ajoutez votre role, un exemple concret et un resultat mesurable.",
+            analysis,
         )
-    if not any(token in lowered for token in ("je", "mon", "ma", "mes", "nous")):
+    if score < 75:
         return (
-            65.0,
+            score,
             "Neutral",
-            "Bonne analyse. Pensez a expliciter votre role personnel et votre impact concret.",
+            "Bonne base. Renforcez la structure et precisez l'impact obtenu avec un chiffre ou un resultat.",
+            analysis,
         )
     return (
-        85.0,
+        score,
         "Confident",
-        "Bonne structure. Pour aller plus loin, ajoutez un resultat mesurable ou un indicateur de succes.",
+        "Reponse solide. Pour viser plus haut, explicitez aussi les risques, limites ou arbitrages.",
+        analysis,
     )
 
 
 async def _generate_next_question(exercice: Exercice, reponses: list[dict], index: int) -> str:
+    config = _session_config(reponses)
+    target_count = int(config.get("nombre_questions") or 10)
+    sujet = config.get("sujet")
+    user_reponses = _user_responses(reponses)
+    if len(user_reponses) >= target_count:
+        return "Merci, vous avez termine toutes les questions. Cliquez sur Terminer pour obtenir votre bilan complet."
+
     questions = exercice.questions or []
     if index < len(questions):
         return questions[index].get("enonce") or _fallback_question(exercice, index, reponses)
 
-    if len(reponses) >= max(len(questions), 3):
-        return "Merci, vous avez couvert les points principaux. Cliquez sur Terminer pour obtenir votre bilan complet."
-
     try:
         ai_service = AIService(settings.anthropic_api_key)
-        previous = [r.get("texte", "") for r in reponses if r.get("texte")]
+        previous = [r.get("texte", "") for r in user_reponses if r.get("texte")]
         question = await ai_service.generate_next_question(
             previous_responses=previous,
             domaine=exercice.domaine,
             niveau=exercice.difficulte,
+            sujet=sujet,
+            question_index=index,
+            total_questions=target_count,
         )
         if question:
             return question
@@ -330,29 +426,48 @@ async def _generate_next_question(exercice: Exercice, reponses: list[dict], inde
 
 async def _generate_feedback(exercice: Exercice | None, reponses: list[dict], score: float) -> dict:
     contexte = exercice.titre if exercice else "entretien"
+    config = _session_config(reponses)
     try:
         ai_service = AIService(settings.anthropic_api_key)
-        feedback = await ai_service.generate_feedback(reponses, contexte)
+        feedback = await ai_service.generate_feedback(
+            _user_responses(reponses),
+            contexte,
+            sujet=config.get("sujet"),
+        )
         return _normalize_feedback(feedback, score)
     except Exception:
         return _fallback_feedback(score)
 
 
 def _fallback_question(exercice: Exercice, index: int, reponses: list[dict]) -> str:
+    config = _session_config(reponses)
+    sujet = config.get("sujet")
+    sujet_suffix = f" sur {sujet}" if sujet else ""
     questions = exercice.questions or []
     if index < len(questions):
         return questions[index].get("enonce") or "Pouvez-vous developper votre reponse ?"
 
     templates = {
-        "TECHNIQUE": "Pouvez-vous expliquer le compromis technique principal de votre solution et sa complexite ?",
-        "COMPORTEMENTAL": "Quel resultat mesurable avez-vous obtenu, et qu'auriez-vous fait differemment ?",
-        "ETUDE_DE_CAS": "Quels risques prioritaires surveilleriez-vous pendant la mise en oeuvre ?",
-        "SITUATIONNEL": "Quelle serait votre premiere action concrete dans cette situation, et pourquoi ?",
+        "TECHNIQUE": f"Pouvez-vous expliquer un compromis technique important{sujet_suffix} et sa complexite ?",
+        "COMPORTEMENTAL": f"Quel resultat mesurable avez-vous obtenu{sujet_suffix}, et qu'auriez-vous fait differemment ?",
+        "ETUDE_DE_CAS": f"Quels risques prioritaires surveilleriez-vous{sujet_suffix} pendant la mise en oeuvre ?",
+        "SITUATIONNEL": f"Quelle serait votre premiere action concrete{sujet_suffix}, et pourquoi ?",
     }
     return templates.get(
         exercice.domaine,
         "Pouvez-vous donner un exemple concret pour illustrer votre raisonnement ?",
     )
+
+
+def _session_config(reponses: list[dict]) -> dict:
+    for item in reponses:
+        if item.get("type") == "system" and isinstance(item.get("simulation_config"), dict):
+            return item["simulation_config"]
+    return {}
+
+
+def _user_responses(reponses: list[dict]) -> list[dict]:
+    return [item for item in reponses if item.get("type") != "system"]
 
 
 def _normalize_feedback(feedback: dict, fallback_score: float) -> dict:

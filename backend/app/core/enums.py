@@ -26,4 +26,5 @@ class StatutSession(str, Enum):
     EN_COURS = "EN_COURS"
     EN_PAUSE = "EN_PAUSE"
     TERMINEE = "TERMINEE"
+    ANNULEE = "ANNULEE"
     ABANDONNEE = "ABANDONNEE"
