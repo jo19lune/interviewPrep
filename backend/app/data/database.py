@@ -1,23 +1,24 @@
-"""Configuration et gestion de la base de données"""
+"""Configuration et gestion de la base de donnees."""
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+import logging
+
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
 from app.config.settings import settings
 from app.models.base import Base
-import logging
 
 logger = logging.getLogger(__name__)
 
-# Créer le moteur async
-engine = create_async_engine(
-    settings.database_url,
-    echo=settings.debug,  # Afficher les requêtes SQL en développement
-    pool_pre_ping=True,  # Vérifier les connexions avant utilisation
-    pool_size=10,
-    max_overflow=20,
-)
+engine_kwargs = {
+    "echo": settings.debug,
+    "pool_pre_ping": True,
+}
+if not settings.database_url.startswith("sqlite"):
+    engine_kwargs.update({"pool_size": 10, "max_overflow": 20})
 
-# Créer la factory de sessions
+engine = create_async_engine(settings.database_url, **engine_kwargs)
+
 AsyncSessionLocal = sessionmaker(
     engine,
     class_=AsyncSession,
@@ -28,7 +29,7 @@ AsyncSessionLocal = sessionmaker(
 
 
 async def get_db() -> AsyncSession:
-    """Obtenir une session de base de données async"""
+    """Obtenir une session de base de donnees async."""
     async with AsyncSessionLocal() as session:
         try:
             yield session
@@ -37,7 +38,7 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db():
-    """Initialiser la base de données (créer toutes les tables)"""
+    """Initialiser la base de donnees."""
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
@@ -48,6 +49,6 @@ async def init_db():
 
 
 async def close_db():
-    """Fermer les connexions à la base de données"""
+    """Fermer les connexions a la base de donnees."""
     await engine.dispose()
     logger.info("Database connections closed")

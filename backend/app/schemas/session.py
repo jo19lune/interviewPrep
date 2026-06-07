@@ -1,6 +1,6 @@
 """Schémas Pydantic pour sessions et feedback"""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Any
 from datetime import datetime
 from uuid import UUID
@@ -16,9 +16,8 @@ class SessionResponse(BaseModel):
     statut: str
     score: float
     reponses: Optional[List[Any]] = None
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SessionCreateRequest(BaseModel):
@@ -35,6 +34,5 @@ class FeedbackResponse(BaseModel):
     ameliorations: Optional[List[Any]] = None
     recommandations: Optional[List[str]] = None
     genere_le: datetime
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)

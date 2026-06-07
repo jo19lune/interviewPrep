@@ -27,8 +27,15 @@ async def lifespan(app: FastAPI):
     try:
         await init_db()
         logger.info("Database initialized")
+        
+        # Seeder les exercices par défaut
+        from app.data.database import AsyncSessionLocal
+        from app.data.seeder import seed_exercises
+        async with AsyncSessionLocal() as db:
+            await seed_exercises(db)
+            
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        logger.error(f"Failed to initialize or seed database: {e}")
         raise
     
     yield

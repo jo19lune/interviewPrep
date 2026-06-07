@@ -1,18 +1,18 @@
-"""Router exercices - Récupération et gestion des exercices"""
+"""Router exercices - Recuperation et gestion des exercices."""
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy import func
 import random
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+
+from app.core.enums import Domaine, Niveau
+from app.core.security import get_current_user
 from app.data.database import get_db
-from app.schemas.exercice import ExerciceResponse, ExerciceCreateRequest
 from app.models.exercice import Exercice
 from app.models.user import User
-from app.core.security import get_current_user
-from app.core.enums import Domaine, Niveau
+from app.schemas.exercice import ExerciceCreateRequest, ExerciceResponse
 
 router = APIRouter(prefix="/exercises", tags=["exercises"])
 
@@ -20,99 +20,80 @@ router = APIRouter(prefix="/exercises", tags=["exercises"])
 @router.get("", response_model=list[ExerciceResponse])
 async def list_exercises(
     domaine: str = Query(None, description="Filtrer par domaine"),
-    difficulte: str = Query(None, description="Filtrer par difficulté"),
+    difficulte: str = Query(None, description="Filtrer par difficulte"),
     tags: str = Query(None, description="Filtrer par tags (comma-separated)"),
     skip: int = Query(0, ge=0, description="Pagination: offset"),
     limit: int = Query(10, ge=1, le=100, description="Pagination: limit"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    """
-    Lister les exercices avec filtres optionnels
-    
-    Paramètres de filtrage:
-    - **domaine**: TECHNIQUE, COMPORTEMENTAL, SITUATIONNEL, ETUDE_DE_CAS, MOTIVATION
-    - **difficulte**: DEBUTANT, INTERMEDIAIRE, AVANCE, EXPERT
-    - **tags**: Tags séparés par des virgules
-    - **skip**: Nombre d'exercices à ignorer (défaut: 0)
-    - **limit**: Nombre d'exercices à retourner (défaut: 10, max: 100)
-    """
+    """Lister les exercices avec filtres optionnels."""
+    domaine = _normalize_enum_filter(domaine, {item.value for item in Domaine}, "domaine")
+    difficulte = _normalize_enum_filter(difficulte, {item.value for item in Niveau}, "difficulte")
+
     query = select(Exercice)
-    
-    # Appliquer les filtres
     if domaine:
         query = query.where(Exercice.domaine == domaine)
-    
     if difficulte:
         query = query.where(Exercice.difficulte == difficulte)
-    
-    # Appliquer pagination
-    query = query.offset(skip).limit(limit)
-    
+
     result = await db.execute(query)
     exercises = result.scalars().all()
-    
-    # Filtrer par tags si fourni
+
     if tags:
-        tag_list = [t.strip() for t in tags.split(",")]
+        tag_list = [tag.strip().lower() for tag in tags.split(",") if tag.strip()]
         exercises = [
-            e for e in exercises
-            if any(tag in (e.etiquettes or []) for tag in tag_list)
+            exercise
+            for exercise in exercises
+            if any(tag in {str(item).lower() for item in (exercise.etiquettes or [])} for tag in tag_list)
         ]
-    
-    return [ExerciceResponse.from_orm(e) for e in exercises]
+
+    exercises = exercises[skip : skip + limit]
+    return [ExerciceResponse.from_orm(exercise) for exercise in exercises]
+
+
+@router.get("/random/get", response_model=ExerciceResponse)
+async def get_random_exercise(
+    domaine: str = Query(None, description="Limiter a un domaine"),
+    difficulte: str = Query(None, description="Limiter a une difficulte"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Recuperer un exercice aleatoire."""
+    domaine = _normalize_enum_filter(domaine, {item.value for item in Domaine}, "domaine")
+    difficulte = _normalize_enum_filter(difficulte, {item.value for item in Niveau}, "difficulte")
+
+    query = select(Exercice)
+    if domaine:
+        query = query.where(Exercice.domaine == domaine)
+    if difficulte:
+        query = query.where(Exercice.difficulte == difficulte)
+
+    result = await db.execute(query)
+    exercises = result.scalars().all()
+
+    if not exercises:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No exercises found matching criteria",
+        )
+
+    return ExerciceResponse.from_orm(random.choice(exercises))
 
 
 @router.get("/{exercise_id}", response_model=ExerciceResponse)
 async def get_exercise(
     exercise_id: UUID,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    """Récupérer les détails d'un exercice"""
-    result = await db.execute(
-        select(Exercice).where(Exercice.id == exercise_id)
-    )
+    """Recuperer les details d'un exercice."""
+    result = await db.execute(select(Exercice).where(Exercice.id == exercise_id))
     exercise = result.scalars().first()
-    
+
     if not exercise:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Exercise not found"
+            detail="Exercise not found",
         )
-    
-    return ExerciceResponse.from_orm(exercise)
 
-
-@router.get("/random/get", response_model=ExerciceResponse)
-async def get_random_exercise(
-    domaine: str = Query(None, description="Limiter à un domaine"),
-    difficulte: str = Query(None, description="Limiter à une difficulté"),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Récupérer un exercice aléatoire
-    
-    Paramètres optionnels:
-    - **domaine**: Filtrer par domaine
-    - **difficulte**: Filtrer par difficulté
-    """
-    query = select(Exercice)
-    
-    if domaine:
-        query = query.where(Exercice.domaine == domaine)
-    
-    if difficulte:
-        query = query.where(Exercice.difficulte == difficulte)
-    
-    result = await db.execute(query)
-    exercises = result.scalars().all()
-    
-    if not exercises:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No exercises found matching criteria"
-        )
-    
-    exercise = random.choice(exercises)
     return ExerciceResponse.from_orm(exercise)
 
 
@@ -120,26 +101,9 @@ async def get_random_exercise(
 async def create_exercise(
     request: ExerciceCreateRequest,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    """
-    Créer un nouvel exercice (ADMIN ONLY)
-    
-    Structure de questions JSONB:
-    ```json
-    [
-      {
-        "type": "qcm",
-        "enonce": "Question?",
-        "options": ["A", "B", "C"],
-        "reponse_correcte": 0,
-        "explication": "Explication..."
-      }
-    ]
-    ```
-    """
-    # TODO: Implémenter vérification admin
-    
+    """Creer un nouvel exercice."""
     new_exercise = Exercice(
         titre=request.titre,
         description=request.description,
@@ -147,11 +111,26 @@ async def create_exercise(
         difficulte=request.difficulte,
         duree_sec=request.duree_sec,
         questions=request.questions,
-        etiquettes=request.etiquettes
+        etiquettes=request.etiquettes,
     )
-    
+
     db.add(new_exercise)
     await db.commit()
     await db.refresh(new_exercise)
-    
+
     return ExerciceResponse.from_orm(new_exercise)
+
+
+def _normalize_enum_filter(value: str | None, allowed: set[str], field_name: str) -> str | None:
+    if value is None:
+        return None
+
+    normalized = value.strip().upper()
+    if not normalized:
+        return None
+    if normalized not in allowed:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"{field_name} must be one of: {', '.join(sorted(allowed))}",
+        )
+    return normalized

@@ -1,0 +1,6 @@
+{
+  "name": "InterviewPrep AI",
+  "description": "Une plateforme de préparation aux entretiens propulsée par l'IA avec simulations réalistes et analyses de performance.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
