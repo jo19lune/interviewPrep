@@ -25,6 +25,13 @@ class User(BaseModel):
     # Statut
     est_actif = Column(Boolean, default=True, nullable=False)
     
+    # Avatar
+    avatar_url = Column(String(512), nullable=True)
+    
+    # Reset mot de passe
+    reset_code = Column(String(6), nullable=True)
+    reset_code_expires_at = Column(String(64), nullable=True)
+    
     # Relations
     sessions = relationship("Session", back_populates="utilisateur", cascade="all, delete-orphan")
     progression = relationship("Progression", back_populates="utilisateur", uselist=False, cascade="all, delete-orphan")

@@ -29,6 +29,7 @@ class UserResponse(BaseModel):
     domaine: Optional[str] = None
     niveau: Optional[str] = None
     est_actif: bool
+    avatar_url: Optional[str] = None
     cree_le: datetime
 
     model_config = ConfigDict(from_attributes=True)

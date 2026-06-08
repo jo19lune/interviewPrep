@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+import os
 
 from app.config.settings import settings
 from app.data.database import init_db, close_db
@@ -58,6 +60,11 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json"
 )
+
+# Montage du répertoire d'upload pour servir les avatars
+upload_dir = os.path.abspath(settings.upload_dir)
+os.makedirs(upload_dir, exist_ok=True)
+app.mount("/static", StaticFiles(directory=upload_dir), name="uploads-static")
 
 # Configuration CORS
 origins = [str(url).rstrip("/") for url in settings.frontend_url]
