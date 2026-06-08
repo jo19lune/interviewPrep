@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
@@ -18,14 +19,41 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
   final _textController = TextEditingController();
   final _subjectController = TextEditingController();
   final _scrollController = ScrollController();
+  final FlutterTts _flutterTts = FlutterTts();
   int _questionCount = 10;
+
+  @override
+  void initState() {
+    super.initState();
+    _initTts();
+  }
 
   @override
   void dispose() {
     _textController.dispose();
     _subjectController.dispose();
     _scrollController.dispose();
+    _flutterTts.stop();
     super.dispose();
+  }
+
+  Future<void> _initTts() async {
+    await _flutterTts.setLanguage("fr-FR");
+    await _flutterTts.setSpeechRate(0.9);
+    await _flutterTts.setVolume(1.0);
+    await _flutterTts.setPitch(1.0);
+  }
+
+  Future<void> _speak(String text) async {
+    try {
+      await _flutterTts.speak(text);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erreur synthèse vocale')),
+        );
+      }
+    }
   }
 
   void _scrollToBottom() {
@@ -91,24 +119,12 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
     }
   }
 
-  // Simuler une transcription vocale pour impressionner l'utilisateur
-  void _simulateVoiceInput(SimulationNotifier notifier) {
-    notifier.toggleRecording();
-    
+  // Synthèse vocale de la question
+  void _speakCurrentQuestion() {
     final state = ref.read(simulationProvider);
-    if (state.isRecording) {
-      // Démarrage de la simulation d'enregistrement
-      Future.delayed(const Duration(seconds: 4), () {
-        if (mounted && ref.read(simulationProvider).isRecording) {
-          // Remplir le champ de saisie avec une réponse vocale prédéfinie pertinente
-          String mockSpeech = "Dans mon précédent projet, nous avons fait face à une urgence technique majeure en production. J'ai rassemblé l'équipe technique, nous avons isolé l'anomalie en 2 heures et mis en place une solution pérenne.";
-          _textController.text = mockSpeech;
-          notifier.toggleRecording();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Saisie vocale simulée avec succès.')),
-          );
-        }
-      });
+    final lastMessage = state.messages.isNotEmpty ? state.messages.last : null;
+    if (lastMessage != null && !lastMessage.isUser) {
+      _speak(lastMessage.text);
     }
   }
 
@@ -179,6 +195,28 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
     SimulationState state,
     SimulationNotifier notifier
   ) {
+    final userProgress = ref.watch(userProgressProvider);
+    final bestScore = userProgress.value?.bestScore ?? 0;
+    final streak = userProgress.value?.streak ?? 0;
+
+    String clarityValue;
+    if (bestScore >= 80) {
+      clarityValue = 'Excellent';
+    } else if (bestScore >= 60) {
+      clarityValue = 'Bien';
+    } else {
+      clarityValue = 'À renforcer';
+    }
+
+    String confidenceValue;
+    if (streak >= 7) {
+      confidenceValue = 'Élevée';
+    } else if (streak >= 3) {
+      confidenceValue = 'Moyenne';
+    } else {
+      confidenceValue = 'À renforcer';
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
@@ -277,7 +315,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                           Expanded(
                             child: _StatTile(
                               label: 'Clarté',
-                              value: '⚡️ Très bon',
+                              value: clarityValue,
                               color: AppTheme.secondaryColor,
                             ),
                           ),
@@ -285,7 +323,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                           Expanded(
                             child: _StatTile(
                               label: 'Confiance',
-                              value: '💡 A renforcer',
+                              value: confidenceValue,
                               color: AppTheme.primaryContainer,
                             ),
                           ),
@@ -373,7 +411,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                           }
                         },
                         icon: const Icon(Icons.mic, size: 24, color: Colors.white),
-                        label: const Text('Démarrer l’entretien', style: TextStyle(fontWeight: FontWeight.bold)),
+                        label: const Text('Démarrer l\'entretien', style: TextStyle(fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 18),
                           backgroundColor: AppTheme.secondaryColor,
@@ -466,7 +504,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.onSurfaceVariant),
                       ),
                       const SizedBox(height: 8),
-                      Text('Répondez avec confiance, structurez votre pensée, et laissez l’IA vous guider.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.onSurfaceVariant)),
+                      Text('Répondez avec confiance, structurez votre pensée, et laissez l\'IA vous guider.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.onSurfaceVariant)),
                     ],
                   ),
                 ),
@@ -543,67 +581,50 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: AppTheme.outlineVariant),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (state.isRecording) ...[
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 10.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.fiber_manual_record, color: Colors.red, size: 14),
-                        SizedBox(width: 6),
-                        Text(
-                          'Enregistrement de votre réponse vocale...',
-                          style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const LinearProgressIndicator(color: Colors.red, minHeight: 2),
-                  const SizedBox(height: 12),
-                ],
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        state.isRecording ? Icons.stop : Icons.mic,
-                        color: state.isRecording ? Colors.red : AppTheme.secondaryColor,
-                      ),
-                      onPressed: () => _simulateVoiceInput(notifier),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _textController,
-                        maxLines: null,
-                        decoration: InputDecoration(
-                          hintText: 'Saisissez votre réponse...',
-                          fillColor: AppTheme.surface,
-                          filled: true,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        ),
-                        onSubmitted: (_) => _sendAnswer(notifier),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    state.isLoading
-                        ? const SizedBox(
-                            width: 28,
-                            height: 28,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : IconButton(
-                            icon: const Icon(Icons.send, color: AppTheme.secondaryColor),
-                            onPressed: () => _sendAnswer(notifier),
-                          ),
-                  ],
-                ),
+child: Column(
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                 Row(
+                   children: [
+                     IconButton(
+                       icon: Icon(
+                         Icons.volume_up,
+                         color: AppTheme.secondaryColor,
+                       ),
+                       tooltip: 'Écouter la question',
+                       onPressed: () => _speakCurrentQuestion(),
+                     ),
+                     const SizedBox(width: 8),
+                     Expanded(
+                       child: TextField(
+                         controller: _textController,
+                         maxLines: null,
+                         decoration: InputDecoration(
+                           hintText: 'Saisissez votre réponse...',
+                           fillColor: AppTheme.surface,
+                           filled: true,
+                           border: OutlineInputBorder(
+                             borderRadius: BorderRadius.circular(16),
+                             borderSide: BorderSide.none,
+                           ),
+                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                         ),
+                         onSubmitted: (_) => _sendAnswer(notifier),
+                       ),
+                     ),
+                     const SizedBox(width: 8),
+                     state.isLoading
+                         ? const SizedBox(
+                             width: 28,
+                             height: 28,
+                             child: CircularProgressIndicator(strokeWidth: 2),
+                           )
+                         : IconButton(
+                             icon: const Icon(Icons.send, color: AppTheme.secondaryColor),
+                             onPressed: () => _sendAnswer(notifier),
+                           ),
+                   ],
+                 ),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -630,7 +651,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                       ),
-                      child: const Text('Terminer l’entretien', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      child: const Text('Terminer l\'entretien', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),

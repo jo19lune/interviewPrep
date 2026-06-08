@@ -4,12 +4,30 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/bottom_navigation.dart';
+import '../../../core/models/exercise.dart';
 import '../providers/dashboard_provider.dart';
 
 class StatisticsScreen extends ConsumerWidget {
   const StatisticsScreen({super.key});
 
   static const _periods = ['7D', '1M', '3M', 'All'];
+
+  String _domainToFrench(String domaine) {
+    switch (domaine) {
+      case 'TECHNIQUE':
+        return 'Technique';
+      case 'COMPORTEMENTAL':
+        return 'Comportemental';
+      case 'SITUATIONNEL':
+        return 'Situations';
+      case 'ETUDE_DE_CAS':
+        return 'Études de cas';
+      case 'MOTIVATION':
+        return 'Motivation';
+      default:
+        return domaine;
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -44,7 +62,10 @@ class StatisticsScreen extends ConsumerWidget {
               _buildHeader(context),
               const SizedBox(height: 24),
               statsAsync.when(
-                data: (stats) => _buildStatsSummary(context, stats),
+                data: (stats) {
+                  final sessions = historyAsync.value ?? [];
+                  return _buildStatsSummary(context, stats, sessions);
+                },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => _ErrorPanel(message: 'Erreur statistiques : $error'),
               ),
@@ -75,7 +96,7 @@ class StatisticsScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 10),
         Text(
-          'Suivez votre progression, comparez vos scores et identifiez les axes d’amélioration les plus importants.',
+          'Suivez votre progression, comparez vos scores et identifiez les axes d\'amélioration les plus importants.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.onSurfaceVariant),
         ),
         const SizedBox(height: 20),
@@ -102,15 +123,55 @@ class StatisticsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsSummary(BuildContext context, Map<String, dynamic> stats) {
-    final totalSimulations = (stats['total_sessions'] as int?) ?? 24;
-    final avgClarity = (stats['avg_clarity'] as num?)?.toDouble() ?? 78.0;
-    final hoursPracticed = (stats['hours_practiced'] as num?)?.toDouble() ?? 12.5;
-    final topRole = stats['top_role'] as String? ?? 'Product Manager';
+  Widget _buildStatsSummary(BuildContext context, Map<String, dynamic> stats, List<Session> sessions) {
+    final terminatedSessions = sessions.where((s) => s.statut == 'TERMINEE').toList();
+    final totalSimulations = terminatedSessions.length;
 
-    final skillEntries = stats.entries
+    final domainEntries = stats.entries
         .where((entry) => entry.value is Map && (entry.value as Map).containsKey('avg_score'))
         .toList();
+
+    double avgClarity = 0.0;
+    if (domainEntries.isNotEmpty) {
+      avgClarity = domainEntries
+          .map((e) => (e.value as Map)['avg_score'] as num)
+          .reduce((a, b) => a + b) / domainEntries.length;
+    }
+
+    double hoursPracticed = 0.0;
+    for (final session in terminatedSessions) {
+      if (session.termineLe != null) {
+        final diff = session.termineLe!.difference(session.commenceLe);
+        hoursPracticed += diff.inMinutes / 60.0;
+      }
+    }
+
+    String topRole = '';
+    if (domainEntries.isNotEmpty) {
+      final topEntry = domainEntries.reduce((a, b) =>
+          (a.value as Map)['avg_score'] > (b.value as Map)['avg_score'] ? a : b);
+      topRole = _domainToFrench(topEntry.key);
+    }
+
+    double overallAvg = 0.0;
+    String insightTitle;
+    String insightDescription;
+    if (domainEntries.isNotEmpty) {
+      overallAvg = domainEntries
+          .map((e) => (e.value as Map)['avg_score'] as num)
+          .reduce((a, b) => a + b) / domainEntries.length;
+    }
+
+    if (overallAvg >= 70) {
+      insightTitle = 'Performance Élevée';
+      insightDescription = 'Votre performance globale est excellente. Continuez à maintenir ce niveau et explorez de nouveaux domaines pour élargir vos compétences.';
+    } else if (overallAvg >= 50) {
+      insightTitle = 'Développement Équilibré';
+      insightDescription = 'Votre profil est solide, mais vous pouvez gagner en impact en structurant chaque réponse avec plus de précision et d\'exemples mesurables.';
+    } else {
+      insightTitle = 'Besoins d\'Amélioration';
+      insightDescription = 'Continuez à vous entraîner régulièrement. Concentrez-vous sur les domaines avec les scores les plus bas pour améliorer votre performance globale.';
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -147,9 +208,9 @@ class StatisticsScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 24),
-        const _InsightCard(),
+        _InsightCard(title: insightTitle, description: insightDescription),
         const SizedBox(height: 24),
-        _SkillProficiencySection(skillEntries: skillEntries),
+        _SkillProficiencySection(skillEntries: domainEntries),
       ],
     );
   }
@@ -211,7 +272,10 @@ class _MetricCard extends StatelessWidget {
 }
 
 class _InsightCard extends StatelessWidget {
-  const _InsightCard();
+  final String title;
+  final String description;
+
+  const _InsightCard({required this.title, required this.description});
 
   @override
   Widget build(BuildContext context) {
@@ -234,12 +298,12 @@ class _InsightCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Balanced Development',
+            title,
             style: Theme.of(context).textTheme.displayMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 26),
           ),
           const SizedBox(height: 12),
           Text(
-            'Votre profil est solide, mais vous pouvez gagner en impact en structurant chaque réponse avec plus de précision et d’exemples mesurables.',
+            description,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white.withAlpha((0.88 * 255).round())),
           ),
           const SizedBox(height: 20),
@@ -268,14 +332,24 @@ class _SkillProficiencySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final entries = skillEntries.isNotEmpty
-        ? skillEntries
-        : [
-            MapEntry('Communication', {'avg_score': 85}),
-            MapEntry('Technical Knowledge', {'avg_score': 92}),
-            MapEntry('STAR Structure', {'avg_score': 74}),
-            MapEntry('Confidence', {'avg_score': 78}),
-          ];
+    final entries = skillEntries;
+
+    if (entries.isEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppTheme.outlineVariant),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Center(
+          child: Text(
+            'Aucune donnée de compétence disponible',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.onSurfaceVariant),
+          ),
+        ),
+      );
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -324,7 +398,7 @@ class _SkillProficiencySection extends StatelessWidget {
 }
 
 class _HistoryTrendSection extends StatelessWidget {
-  final List<dynamic> sessions;
+  final List<Session> sessions;
 
   const _HistoryTrendSection({required this.sessions});
 
@@ -352,7 +426,7 @@ class _HistoryTrendSection extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _ScoreColumn(score: session.score as double),
+                    child: _ScoreColumn(score: session.score),
                   ),
                 ),
             ],

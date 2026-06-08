@@ -10,23 +10,27 @@ class DashboardService {
       final response = await _apiClient.dio.get('/progress/me');
       return UserProgress.fromJson(response.data);
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors du chargement des progrès');
+      throw Exception(
+        ApiClient.errorMessage(e, 'Erreur lors du chargement des progrès'),
+      );
     }
   }
 
-  Future<List<Session>> getSessionHistory({int skip = 0, int limit = 20}) async {
+  Future<List<Session>> getSessionHistory({
+    int skip = 0,
+    int limit = 20,
+  }) async {
     try {
       final response = await _apiClient.dio.get(
         '/progress/history',
-        queryParameters: {
-          'skip': skip,
-          'limit': limit,
-        },
+        queryParameters: {'skip': skip, 'limit': limit},
       );
       final List<dynamic> data = response.data;
       return data.map((json) => Session.fromJson(json)).toList();
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors du chargement de l\'historique');
+      throw Exception(
+        ApiClient.errorMessage(e, 'Erreur lors du chargement de l\'historique'),
+      );
     }
   }
 
@@ -35,7 +39,9 @@ class DashboardService {
       final response = await _apiClient.dio.get('/progress/stats');
       return response.data;
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors du chargement des statistiques');
+      throw Exception(
+        ApiClient.errorMessage(e, 'Erreur lors du chargement des statistiques'),
+      );
     }
   }
 }

@@ -9,11 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
 from app.data.database import get_db
-from app.schemas.user import UserResponse, UserProfileUpdate
+from app.schemas.user import UserResponse, UserProfileUpdate, ChangePasswordRequest
 from app.models.user import User
 from app.core.security import get_current_user
 from app.core.enums import Domaine, Niveau
 from app.config.settings import settings
+from app.services.auth_service import verify_password, hash_password
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -134,4 +135,39 @@ async def upload_avatar(
             "message": "Avatar uploadé avec succès",
             "avatar_url": avatar_url,
         },
+    )
+
+
+@router.put("/change-password")
+async def change_password(
+    request: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Changer le mot de passe de l'utilisateur.
+    
+    - Exige le mot de passe actuel.
+    - Valide la complexité du nouveau mot de passe.
+    """
+    if not verify_password(request.mot_de_passe_actuel, current_user.mot_de_passe_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le mot de passe actuel est incorrect."
+        )
+    
+    if request.mot_de_passe_actuel == request.nouveau_mot_de_passe:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le nouveau mot de passe doit être différent de l'ancien."
+        )
+        
+    current_user.mot_de_passe_hash = hash_password(request.nouveau_mot_de_passe)
+    
+    db.add(current_user)
+    await db.commit()
+    
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"message": "Mot de passe modifié avec succès."}
     )

@@ -5,6 +5,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/bottom_navigation.dart';
 import '../providers/exercise_provider.dart';
 import '../../../core/models/exercise.dart' as models;
+import '../../auth/providers/auth_provider.dart';
+import '../../dashboard/providers/dashboard_provider.dart';
 
 class ExercisesScreen extends ConsumerWidget {
   const ExercisesScreen({super.key});
@@ -36,6 +38,8 @@ class ExercisesScreen extends ConsumerWidget {
         return AppTheme.primaryContainer.withAlpha((0.1 * 255).round());
       case 'ETUDE_DE_CAS':
         return Colors.orange.withAlpha((0.15 * 255).round());
+      case 'MOTIVATION':
+        return AppTheme.secondaryContainer.withAlpha((0.1 * 255).round());
       default:
         return AppTheme.surfaceContainerLow;
     }
@@ -51,17 +55,79 @@ class ExercisesScreen extends ConsumerWidget {
         return AppTheme.primaryContainer;
       case 'ETUDE_DE_CAS':
         return Colors.orange[800]!;
+      case 'MOTIVATION':
+        return AppTheme.onSecondaryContainer;
       default:
         return AppTheme.onSurfaceVariant;
     }
+  }
+
+  String _domainToFrench(String? domaine) {
+    switch (domaine?.toUpperCase()) {
+      case 'TECHNIQUE':
+        return 'Technique';
+      case 'COMPORTEMENTAL':
+        return 'Comportemental';
+      case 'SITUATIONNEL':
+        return 'Situations';
+      case 'ETUDE_DE_CAS':
+        return '\u00c9tudes de cas';
+      case 'MOTIVATION':
+        return 'Motivation';
+      default:
+        return domaine ?? 'Aucune donn\u00e9e';
+    }
+  }
+
+  Map<String, dynamic>? _getTopSkillEntry(Map<String, dynamic> stats) {
+    final entries = stats.entries.toList();
+    entries.sort((a, b) => (b.value['avg_score'] as num).compareTo(a.value['avg_score'] as num));
+    if (entries.isNotEmpty) {
+      return {'key': entries.first.key, 'avg': (entries.first.value['avg_score'] as num).toDouble()};
+    }
+    return null;
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final exercisesAsync = ref.watch(exercisesListProvider);
     final filters = ref.watch(exerciseFiltersProvider);
+    final profileAsync = ref.watch(userProfileProvider);
+    final progressAsync = ref.watch(userProgressProvider);
+    final statsAsync = ref.watch(detailedStatsProvider);
 
-    final List<String> domaines = ['Tous', 'TECHNIQUE', 'COMPORTEMENTAL', 'SITUATIONNEL', 'ETUDE_DE_CAS'];
+    final List<String> domaines = ['Tous', 'TECHNIQUE', 'COMPORTEMENTAL', 'SITUATIONNEL', 'ETUDE_DE_CAS', 'MOTIVATION'];
+
+    String? prenom;
+    if (profileAsync.hasValue) {
+      prenom = profileAsync.value!.prenom;
+    }
+    double? readinessScore;
+    String? topSkill;
+    String? recommendationTitle;
+    String? recommendationSub;
+    if (progressAsync.hasValue) {
+      final p = progressAsync.value!;
+      readinessScore = p.bestScore;
+      if (statsAsync.hasValue) {
+        final topEntry = _getTopSkillEntry(statsAsync.value!);
+        if (topEntry != null) {
+          topSkill = topEntry['key'] as String;
+          final avg = topEntry['avg'] as double;
+          if (avg >= 80 && p.totalSessions >= 3) {
+            recommendationTitle = 'Excellents r\u00e9sultats';
+            recommendationSub = 'Votre score moyen est exceptionnel. Essayez des cas de niveau Expert pour repousser vos limites.';
+          } else if (avg >= 60) {
+            recommendationTitle = 'Bonne progression';
+            recommendationSub = 'Continuez d\'ajouter des chiffres pr\u00e9cis et des indicateurs de succ\u00e8s (KPI) dans vos \u00e9tudes de cas.';
+          } else {
+            recommendationTitle = 'Am\u00e9liorer la clart\u00e9';
+            recommendationSub = 'Essayez de d\u00e9tailler davantage vos explications en utilisant des termes pr\u00e9cis.';
+          }
+        }
+      }
+    }
+
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -70,7 +136,7 @@ class ExercisesScreen extends ConsumerWidget {
         elevation: 1,
         shadowColor: Colors.black.withAlpha((0.05 * 255).round()),
         title: Text(
-          'Exercices de préparation',
+          'Exercices de pr\u00e9paration',
           style: Theme.of(context).textTheme.displaySmall?.copyWith(
                 color: AppTheme.primaryContainer,
                 fontWeight: FontWeight.bold,
@@ -86,7 +152,7 @@ class ExercisesScreen extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           children: [
             Text(
-              'Perfectionnez vos compétences',
+              'Perfectionnez vos comp\u00e9tences',
               style: Theme.of(context).textTheme.displayLarge?.copyWith(
                     color: AppTheme.primaryContainer,
                     fontSize: 26,
@@ -94,7 +160,7 @@ class ExercisesScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Sélectionnez un exercice pour lancer une simulation avec notre recruteur virtuel IA.',
+              'S\u00e9lectionnez un exercice pour lancer une simulation avec notre recruteur virtuel IA.',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppTheme.onSurfaceVariant),
             ),
             const SizedBox(height: 24),
@@ -131,7 +197,7 @@ class ExercisesScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    'Master the "Behavioral Edge"',
+                    prenom != null ? 'Welcome back, $prenom' : 'Welcome back',
                     style: Theme.of(context).textTheme.displaySmall?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -139,12 +205,29 @@ class ExercisesScreen extends ConsumerWidget {
                         ),
                   ),
                   const SizedBox(height: 10),
+                  if (topSkill != null)
+                    Text(
+                      'Votre domaine le plus fort : ${_domainToFrench(topSkill)}',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: Colors.white.withAlpha((0.9 * 255).round()),
+                          ),
+                    ),
+                  const SizedBox(height: 4),
                   Text(
-                    'Based on your recent performance, focus on STAR storytelling and confidence under pressure.',
+                    'Taux de pr\u00e9paration : ${readinessScore?.round() ?? 0}%',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.white.withAlpha((0.88 * 255).round()),
+                          color: Colors.white.withAlpha((0.9 * 255).round()),
                         ),
                   ),
+                  if (recommendationTitle != null && recommendationSub != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      '$recommendationTitle\u00a0: $recommendationSub',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: Colors.white.withAlpha((0.88 * 255).round()),
+                          ),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   OutlinedButton.icon(
                     onPressed: () => context.go('/simulation'),
@@ -176,7 +259,7 @@ class ExercisesScreen extends ConsumerWidget {
               readOnly: true,
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Recherche visuelle à venir')), 
+                  const SnackBar(content: Text('Recherche visuelle \u00e0 venir')), 
                 );
               },
             ),
@@ -187,7 +270,7 @@ class ExercisesScreen extends ConsumerWidget {
                   child: _SmallMetricCard(
                     icon: Icons.trending_up,
                     label: 'Readiness',
-                    value: '84%',
+                    value: '${readinessScore?.round() ?? 0}%',
                     color: AppTheme.secondaryContainer,
                   ),
                 ),
@@ -196,7 +279,7 @@ class ExercisesScreen extends ConsumerWidget {
                   child: _SmallMetricCard(
                     icon: Icons.lightbulb,
                     label: 'Top Skill',
-                    value: 'Storytelling',
+                    value: _domainToFrench(topSkill),
                     color: AppTheme.primaryContainer,
                   ),
                 ),
@@ -228,7 +311,7 @@ class ExercisesScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '84% Readiness',
+                          '${readinessScore?.round() ?? 0}% Readiness',
                           style: Theme.of(context).textTheme.displaySmall?.copyWith(
                                 color: AppTheme.primaryContainer,
                                 fontSize: 22,
@@ -237,7 +320,9 @@ class ExercisesScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'You’ve completed 12 modules this week. Keep the momentum going with targeted exercises.',
+                          prenom != null
+                              ? '$prenom, continuez sur cette lanc\u00e9e avec des exercices cibl\u00e9s.'
+                              : 'Continuez sur cette lanc\u00e9e avec des exercices cibl\u00e9s.',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.onSurfaceVariant),
                         ),
                       ],
@@ -250,7 +335,7 @@ class ExercisesScreen extends ConsumerWidget {
             
             // Filtres thématiques
             Text(
-              'Filtrer par domaine :',
+              'Filtrer par domaine\u00a0:',
               style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
@@ -330,7 +415,7 @@ class ExercisesScreen extends ConsumerWidget {
                 color: Colors.red[50],
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Text('Erreur lors du chargement: $err', style: const TextStyle(color: Colors.red)),
+                  child: Text('Erreur lors du chargement\u00a0: $err', style: const TextStyle(color: Colors.red)),
                 ),
               ),
             ),
@@ -437,35 +522,6 @@ class ExercisesScreen extends ConsumerWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  // Removed unused bottom navigation builder; app uses shared bottom navigation widget.
-
-  Widget _buildNavItem(BuildContext context, {required IconData icon, required String label, required bool isSelected, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.secondaryContainer : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: isSelected ? AppTheme.onSecondaryContainer : AppTheme.onSurfaceVariant),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: isSelected ? AppTheme.onSecondaryContainer : AppTheme.onSurfaceVariant,
-                    fontSize: 12,
-                  ),
-            ),
-          ],
         ),
       ),
     );

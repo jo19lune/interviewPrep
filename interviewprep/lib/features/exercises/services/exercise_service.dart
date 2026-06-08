@@ -14,9 +14,9 @@ class ExerciseService {
   }) async {
     try {
       final queryParameters = <String, dynamic>{
-        'domaine': ?domaine,
-        'difficulte': ?difficulte,
-        'tags': ?tags,
+        if (domaine != null) 'domaine': domaine,
+        if (difficulte != null) 'difficulte': difficulte,
+        if (tags != null) 'tags': tags,
         'skip': skip,
         'limit': limit,
       };
@@ -28,7 +28,9 @@ class ExerciseService {
       final List<dynamic> data = response.data;
       return data.map((json) => Exercise.fromJson(json)).toList();
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors du chargement des exercices');
+      throw Exception(
+        ApiClient.errorMessage(e, 'Erreur lors du chargement des exercices'),
+      );
     }
   }
 
@@ -37,7 +39,7 @@ class ExerciseService {
       final response = await _apiClient.dio.get('/exercises/$id');
       return Exercise.fromJson(response.data);
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Exercice non trouvé');
+      throw Exception(ApiClient.errorMessage(e, 'Exercice non trouvé'));
     }
   }
 
@@ -47,8 +49,8 @@ class ExerciseService {
   }) async {
     try {
       final queryParameters = <String, dynamic>{
-        'domaine': ?domaine,
-        'difficulte': ?difficulte,
+        if (domaine != null) 'domaine': domaine,
+        if (difficulte != null) 'difficulte': difficulte,
       };
       final response = await _apiClient.dio.get(
         '/exercises/random/get',
@@ -56,7 +58,7 @@ class ExerciseService {
       );
       return Exercise.fromJson(response.data);
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Aucun exercice trouvé');
+      throw Exception(ApiClient.errorMessage(e, 'Aucun exercice trouvé'));
     }
   }
 }

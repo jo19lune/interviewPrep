@@ -37,20 +37,20 @@ class AIService:
         return "openai"
 
     def _default_model(self) -> str:
+        if self.settings.ai_primary_model:
+            return self.settings.ai_primary_model
         if self.openai_models:
             return self.openai_models[0]
-        if self.settings.anthropic_api_key:
-            return "claude-3-5-sonnet-20241022"
-        return "gpt-4o-mini"
+        return ""
 
     def _fallback_model(self) -> str:
+        if self.settings.ai_fallback_model:
+            return self.settings.ai_fallback_model
         if self.provider == "openai":
             models = list(self.openai_models)
             if self.primary_model in models:
                 models.remove(self.primary_model)
             return models[0] if models else ""
-        if self.provider == "anthropic":
-            return "claude-3-haiku-20240307"
         return ""
 
     @property
@@ -172,20 +172,21 @@ class AIService:
     def _build_exercise_prompt(self, domaine: str, difficulte: str, sujet: str | None, nombre_questions: int) -> str:
         sujet_text = sujet or f"{domaine} general"
         return (
-            "Tu es un expert en preparation d'entretiens professionnels.\n"
+            "Tu dois adopter le double rôle de recruteur exigeant et de coach professionnel bienveillant.\n"
             f"Domaine: {domaine}\n"
             f"Sujet cible: {sujet_text}\n"
             f"Niveau: {difficulte}\n"
             f"Nombre de questions: {nombre_questions}\n\n"
-            "Genere un objet JSON valide representant un exercice avec:\n"
+            "Génère un objet JSON valide représentant un exercice avec:\n"
             "- titre: titre accrocheur\n"
-            "- description: resume pedagogique en 1 phrase\n"
-            "- domaine: meme domaine que l'entree\n"
-            "- difficulte: meme niveau que l'entree\n"
-            "- duree_sec: duree estimee en secondes\n"
-            "- etiquettes: liste de 3 a 5 tags\n"
-            "- questions: tableau de questions avec type (qcm|ouverte), enonce, options et reponse_correcte pour qcm\n\n"
-            "Reponds uniquement par le JSON, sans texte supplementaire."
+            "- description: résumé pédagogique en 1 phrase expliquant l'objectif de l'exercice\n"
+            "- domaine: même domaine que l'entrée\n"
+            "- difficulte: même niveau que l'entrée\n"
+            "- duree_sec: durée estimée en secondes\n"
+            "- etiquettes: liste de 3 à 5 tags pertinents\n"
+            "- questions: tableau de questions avec type (qcm|ouverte), enonce, options (pour qcm) et reponse_correcte (pour qcm)\n\n"
+            "Les questions doivent tester de manière rigoureuse les compétences (rôle recruteur) tout en permettant un apprentissage (rôle coach).\n"
+            "Réponds uniquement par le JSON, sans texte supplémentaire."
         )
 
     def _build_feedback_prompt(self, reponses: list[dict], contexte: str, sujet: str | None) -> str:
@@ -202,15 +203,15 @@ class AIService:
         )
         sujet_text = f"\nSujet cible choisi par l'utilisateur: {sujet}" if sujet else ""
         return (
-            "Analyse les reponses suivantes donnees lors d'un entretien d'embauche dans le domaine "
-            f"{contexte}:{sujet_text}\n\n{reponses_text}\n\n"
-            "Fournis une analyse structuree JSON avec:\n"
-            "- score_global: note de 0 a 100\n"
-            "- points_forts: liste d'objets avec domaine, note, score\n"
-            "- ameliorations: liste d'objets avec domaine, note, score\n"
-            "- recommandations: liste des conseils pratiques\n"
-            "- synthese: court bilan global\n\n"
-            "Reponds en JSON valide uniquement."
+            "En tant que recruteur expert et coach professionnel, analyse en profondeur les réponses suivantes "
+            f"données lors d'un entretien d'embauche dans le domaine {contexte}:{sujet_text}\n\n{reponses_text}\n\n"
+            "Fournis une analyse structurée JSON avec:\n"
+            "- score_global: évaluation précise sous forme de score de 0 à 100 reflétant le niveau du candidat\n"
+            "- points_forts: liste d'objets avec domaine, note (description), score (évaluation du point fort)\n"
+            "- ameliorations: liste d'objets avec domaine, note (description), score (évaluation du point à améliorer)\n"
+            "- recommandations: liste de conseils pratiques et constructifs personnalisés pour aider le candidat à progresser\n"
+            "- synthese: court bilan global combinant l'évaluation du recruteur et les encouragements du coach\n\n"
+            "Réponds en JSON valide uniquement, sans aucun texte introductif."
         )
 
     def _build_question_prompt(
@@ -228,12 +229,14 @@ class AIService:
             responses_context = f"\n\nReponses precedentes pour adaptation:\n{recent_responses}"
         sujet_text = sujet or "sujet libre du domaine"
         return (
-            "Tu es un recruteur experimente en entretiens d'embauche.\n\n"
+            "Tu agis avec un double rôle : un recruteur exigeant et un coach professionnel bienveillant.\n\n"
             f"Domaine: {domaine}\nSujet cible: {sujet_text}\nNiveau candidat: {niveau}\n"
             f"Question: {question_index + 1}/{total_questions}\n{responses_context}\n"
-            "Pose une seule question de suivi pertinente et adaptee au niveau du candidat. "
-            "Varie les angles: bases, mise en pratique, resolution de probleme, communication, limites, impact, risques et arbitrages. "
-            "Ne repete pas une question deja couverte. Question professionnelle, claire, courte et liee au sujet."
+            "Pose une seule question de suivi pertinente et adaptée au niveau du candidat. "
+            "La question doit permettre d'évaluer rigoureusement ses compétences (rôle recruteur) "
+            "tout en l'aidant à structurer sa pensée (rôle coach). "
+            "Varie les angles: bases, mise en pratique, résolution de problème, communication, limites, impact, risques et arbitrages. "
+            "Ne répète pas une question déjà couverte. Question claire, professionnelle, stimulante et liée au sujet."
         )
 
     def _parse_generate_exercise(self, content: str, domaine: str, difficulte: str) -> dict:

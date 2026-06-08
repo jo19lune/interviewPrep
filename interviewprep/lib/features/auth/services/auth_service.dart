@@ -8,22 +8,20 @@ class AuthService {
     try {
       final response = await _apiClient.dio.post(
         '/auth/login',
-        data: {
-          'courriel': email,
-          'mot_de_passe': password,
-        },
+        data: {'courriel': email, 'mot_de_passe': password},
       );
-      
+
       final token = response.data['access_token'];
       final refreshToken = response.data['refresh_token'];
       if (token != null) {
-        await _apiClient.saveTokens(accessToken: token, refreshToken: refreshToken);
+        await _apiClient.saveTokens(
+          accessToken: token,
+          refreshToken: refreshToken,
+        );
       }
     } catch (e) {
       if (e is DioException) {
-        final data = e.response?.data;
-        final detail = (data is Map && data['detail'] != null) ? data['detail'] : null;
-        throw Exception(detail?.toString() ?? 'Erreur de connexion');
+        throw Exception(ApiClient.errorMessage(e, 'Erreur de connexion'));
       }
       throw Exception('Erreur inattendue');
     }
@@ -45,17 +43,18 @@ class AuthService {
           'nom': nom,
         },
       );
-      
+
       final token = response.data['access_token'];
       final refreshToken = response.data['refresh_token'];
       if (token != null) {
-        await _apiClient.saveTokens(accessToken: token, refreshToken: refreshToken);
+        await _apiClient.saveTokens(
+          accessToken: token,
+          refreshToken: refreshToken,
+        );
       }
     } catch (e) {
       if (e is DioException) {
-        final data = e.response?.data;
-        final detail = (data is Map && data['detail'] != null) ? data['detail'] : null;
-        throw Exception(detail?.toString() ?? 'Erreur d\'inscription');
+        throw Exception(ApiClient.errorMessage(e, 'Erreur d\'inscription'));
       }
       throw Exception('Erreur inattendue');
     }
@@ -70,9 +69,9 @@ class AuthService {
       await _apiClient.dio.delete('/auth/me');
       await logout();
     } on DioException catch (e) {
-      final data = e.response?.data;
-      final detail = (data is Map && data['detail'] != null) ? data['detail'] : null;
-      throw Exception(detail?.toString() ?? 'Erreur lors de la suppression du compte');
+      throw Exception(
+        ApiClient.errorMessage(e, 'Erreur lors de la suppression du compte'),
+      );
     } catch (e) {
       throw Exception('Erreur inattendue');
     }
