@@ -1,27 +1,44 @@
-"""Router profil - Récupération et mise à jour des informations utilisateur"""
+"""
+Router pour la gestion du profil utilisateur.
 
-import os
+Ce module gère les opérations relatives au profil personnel et 
+professionnel : consultation, mise à jour des données, modification 
+du mot de passe et téléchargement d'avatar.
+"""
+
 import uuid
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
-from app.data.database import get_db
-from app.schemas.user import UserResponse, UserProfileUpdate, ChangePasswordRequest
-from app.models.user import User
-from app.core.security import get_current_user
-from app.core.enums import Domaine, Niveau
 from app.config.settings import settings
-from app.services.auth_service import verify_password, hash_password
+from app.core.enums import Domaine, Niveau
+from app.core.security import get_current_user
+from app.data.database import get_db
+from app.models.user import User
+from app.schemas.user import ChangePasswordRequest, UserProfileUpdate, UserResponse
+from app.services.auth_service import hash_password, verify_password
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
 
 @router.get("/me", response_model=UserResponse)
 async def get_profile(current_user: User = Depends(get_current_user)):
-    """Récupérer le profil complet de l'utilisateur courant"""
+    """
+    Récupère le profil complet de l'utilisateur courant.
+
+    Fournit les informations du compte, y compris le nom, l'avatar,
+    le niveau et le domaine professionnel.
+
+    Args:
+        current_user (User): L'utilisateur authentifié (injecté via JWT).
+
+    Returns:
+        UserResponse: Les données publiques de l'utilisateur sérialisées.
+    """
     return UserResponse.from_orm(current_user)
 
 
@@ -32,12 +49,26 @@ async def update_profile(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Mettre à jour le profil utilisateur
+    Met à jour partiellement ou totalement le profil utilisateur.
     
-    - **prenom** (optionnel): Prénom
-    - **nom** (optionnel): Nom
-    - **domaine** (optionnel): Domaine cible (TECHNIQUE, COMPORTEMENTAL, etc.)
-    - **niveau** (optionnel): Niveau cible (DEBUTANT, INTERMEDIAIRE, AVANCE, EXPERT)
+    Permet à l'utilisateur de modifier son identité et ses préférences
+    professionnelles.
+    
+    Args:
+        request (UserProfileUpdate): Les nouveaux champs du profil (optionnels).
+            - prenom: Prénom
+            - nom: Nom de famille
+            - domaine: Domaine professionnel (ex: TECHNIQUE)
+            - niveau: Niveau d'expertise (ex: DEBUTANT)
+        current_user (User): L'utilisateur courant authentifié.
+        db (AsyncSession): La session de base de données.
+
+    Returns:
+        UserResponse: L'objet utilisateur avec les données mises à jour.
+
+    Raises:
+        HTTPException: Erreur 422 si le domaine ou le niveau fourni n'est pas 
+        une valeur valide des énumérations.
     """
     if request.domaine:
         try:
@@ -74,6 +105,19 @@ async def update_profile(
 
 
 def _save_upload_file(upload_dir: str, upload_file: UploadFile) -> str:
+    """
+    Fonction utilitaire synchrone pour enregistrer un fichier uploadé.
+
+    Génère un nom de fichier unique basé sur un UUID tout en conservant 
+    l'extension originale, puis le sauvegarde sur le disque.
+
+    Args:
+        upload_dir (str): Le chemin absolu ou relatif vers le dossier d'uploads.
+        upload_file (UploadFile): L'objet fichier venant de la requête FastAPI.
+
+    Returns:
+        str: Le chemin d'accès complet au fichier enregistré.
+    """
     upload_path = Path(upload_dir)
     upload_path.mkdir(parents=True, exist_ok=True)
     
@@ -94,12 +138,22 @@ async def upload_avatar(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Uploader une image de profil.
+    Upload et mise à jour de l'image de profil (Avatar).
     
-    - Accepte les formats image courants (jpeg, png, gif, webp)
-    - Limite de taille: 5MB
-    - Le fichier est stocké localement selon UPLOAD_DIR
-    - Retourne l'URL publique de l'avatar via UPLOAD_BASE_URL
+    Vérifie le format du fichier, sa taille (max 5MB) et le sauvegarde 
+    localement. L'URL publique de l'avatar est ensuite rattachée au profil.
+
+    Args:
+        file (UploadFile): Le fichier binaire transmis via form-data.
+        current_user (User): L'utilisateur courant authentifié.
+        db (AsyncSession): La session de base de données.
+
+    Returns:
+        JSONResponse: Un message de confirmation accompagné de l'URL de l'avatar.
+
+    Raises:
+        HTTPException: Erreur 415 si le format n'est pas supporté, ou 413 si 
+        la taille dépasse la limite autorisée.
     """
     allowed_types = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
     if file.content_type not in allowed_types:
@@ -122,7 +176,10 @@ async def upload_avatar(
     saved_path = await run_in_threadpool(_save_upload_file, upload_dir, file)
     
     base_url = (settings.upload_base_url or "").rstrip("/")
-    avatar_url = f"{base_url}/static/{Path(saved_path).name}" if base_url else f"/static/{Path(saved_path).name}"
+    if base_url:
+        avatar_url = f"{base_url}/static/{Path(saved_path).name}"
+    else:
+        avatar_url = f"/static/{Path(saved_path).name}"
     
     current_user.avatar_url = avatar_url
     db.add(current_user)
@@ -145,10 +202,23 @@ async def change_password(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Changer le mot de passe de l'utilisateur.
+    Permet à l'utilisateur de modifier son mot de passe actuel.
     
-    - Exige le mot de passe actuel.
-    - Valide la complexité du nouveau mot de passe.
+    L'utilisateur doit fournir son ancien mot de passe, qui sera vérifié,
+    avant que le nouveau mot de passe (qui doit être différent) ne soit 
+    haché et sauvegardé.
+
+    Args:
+        request (ChangePasswordRequest): Le payload avec l'ancien et le nouveau mot de passe.
+        current_user (User): L'utilisateur courant authentifié.
+        db (AsyncSession): La session de base de données.
+
+    Returns:
+        JSONResponse: Un message de confirmation de succès.
+
+    Raises:
+        HTTPException: Erreur 400 si l'ancien mot de passe est faux ou si
+        le nouveau est identique à l'ancien.
     """
     if not verify_password(request.mot_de_passe_actuel, current_user.mot_de_passe_hash):
         raise HTTPException(

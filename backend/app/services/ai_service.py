@@ -1,9 +1,7 @@
 """Service d'integration avec modeles IA configurables (OpenAI, Anthropic)."""
 
-import asyncio
 import json
 import logging
-import os
 import re
 from typing import Any
 

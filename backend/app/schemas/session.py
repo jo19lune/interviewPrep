@@ -1,6 +1,6 @@
 """Schémas Pydantic pour sessions et feedback"""
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, Any
 from datetime import datetime
 from uuid import UUID

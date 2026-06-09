@@ -1,7 +1,15 @@
-"""Router simulation IA - Gestion des sessions de simulation avec IA."""
+"""
+Router pour les sessions de simulation avec IA.
+
+Gère le cycle de vie complet d'un exercice d'entretien : 
+initialisation de la session, soumission des réponses, génération 
+et streaming de la prochaine question par l'IA, annulation et 
+clôture avec génération du feedback global.
+"""
 
 import asyncio
 import json
+import re
 from datetime import datetime
 from uuid import UUID
 
@@ -31,7 +39,24 @@ async def start_simulation(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Demarrer une nouvelle simulation IA."""
+    """
+    Démarre une nouvelle simulation d'entretien interactive.
+
+    Crée une session en base de données, l'associe à l'exercice sélectionné
+    et initialise les paramètres IA (SimulationIA). Renvoie la première
+    question.
+
+    Args:
+        exercice_id (UUID): L'ID de l'exercice parent.
+        sujet (str | None): Sujet spécifique ou focus de la simulation.
+        nombre_questions (int): Nombre de questions ciblées pour la session.
+        current_user (User): L'utilisateur courant.
+        db (AsyncSession): Session de base de données.
+
+    Returns:
+        dict: L'ID de session, le statut, le titre, la première question 
+        générée, et les métadonnées de la simulation.
+    """
     result = await db.execute(select(Exercice).where(Exercice.id == exercice_id))
     exercice = result.scalars().first()
 
@@ -59,7 +84,7 @@ async def start_simulation(
         ],
     )
     ia_sim = SimulationIA(
-        modele="claude-3-5-sonnet-20241022",
+        modele=settings.ai_primary_model or "gpt-4o-mini",
         temperature=0.7,
     )
     session.ia_simulation = ia_sim
@@ -69,11 +94,13 @@ async def start_simulation(
     await db.commit()
     await db.refresh(session)
 
+    first_question = await _generate_next_question(exercice, session.reponses or [], 0)
+    
     return {
         "session_id": str(session.id),
         "status": "started",
         "exercise_title": exercice.titre,
-        "first_question": await _generate_next_question(exercice, session.reponses or [], 0),
+        "first_question": first_question,
         "subject": sujet.strip() if sujet else exercice.domaine,
         "question_count": nombre_questions,
     }
@@ -86,7 +113,22 @@ async def submit_answer(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Soumettre une reponse et recevoir la question suivante."""
+    """
+    Soumet une réponse utilisateur et reçoit la question suivante.
+
+    Analyse la réponse, attribue un score partiel, génère un conseil de 
+    coaching immédiat, puis fait appel à l'IA pour générer la question
+    suivante de l'entretien.
+
+    Args:
+        session_id (UUID): L'ID de la session en cours.
+        reponse (str): Le texte de la réponse apportée par l'utilisateur.
+        current_user (User): L'utilisateur courant.
+        db (AsyncSession): Session de base de données.
+
+    Returns:
+        dict: L'analyse de la réponse et la prochaine question.
+    """
     reponse = reponse.strip()
     if not reponse:
         raise HTTPException(
@@ -122,11 +164,15 @@ async def submit_answer(
 
     current_q_index = len(_user_responses(session.reponses or []))
     questions = exercice.questions or []
-    current_question = questions[current_q_index].get("enonce") if current_q_index < len(questions) else None
-    clarity_score, sentiment, coaching_tip, analysis = _score_answer(
-        questions[current_q_index] if current_q_index < len(questions) else None,
-        reponse,
-    )
+    
+    if current_q_index < len(questions):
+        current_question = questions[current_q_index].get("enonce")
+        q_dict = questions[current_q_index]
+    else:
+        current_question = None
+        q_dict = None
+        
+    clarity_score, sentiment, coaching_tip, analysis = _score_answer(q_dict, reponse)
 
     updated_reponses = list(session.reponses or [])
     updated_reponses.append(
@@ -166,7 +212,20 @@ async def stream_ai_response(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Streamer la prochaine question IA en SSE."""
+    """
+    Stream la prochaine question IA via Server-Sent Events (SSE).
+
+    Conçu pour simuler l'affichage progressif d'un bot en train de 
+    réfléchir et de taper sa réponse.
+
+    Args:
+        session_id (UUID): L'ID de la session en cours.
+        current_user (User): L'utilisateur courant.
+        db (AsyncSession): Session de base de données.
+
+    Returns:
+        StreamingResponse: Flux de tokens (mots) envoyés en temps réel.
+    """
     result = await db.execute(
         select(Session).where(
             (Session.id == session_id) & (Session.utilisateur_id == current_user.id)
@@ -204,7 +263,21 @@ async def cancel_simulation(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Annuler une simulation active sans generer de feedback."""
+    """
+    Annule explicitement une simulation active.
+
+    Passe la session en statut "ANNULEE". Aucun feedback ne sera 
+    généré et l'exercice ne comptera pas dans les statistiques de 
+    progression terminées.
+
+    Args:
+        session_id (UUID): L'ID de la session à annuler.
+        current_user (User): L'utilisateur courant.
+        db (AsyncSession): Session de base de données.
+
+    Returns:
+        dict: Confirmation de l'annulation.
+    """
     result = await db.execute(
         select(Session).where(
             (Session.id == session_id) & (Session.utilisateur_id == current_user.id)
@@ -240,7 +313,21 @@ async def finish_simulation(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Terminer une simulation et generer le feedback."""
+    """
+    Termine la simulation et déclenche la génération du feedback global.
+
+    Ferme la session (statut "TERMINEE"), calcule le score final, fait 
+    appel à l'IA pour générer les points forts et améliorations, et 
+    sauvegarde le tout dans la table Feedbacks.
+
+    Args:
+        session_id (UUID): L'ID de la session à clôturer.
+        current_user (User): L'utilisateur courant.
+        db (AsyncSession): Session de base de données.
+
+    Returns:
+        dict: Bilan final de la session, incluant le score et le feedback.
+    """
     result = await db.execute(
         select(Session).where(
             (Session.id == session_id) & (Session.utilisateur_id == current_user.id)
@@ -272,6 +359,7 @@ async def finish_simulation(
 
     existing_res = await db.execute(select(Retour).where(Retour.session_id == session.id))
     feedback = existing_res.scalars().first()
+    
     if feedback:
         feedback.score_global = feedback_data["score_global"]
         feedback.points_forts = feedback_data["points_forts"]
@@ -311,13 +399,24 @@ async def finish_simulation(
 
 
 def _score_answer(question: dict | None, reponse: str) -> tuple[float, str, str, dict]:
+    """
+    Fonction utilitaire interne évaluant la réponse de l'utilisateur.
+
+    Applique une heuristique pour noter la réponse en l'absence d'un vrai
+    appel IA complexe par question. Vérifie les QCMs avec exactitude, ou
+    analyse la densité de mots-clés (STAR, métriques) pour les questions
+    ouvertes.
+    """
     if question and question.get("type") == "qcm":
         correct_index = question.get("reponse_correcte")
         options = question.get("options", [])
         is_correct = False
         try:
             submitted_index = int(reponse.strip())
-            is_correct = submitted_index == correct_index or submitted_index - 1 == correct_index
+            is_correct = (
+                submitted_index == correct_index or 
+                submitted_index - 1 == correct_index
+            )
         except ValueError:
             if isinstance(correct_index, int) and 0 <= correct_index < len(options):
                 is_correct = options[correct_index].lower() == reponse.strip().lower()
@@ -394,10 +493,12 @@ def _score_answer(question: dict | None, reponse: str) -> tuple[float, str, str,
 
 
 async def _generate_next_question(exercice: Exercice, reponses: list[dict], index: int) -> str:
+    """Génère la prochaine question via l'IA ou retourne la question par défaut de l'exercice."""
     config = _session_config(reponses)
     target_count = int(config.get("nombre_questions") or 10)
     sujet = config.get("sujet")
     user_reponses = _user_responses(reponses)
+    
     if len(user_reponses) >= target_count:
         return "Merci, vous avez termine toutes les questions. Cliquez sur Terminer pour obtenir votre bilan complet."
 
@@ -406,7 +507,7 @@ async def _generate_next_question(exercice: Exercice, reponses: list[dict], inde
         return questions[index].get("enonce") or _fallback_question(exercice, index, reponses)
 
     try:
-        ai_service = AIService(settings.anthropic_api_key)
+        ai_service = AIService()
         previous = [r.get("texte", "") for r in user_reponses if r.get("texte")]
         question = await ai_service.generate_next_question(
             previous_responses=previous,
@@ -425,10 +526,11 @@ async def _generate_next_question(exercice: Exercice, reponses: list[dict], inde
 
 
 async def _generate_feedback(exercice: Exercice | None, reponses: list[dict], score: float) -> dict:
+    """Génère un retour global d'entretien avec l'IA."""
     contexte = exercice.titre if exercice else "entretien"
     config = _session_config(reponses)
     try:
-        ai_service = AIService(settings.anthropic_api_key)
+        ai_service = AIService()
         feedback = await ai_service.generate_feedback(
             _user_responses(reponses),
             contexte,
@@ -440,10 +542,12 @@ async def _generate_feedback(exercice: Exercice | None, reponses: list[dict], sc
 
 
 def _fallback_question(exercice: Exercice, index: int, reponses: list[dict]) -> str:
+    """Question de secours si l'IA échoue ou que l'exercice n'en a plus."""
     config = _session_config(reponses)
     sujet = config.get("sujet")
     sujet_suffix = f" sur {sujet}" if sujet else ""
     questions = exercice.questions or []
+    
     if index < len(questions):
         return questions[index].get("enonce") or "Pouvez-vous developper votre reponse ?"
 

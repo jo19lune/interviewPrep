@@ -1,13 +1,42 @@
-"""Modèle utilisateur"""
+"""
+Modèle SQLAlchemy pour l'entité Utilisateur.
 
-from sqlalchemy import Column, String, Boolean, Enum, Index
+Ce module définit la table `users` qui stocke les informations 
+d'authentification, le profil professionnel et les préférences 
+de l'utilisateur, ainsi que ses relations avec d'autres entités.
+"""
+
+from sqlalchemy import Boolean, Column, Enum, Index, String
 from sqlalchemy.orm import relationship
-from app.models.base import BaseModel
+
 from app.core.enums import Domaine, Niveau
+from app.models.base import BaseModel
 
 
 class User(BaseModel):
-    """Modèle Utilisateur - Comptes et informations de profil"""
+    """
+    Modèle de données représentant un compte utilisateur.
+
+    Stocke les informations personnelles, professionnelles (domaine 
+    et niveau) et d'authentification. Il maintient également des 
+    relations avec les sessions d'entretien et la progression globale
+    de l'utilisateur.
+
+    Attributes:
+        courriel (str): L'adresse email unique servant d'identifiant (login).
+        mot_de_passe_hash (str): Le hash sécurisé du mot de passe.
+        prenom (str | None): Le prénom de l'utilisateur.
+        nom (str | None): Le nom de famille de l'utilisateur.
+        domaine (Domaine | None): Le domaine professionnel de l'utilisateur.
+        niveau (Niveau | None): Le niveau d'expertise professionnel.
+        est_actif (bool): Indique si le compte est actif (True) ou suspendu (False).
+        avatar_url (str | None): L'URL ou le chemin de l'image de profil.
+        reset_code (str | None): Le code de réinitialisation de mot de passe (6 chiffres).
+        reset_code_expires_at (str | None): L'horodatage d'expiration du code de reset.
+        sessions (list[Session]): Relation 1-N vers les sessions d'entretien de l'utilisateur.
+        progression (Progression): Relation 1-1 vers les statistiques de progression.
+    """
+    
     __tablename__ = "users"
     
     # Informations de compte
@@ -33,8 +62,17 @@ class User(BaseModel):
     reset_code_expires_at = Column(String(64), nullable=True)
     
     # Relations
-    sessions = relationship("Session", back_populates="utilisateur", cascade="all, delete-orphan")
-    progression = relationship("Progression", back_populates="utilisateur", uselist=False, cascade="all, delete-orphan")
+    sessions = relationship(
+        "Session", 
+        back_populates="utilisateur", 
+        cascade="all, delete-orphan"
+    )
+    progression = relationship(
+        "Progression", 
+        back_populates="utilisateur", 
+        uselist=False, 
+        cascade="all, delete-orphan"
+    )
     
     # Index
     __table_args__ = (

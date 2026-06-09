@@ -1,6 +1,13 @@
-"""Router progression - Suivi statistique et historique."""
+"""
+Router pour la progression et le suivi statistique.
+
+Ce module définit les endpoints permettant à un utilisateur de
+consulter ses statistiques d'entraînement, son historique de 
+sessions d'entretiens et son tableau de bord personnel.
+"""
 
 from datetime import datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import desc
@@ -21,8 +28,21 @@ router = APIRouter(prefix="/progress", tags=["progress"])
 async def get_my_progress(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
-    """Recuperer la progression personnelle de l'utilisateur."""
+) -> dict[str, Any]:
+    """
+    Récupère la progression personnelle globale de l'utilisateur courant.
+
+    Calcule dynamiquement les statistiques principales telles que le 
+    nombre de sessions terminées, le score moyen, le meilleur score,
+    et la série actuelle (streak) de jours consécutifs d'entraînement.
+
+    Args:
+        current_user (User): L'utilisateur authentifié.
+        db (AsyncSession): La session de base de données.
+
+    Returns:
+        dict[str, Any]: Les statistiques consolidées de l'utilisateur.
+    """
     result = await db.execute(
         select(Session)
         .where(Session.utilisateur_id == current_user.id)
@@ -51,8 +71,10 @@ async def get_my_progress(
     }
     streak = 0
     cursor = datetime.utcnow().date()
+    
     if cursor not in completed_dates:
         cursor = cursor - timedelta(days=1)
+        
     while cursor in completed_dates:
         streak += 1
         cursor = cursor - timedelta(days=1)
@@ -70,8 +92,22 @@ async def get_my_progress(
 async def get_detailed_stats(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
-    """Recuperer les statistiques detaillees par domaine."""
+) -> dict[str, dict[str, Any]]:
+    """
+    Récupère les statistiques détaillées regroupées par domaine.
+
+    Analyse l'historique de l'utilisateur et calcule les scores 
+    moyens et les meilleurs scores obtenus pour chaque domaine 
+    spécifique (TECHNIQUE, COMPORTEMENTAL, etc.).
+
+    Args:
+        current_user (User): L'utilisateur authentifié.
+        db (AsyncSession): La session de base de données.
+
+    Returns:
+        dict[str, dict[str, Any]]: Un dictionnaire indexé par domaine, contenant
+        les métriques détaillées.
+    """
     result = await db.execute(
         select(Session, Exercice)
         .join(Exercice, Session.exercice_id == Exercice.id)
@@ -103,14 +139,26 @@ async def get_detailed_stats(
     return domains_stats
 
 
-@router.get("/history")
+@router.get("/history", response_model=list[SessionResponse])
 async def get_session_history(
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Recuperer l'historique des sessions de l'utilisateur."""
+    """
+    Récupère l'historique paginé des sessions de l'utilisateur.
+
+    Args:
+        skip (int): Nombre d'enregistrements à ignorer pour la pagination.
+        limit (int): Nombre maximum d'enregistrements à retourner (max 100).
+        current_user (User): L'utilisateur authentifié.
+        db (AsyncSession): La session de base de données.
+
+    Returns:
+        list[SessionResponse]: Liste sérialisée des sessions de l'utilisateur,
+        triée de la plus récente à la plus ancienne.
+    """
     result = await db.execute(
         select(Session)
         .where(Session.utilisateur_id == current_user.id)
@@ -127,8 +175,20 @@ async def get_session_history(
 async def export_progress_pdf(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
-    """Exporter le rapport PDF de progression."""
+) -> dict[str, Any]:
+    """
+    Exporte le rapport de progression au format PDF.
+
+    Fonctionnalité en cours de développement. Permettra de générer 
+    un bilan synthétique de l'apprentissage de l'utilisateur.
+
+    Args:
+        current_user (User): L'utilisateur authentifié.
+        db (AsyncSession): La session de base de données.
+
+    Returns:
+        dict[str, Any]: Statut de l'implémentation ou URL du document généré.
+    """
     return {
         "message": "PDF export not yet implemented",
         "url": None,

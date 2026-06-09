@@ -1,17 +1,24 @@
-"""Application FastAPI - point d'entrée principal"""
+"""
+Application FastAPI - point d'entrée principal.
 
+Ce module initialise l'application FastAPI, configure le cycle de vie,
+le logging, le middleware CORS, les gestionnaires d'exceptions et inclut
+les différents routeurs de l'API.
+"""
+
+import logging
+import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, status
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-import os
 
 from app.config.settings import settings
-from app.data.database import init_db, close_db
-from app.routers import auth
 from app.core.exceptions import AppException
-import logging
+from app.data.database import close_db, init_db
+from app.routers import auth, dashboard, exercices, profile, simulation
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +31,19 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Gérer le cycle de vie de l'application"""
+    """
+    Gère le cycle de vie de l'application FastAPI.
+
+    Initialise la base de données et peuple les données par défaut (comme 
+    les exercices) au démarrage. Ferme proprement les connexions à la base
+    de données lors de l'arrêt de l'application.
+
+    Args:
+        app (FastAPI): L'instance de l'application FastAPI en cours d'exécution.
+
+    Yields:
+        None: Cède le contrôle à l'application pendant sa durée de vie.
+    """
     # Startup
     try:
         await init_db()
@@ -76,9 +95,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Exception handlers
 @app.exception_handler(AppException)
-async def app_exception_handler(request, exc: AppException):
+async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
+    """
+    Gestionnaire global pour les exceptions personnalisées AppException.
+
+    Intercepte les erreurs métier et les formate en réponses JSON structurées.
+
+    Args:
+        request (Request): La requête HTTP ayant déclenché l'exception.
+        exc (AppException): L'exception de l'application interceptée.
+
+    Returns:
+        JSONResponse: Une réponse structurée contenant le message d'erreur et
+        le code HTTP correspondant.
+    """
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.message},
@@ -87,23 +120,39 @@ async def app_exception_handler(request, exc: AppException):
 
 # Health check
 @app.get("/health", tags=["health"])
-async def health_check():
-    """Vérifier l'état de l'API"""
+async def health_check() -> dict[str, str]:
+    """
+    Vérifie l'état de l'API.
+
+    Endpoint de diagnostic utilisé pour s'assurer que le service fonctionne 
+    correctement.
+
+    Returns:
+        dict[str, str]: Un dictionnaire contenant le statut ("ok") et la version de l'application.
+    """
     return {"status": "ok", "version": settings.app_version}
 
 
 # Inclure les routers
-from app.routers import profile, exercices, dashboard, simulation
 app.include_router(auth.router)
 app.include_router(profile.router)
 app.include_router(exercices.router)
 app.include_router(dashboard.router)
 app.include_router(simulation.router)
 
+
 # Info API
 @app.get("/", tags=["info"])
-async def root():
-    """Information de l'API"""
+async def root() -> dict[str, str]:
+    """
+    Fournit les informations de base de l'API.
+
+    Point de terminaison principal retournant les métadonnées de l'application 
+    et des liens utiles comme la documentation.
+
+    Returns:
+        dict[str, str]: Un dictionnaire avec le nom, la version et les endpoints vitaux.
+    """
     return {
         "name": settings.app_name,
         "version": settings.app_version,
