@@ -5,7 +5,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/bottom_navigation.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
-import '../../../core/models/exercise.dart' as models;
+import '../../../core/models/progress.dart';
+import '../../../core/models/session_models.dart';
 import '../../../core/models/user.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -274,7 +275,7 @@ class DashboardScreen extends ConsumerWidget {
     BuildContext context, 
     WidgetRef ref, 
     User profile, 
-    AsyncValue<models.UserProgress> progressAsync
+    AsyncValue<ProgressMeResponse> progressAsync
   ) {
     final prenom = profile.prenom ?? '';
     
@@ -395,7 +396,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRecommendationsSection(BuildContext context, models.UserProgress progress) {
+  Widget _buildRecommendationsSection(BuildContext context, ProgressMeResponse progress) {
     final double avgScore = progress.avgScore;
     
     return Column(
@@ -486,7 +487,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRecentSessions(BuildContext context, List<models.Session> sessions) {
+  Widget _buildRecentSessions(BuildContext context, List<SessionResponse> sessions) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -544,16 +545,19 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSessionRow(BuildContext context, {required models.Session session}) {
-    final bool isGood = session.score >= 70.0;
-    final bool isWarning = session.score < 50.0;
+  Widget _buildSessionRow(BuildContext context, {required SessionResponse session}) {
+    final double sessionScore = session.score ?? 0.0;
+    final bool isGood = sessionScore >= 70.0;
+    final bool isWarning = sessionScore < 50.0;
     
     Color indicatorColor = isGood ? AppTheme.tertiaryFixed : (isWarning ? AppTheme.error : AppTheme.outlineVariant);
     Color scoreBg = isGood ? AppTheme.tertiaryFixed : (isWarning ? AppTheme.error.withAlpha((0.2 * 255).round()) : AppTheme.outlineVariant.withAlpha((0.2 * 255).round()));
     Color scoreColor = isGood ? AppTheme.onTertiaryFixedVariant : (isWarning ? AppTheme.error : AppTheme.onSurfaceVariant);
 
     // Formater la date proprement
-    final String formattedDate = '${session.commenceLe.day}/${session.commenceLe.month}/${session.commenceLe.year}';
+    final String formattedDate = session.commenceLe != null 
+        ? '${session.commenceLe!.day}/${session.commenceLe!.month}/${session.commenceLe!.year}'
+        : 'Inconnue';
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -584,7 +588,7 @@ class DashboardScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
-              '${session.score.round()}%', 
+              '${sessionScore.round()}%', 
               style: Theme.of(context).textTheme.labelLarge?.copyWith(color: scoreColor, fontSize: 12)
             ),
           ),

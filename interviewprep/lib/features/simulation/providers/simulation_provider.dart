@@ -162,9 +162,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
       final sentiment = response['sentiment'] as String? ?? 'Confident';
       final tip = response['coaching_tip'] as String? ?? '';
       final answerCount = (response['answer_count'] as num?)?.toInt() ?? state.answerCount + 1;
-      final analysis = response['analysis'] is Map<String, dynamic>
-          ? response['analysis'] as Map<String, dynamic>
-          : null;
+      final analysis = response['analysis'] as Map<String, dynamic>?;
       final nextQ = response['next_question'] as String? ?? 'Félicitations, simulation terminée !';
 
       state = state.copyWith(

@@ -18,9 +18,9 @@ class SimulationService {
     try {
       final response = await _apiClient.dio.post('/simulation/start', data: {
         'exercice_id': exerciseId,
-        if (subject != null) 'subject': subject,
-        if (questionCount != null) 'question_count': questionCount,
-        if (model != null) 'model': model,
+        'subject': ?subject,
+        'question_count': ?questionCount,
+        'model': ?model,
       });
       return SessionResponse.fromJson(response.data);
     } catch (e) {

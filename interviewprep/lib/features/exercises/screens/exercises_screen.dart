@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/bottom_navigation.dart';
 import '../providers/exercise_provider.dart';
-import '../../../core/models/exercise.dart' as models;
+import '../../../core/models/exercise_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
 
@@ -26,7 +26,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
   }
 
   void _showGenerateExerciseBottomSheet(BuildContext context) async {
-    final generated = await showModalBottomSheet<models.Exercise>(
+    final generated = await showModalBottomSheet<ExerciceResponse>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -122,12 +122,12 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
     return null;
   }
 
-  List<models.Exercise> _filterExercises(List<models.Exercise> exercises) {
+  List<ExerciceResponse> _filterExercises(List<ExerciceResponse> exercises) {
     if (_searchQuery.isEmpty) return exercises;
     final q = _searchQuery.toLowerCase();
     return exercises.where((ex) {
       return ex.titre.toLowerCase().contains(q) ||
-          (ex.description?.toLowerCase().contains(q) ?? false) ||
+          ex.description.toLowerCase().contains(q) ||
           ex.domaine.toLowerCase().contains(q) ||
           ex.difficulte.toLowerCase().contains(q);
     }).toList();
@@ -136,7 +136,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
   void _showModeBottomSheet(
     BuildContext context,
     WidgetRef ref,
-    models.Exercise exercise,
+    ExerciceResponse exercise,
   ) {
     showModalBottomSheet(
       context: context,
@@ -230,10 +230,9 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              if (exercise.description != null &&
-                  exercise.description!.isNotEmpty) ...[
+              if (exercise.description.isNotEmpty) ...[
                 Text(
-                  exercise.description!,
+                  exercise.description,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppTheme.onSurfaceVariant,
                   ),
@@ -732,7 +731,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
   Widget _buildExerciseCard(
     BuildContext context,
     WidgetRef ref, {
-    required models.Exercise exercise,
+    required ExerciceResponse exercise,
   }) {
     final String domaine = exercise.domaine;
     final IconData icon = _getIconForDomaine(domaine);
@@ -789,7 +788,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        exercise.description ?? '',
+                        exercise.description,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppTheme.onSurfaceVariant,
                           fontSize: 14,

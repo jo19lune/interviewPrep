@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/bottom_navigation.dart';
-import '../../../core/models/exercise.dart';
+import '../../../core/models/session_models.dart';
 import '../providers/dashboard_provider.dart';
 import '../../exercises/providers/exercise_provider.dart';
 
@@ -125,7 +125,7 @@ class StatisticsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsSummary(BuildContext context, WidgetRef ref, Map<String, dynamic> stats, List<Session> sessions, List exercises) {
+  Widget _buildStatsSummary(BuildContext context, WidgetRef ref, Map<String, dynamic> stats, List<SessionResponse> sessions, List exercises) {
     final terminatedSessions = sessions.where((s) => s.statut == 'TERMINEE').toList();
     final totalSimulations = terminatedSessions.length;
 
@@ -142,8 +142,8 @@ class StatisticsScreen extends ConsumerWidget {
 
     double hoursPracticed = 0.0;
     for (final session in terminatedSessions) {
-      if (session.termineLe != null) {
-        final diff = session.termineLe!.difference(session.commenceLe);
+      if (session.termineLe != null && session.commenceLe != null) {
+        final diff = session.termineLe!.difference(session.commenceLe!);
         hoursPracticed += diff.inMinutes / 60.0;
       }
     }
@@ -427,7 +427,7 @@ class _SkillProficiencySection extends StatelessWidget {
 }
 
 class _HistoryTrendSection extends StatelessWidget {
-  final List<Session> sessions;
+  final List<SessionResponse> sessions;
 
   const _HistoryTrendSection({required this.sessions});
 
@@ -455,7 +455,7 @@ class _HistoryTrendSection extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _ScoreColumn(score: session.score),
+                    child: _ScoreColumn(score: session.score ?? 0.0),
                   ),
                 ),
             ],

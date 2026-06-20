@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/models/auth_models.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
 
@@ -279,7 +280,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             );
                             await profileService.changePassword(
                               ChangePasswordRequest(
-                                ancienMotDePasse: oldPasswordController.text,
+                                motDePasseActuel: oldPasswordController.text,
                                 nouveauMotDePasse: newPasswordController.text,
                               ),
                             );

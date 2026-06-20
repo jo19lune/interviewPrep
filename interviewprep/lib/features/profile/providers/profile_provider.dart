@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:interviewprep/core/network/api_client.dart';
 import 'package:interviewprep/core/models/auth_models.dart';
 import 'package:interviewprep/features/profile/services/profile_service.dart';
 import 'dart:io';

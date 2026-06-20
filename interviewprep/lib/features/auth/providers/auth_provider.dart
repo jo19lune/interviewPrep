@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
 import '../services/forgot_password_service.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/models/auth_models.dart';
 import '../../../core/models/user.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) {

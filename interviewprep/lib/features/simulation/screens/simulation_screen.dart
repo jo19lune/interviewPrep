@@ -6,7 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../exercises/providers/exercise_provider.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
 import '../providers/simulation_provider.dart';
-import '../../../core/models/exercise.dart' as models;
+import '../../../core/models/exercise_models.dart';
 
 class SimulationScreen extends ConsumerStatefulWidget {
   const SimulationScreen({super.key});
@@ -191,7 +191,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
   // 1. ÉCRAN INTRO
   Widget _buildIntroScreen(
     BuildContext context, 
-    models.Exercise exercise, 
+    ExerciceResponse exercise, 
     SimulationState state,
     SimulationNotifier notifier
   ) {
@@ -305,7 +305,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        exercise.description ?? 'Notre recruteur virtuel IA va analyser vos réponses et générer un score factuel.',
+                        exercise.description.isEmpty ? 'Notre recruteur virtuel IA va analyser vos réponses et générer un score factuel.' : exercise.description,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.onSurfaceVariant),
                       ),
                       const SizedBox(height: 20),
@@ -705,7 +705,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
     BuildContext context, 
     SimulationState state, 
     SimulationNotifier notifier,
-    models.Exercise exercise
+    ExerciceResponse exercise
   ) {
     // Scroll automatique au bas à chaque nouveau message
     _scrollToBottom();
