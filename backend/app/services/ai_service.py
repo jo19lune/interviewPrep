@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 class AIService:
     """Service pour interagir avec les modeles IA configures."""
 
-    def __init__(self, settings: Any | None = None):
+    def __init__(self, settings: Any | None = None, primary_model: str | None = None):
         from app.config.settings import settings as app_settings
         self.settings = settings or app_settings
         self.provider = self._resolve_provider()
-        self.primary_model = self.settings.ai_primary_model or self._default_model()
+        self.primary_model = primary_model or self.settings.ai_primary_model or self._default_model()
         self.fallback_model = self.settings.ai_fallback_model or self._fallback_model()
         self.openai_client = None
         self.anthropic_client = None

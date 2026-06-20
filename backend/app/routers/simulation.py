@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 
 from app.config.settings import settings
 from app.core.security import get_current_user
@@ -31,11 +32,22 @@ from app.services.ai_service import AIService
 router = APIRouter(prefix="/simulation", tags=["simulation"])
 
 
+@router.get("/models")
+async def list_available_models(current_user: User = Depends(get_current_user)):
+    """
+    Récupère la liste des modèles d'IA configurés sur le serveur.
+    """
+    models = settings.openai_models or []
+    primary = settings.ai_primary_model or (models[0] if models else "")
+    return {"models": models, "primary_model": primary}
+
+
 @router.post("/start")
 async def start_simulation(
     exercice_id: UUID,
     sujet: str | None = Query(None, min_length=2, max_length=160),
     nombre_questions: int = Query(10, ge=10, le=30),
+    modele: str | None = Query(None, description="Modèle d'IA spécifique à utiliser"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -50,6 +62,7 @@ async def start_simulation(
         exercice_id (UUID): L'ID de l'exercice parent.
         sujet (str | None): Sujet spécifique ou focus de la simulation.
         nombre_questions (int): Nombre de questions ciblées pour la session.
+        modele (str | None): Le modèle d'IA choisi par l'utilisateur.
         current_user (User): L'utilisateur courant.
         db (AsyncSession): Session de base de données.
 
@@ -84,7 +97,7 @@ async def start_simulation(
         ],
     )
     ia_sim = SimulationIA(
-        modele=settings.ai_primary_model or "gpt-4o-mini",
+        modele=modele or settings.ai_primary_model or "gpt-4o-mini",
         temperature=0.7,
     )
     session.ia_simulation = ia_sim
@@ -94,7 +107,7 @@ async def start_simulation(
     await db.commit()
     await db.refresh(session)
 
-    first_question = await _generate_next_question(exercice, session.reponses or [], 0)
+    first_question = await _generate_next_question(exercice, session.reponses or [], 0, model=ia_sim.modele)
     
     return {
         "session_id": str(session.id),
@@ -137,7 +150,9 @@ async def submit_answer(
         )
 
     result = await db.execute(
-        select(Session).where(
+        select(Session)
+        .options(selectinload(Session.ia_simulation))
+        .where(
             (Session.id == session_id) & (Session.utilisateur_id == current_user.id)
         )
     )
@@ -189,7 +204,8 @@ async def submit_answer(
     )
     session.reponses = updated_reponses
 
-    next_question = await _generate_next_question(exercice, updated_reponses, current_q_index + 1)
+    model_name = session.ia_simulation.modele if session.ia_simulation else None
+    next_question = await _generate_next_question(exercice, updated_reponses, current_q_index + 1, model=model_name)
 
     db.add(session)
     await db.commit()
@@ -227,7 +243,9 @@ async def stream_ai_response(
         StreamingResponse: Flux de tokens (mots) envoyés en temps réel.
     """
     result = await db.execute(
-        select(Session).where(
+        select(Session)
+        .options(selectinload(Session.ia_simulation))
+        .where(
             (Session.id == session_id) & (Session.utilisateur_id == current_user.id)
         )
     )
@@ -245,7 +263,8 @@ async def stream_ai_response(
 
     reponses = session.reponses or []
     next_index = len(_user_responses(reponses))
-    question = await _generate_next_question(exercice, reponses, next_index)
+    model_name = session.ia_simulation.modele if session.ia_simulation else None
+    question = await _generate_next_question(exercice, reponses, next_index, model=model_name)
 
     async def event_generator():
         for token in _split_stream_tokens(question):
@@ -329,7 +348,9 @@ async def finish_simulation(
         dict: Bilan final de la session, incluant le score et le feedback.
     """
     result = await db.execute(
-        select(Session).where(
+        select(Session)
+        .options(selectinload(Session.ia_simulation))
+        .where(
             (Session.id == session_id) & (Session.utilisateur_id == current_user.id)
         )
     )
@@ -355,7 +376,8 @@ async def finish_simulation(
 
     ex_res = await db.execute(select(Exercice).where(Exercice.id == session.exercice_id))
     exercice = ex_res.scalars().first()
-    feedback_data = await _generate_feedback(exercice, session.reponses or [], global_score)
+    model_name = session.ia_simulation.modele if session.ia_simulation else None
+    feedback_data = await _generate_feedback(exercice, session.reponses or [], global_score, model=model_name)
 
     existing_res = await db.execute(select(Retour).where(Retour.session_id == session.id))
     feedback = existing_res.scalars().first()
@@ -492,7 +514,7 @@ def _score_answer(question: dict | None, reponse: str) -> tuple[float, str, str,
     )
 
 
-async def _generate_next_question(exercice: Exercice, reponses: list[dict], index: int) -> str:
+async def _generate_next_question(exercice: Exercice, reponses: list[dict], index: int, model: str | None = None) -> str:
     """Génère la prochaine question via l'IA ou retourne la question par défaut de l'exercice."""
     config = _session_config(reponses)
     target_count = int(config.get("nombre_questions") or 10)
@@ -507,7 +529,7 @@ async def _generate_next_question(exercice: Exercice, reponses: list[dict], inde
         return questions[index].get("enonce") or _fallback_question(exercice, index, reponses)
 
     try:
-        ai_service = AIService()
+        ai_service = AIService(primary_model=model)
         previous = [r.get("texte", "") for r in user_reponses if r.get("texte")]
         question = await ai_service.generate_next_question(
             previous_responses=previous,
@@ -525,12 +547,12 @@ async def _generate_next_question(exercice: Exercice, reponses: list[dict], inde
     return _fallback_question(exercice, index, reponses)
 
 
-async def _generate_feedback(exercice: Exercice | None, reponses: list[dict], score: float) -> dict:
+async def _generate_feedback(exercice: Exercice | None, reponses: list[dict], score: float, model: str | None = None) -> dict:
     """Génère un retour global d'entretien avec l'IA."""
     contexte = exercice.titre if exercice else "entretien"
     config = _session_config(reponses)
     try:
-        ai_service = AIService()
+        ai_service = AIService(primary_model=model)
         feedback = await ai_service.generate_feedback(
             _user_responses(reponses),
             contexte,
