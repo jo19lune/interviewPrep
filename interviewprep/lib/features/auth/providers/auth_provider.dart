@@ -1,27 +1,67 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
-
+import '../services/forgot_password_service.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/models/user.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService();
 });
 
-final userProfileProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+final forgotPasswordServiceProvider = Provider<ForgotPasswordService>((ref) {
+  return ForgotPasswordService();
+});
+
+final forgotPasswordProvider = AsyncNotifierProvider<ForgotPasswordNotifier, void>(() {
+  return ForgotPasswordNotifier();
+});
+
+class ForgotPasswordNotifier extends AsyncNotifier<void> {
+  @override
+  FutureOr<void> build() {}
+
+  Future<void> requestCode(String email) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final service = ref.read(forgotPasswordServiceProvider);
+      await service.requestResetCode(email);
+    });
+    if (state.hasError) throw state.error!;
+  }
+
+  Future<bool> verifyCode(String email, String code) async {
+    final service = ref.read(forgotPasswordServiceProvider);
+    return service.verifyResetCode(email, code);
+  }
+
+  Future<void> resetPassword(String email, String code, String newPassword) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final service = ref.read(forgotPasswordServiceProvider);
+      await service.resetPassword(email, code, newPassword);
+    });
+    if (state.hasError) throw state.error!;
+  }
+}
+
+final userProfileProvider = FutureProvider<User>((ref) async {
   final apiClient = ApiClient();
   final response = await apiClient.dio.get('/auth/me');
-  return response.data;
+  return User.fromJson(response.data);
 });
 
 final authStateProvider = AsyncNotifierProvider<AuthNotifier, void>(() {
   return AuthNotifier();
 });
 
+final startupLoadingProvider = FutureProvider<void>((ref) async {
+  await Future<void>.delayed(const Duration(milliseconds: 400));
+});
+
 class AuthNotifier extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {
-    // Initial state is null/void
   }
 
   Future<void> login(String email, String password) async {
@@ -31,7 +71,6 @@ class AuthNotifier extends AsyncNotifier<void> {
       await authService.login(email, password);
     });
     
-    // If state has an error, we throw it to allow UI to catch it
     if (state.hasError) {
       throw state.error!;
     }

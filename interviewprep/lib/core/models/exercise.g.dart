@@ -82,6 +82,8 @@ StartSimulationResponse _$StartSimulationResponseFromJson(
   status: json['status'] as String,
   exerciseTitle: json['exercise_title'] as String,
   firstQuestion: json['first_question'] as String?,
+  subject: json['subject'] as String?,
+  questionCount: (json['question_count'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$StartSimulationResponseToJson(
@@ -91,6 +93,8 @@ Map<String, dynamic> _$StartSimulationResponseToJson(
   'status': instance.status,
   'exercise_title': instance.exerciseTitle,
   'first_question': instance.firstQuestion,
+  'subject': instance.subject,
+  'question_count': instance.questionCount,
 };
 
 Feedback _$FeedbackFromJson(Map<String, dynamic> json) => Feedback(

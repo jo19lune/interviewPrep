@@ -7,6 +7,13 @@ final simulationServiceProvider = Provider<SimulationService>((ref) {
   return SimulationService();
 });
 
+final availableModelsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final service = ref.watch(simulationServiceProvider);
+  return service.getAvailableModels();
+});
+
+final selectedModelProvider = StateProvider<String?>((ref) => null);
+
 class ChatMessage {
   final String text;
   final bool isUser;
@@ -14,6 +21,7 @@ class ChatMessage {
   final double? scorePartiel;
   final String? sentiment;
   final String? coachingTip;
+  final Map<String, dynamic>? analysis;
 
   ChatMessage({
     required this.text,
@@ -22,6 +30,7 @@ class ChatMessage {
     this.scorePartiel,
     this.sentiment,
     this.coachingTip,
+    this.analysis,
   });
 }
 
@@ -35,6 +44,9 @@ class SimulationState {
   final String? lastLiveCoachingTip;
   final double? lastClarityScore;
   final String? lastSentiment;
+  final String? subject;
+  final int questionCount;
+  final int answerCount;
 
   SimulationState({
     this.sessionId,
@@ -46,6 +58,9 @@ class SimulationState {
     this.lastLiveCoachingTip,
     this.lastClarityScore,
     this.lastSentiment,
+    this.subject,
+    this.questionCount = 10,
+    this.answerCount = 0,
   });
 
   SimulationState copyWith({
@@ -58,6 +73,9 @@ class SimulationState {
     String? lastLiveCoachingTip,
     double? lastClarityScore,
     String? lastSentiment,
+    String? subject,
+    int? questionCount,
+    int? answerCount,
     bool clearFeedback = false,
   }) {
     return SimulationState(
@@ -70,6 +88,9 @@ class SimulationState {
       lastLiveCoachingTip: lastLiveCoachingTip ?? this.lastLiveCoachingTip,
       lastClarityScore: lastClarityScore ?? this.lastClarityScore,
       lastSentiment: lastSentiment ?? this.lastSentiment,
+      subject: subject ?? this.subject,
+      questionCount: questionCount ?? this.questionCount,
+      answerCount: answerCount ?? this.answerCount,
     );
   }
 }
@@ -83,22 +104,35 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     state = SimulationState();
   }
 
-  Future<void> start(String exerciseId) async {
+  Future<void> start(
+    String exerciseId, {
+    String? subject,
+    int questionCount = 10,
+    String? model,
+  }) async {
     state = state.copyWith(isLoading: true, clearFeedback: true, messages: []);
     try {
-      final response = await _service.startSimulation(exerciseId);
+      final response = await _service.startSimulation(
+        exerciseId,
+        subject: subject,
+        questionCount: questionCount,
+        model: model,
+      );
       
       final firstMsg = ChatMessage(
-        text: response.firstQuestion ?? "Bienvenue dans cette simulation d'entretien. Commençons par votre parcours. Pouvez-vous vous présenter ?",
+        text: "Bienvenue dans cette simulation d'entretien. Commençons par votre parcours. Pouvez-vous vous présenter ?",
         isUser: false,
         timestamp: DateTime.now(),
       );
 
       state = state.copyWith(
-        sessionId: response.sessionId,
-        exerciseTitle: response.exerciseTitle,
+        sessionId: response.id,
+        exerciseTitle: 'Simulation', // We don't have it in SessionResponse directly
         messages: [firstMsg],
         isLoading: false,
+        subject: subject,
+        questionCount: questionCount,
+        answerCount: 0,
       );
     } catch (e) {
       state = state.copyWith(isLoading: false);
@@ -127,12 +161,15 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
       final clarity = (response['clarity_score'] as num?)?.toDouble() ?? 80.0;
       final sentiment = response['sentiment'] as String? ?? 'Confident';
       final tip = response['coaching_tip'] as String? ?? '';
+      final answerCount = (response['answer_count'] as num?)?.toInt() ?? state.answerCount + 1;
+      final analysis = response['analysis'] as Map<String, dynamic>?;
       final nextQ = response['next_question'] as String? ?? 'Félicitations, simulation terminée !';
 
       state = state.copyWith(
         lastClarityScore: clarity,
         lastSentiment: sentiment,
         lastLiveCoachingTip: tip,
+        answerCount: answerCount,
       );
 
       var streamedText = '';
@@ -146,6 +183,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
             clarity: clarity,
             sentiment: sentiment,
             tip: tip,
+            analysis: analysis,
           );
         }
       } catch (_) {
@@ -158,6 +196,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
           clarity: clarity,
           sentiment: sentiment,
           tip: tip,
+          analysis: analysis,
         );
       }
 
@@ -178,15 +217,14 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     try {
       final response = await _service.finishSimulation(state.sessionId!);
       
-      final fbData = response['feedback'] as Map<String, dynamic>;
       final feedback = Feedback(
-        id: fbData['id'] as String,
-        sessionId: fbData['session_id'] as String,
-        scoreGlobal: (fbData['score_global'] as num).toDouble(),
-        pointsForts: fbData['points_forts'] as List<dynamic>?,
-        ameliorations: fbData['ameliorations'] as List<dynamic>?,
-        recommandations: (fbData['recommandations'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
-        genereLe: DateTime.parse(fbData['genere_le'] as String),
+        id: response.id,
+        sessionId: response.sessionId,
+        scoreGlobal: response.scoreGlobal,
+        pointsForts: response.pointsForts,
+        ameliorations: response.ameliorations,
+        recommandations: response.recommandations,
+        genereLe: response.genereLe ?? DateTime.now(),
       );
 
       state = state.copyWith(
@@ -199,11 +237,27 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     }
   }
 
+  Future<void> cancel() async {
+    if (state.sessionId == null) {
+      reset();
+      return;
+    }
+    state = state.copyWith(isLoading: true);
+    try {
+      await _service.cancelSimulation(state.sessionId!);
+      state = SimulationState();
+    } catch (e) {
+      state = state.copyWith(isLoading: false);
+      rethrow;
+    }
+  }
+
   void _upsertRecruiterMessage(
     String text, {
     required double clarity,
     required String sentiment,
     required String tip,
+    Map<String, dynamic>? analysis,
   }) {
     final messages = [...state.messages];
     if (messages.isNotEmpty && !messages.last.isUser) {
@@ -214,6 +268,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
         scorePartiel: clarity,
         sentiment: sentiment,
         coachingTip: tip,
+        analysis: analysis,
       );
     } else {
       messages.add(
@@ -224,6 +279,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
           scorePartiel: clarity,
           sentiment: sentiment,
           coachingTip: tip,
+          analysis: analysis,
         ),
       );
     }

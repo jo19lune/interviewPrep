@@ -105,7 +105,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       border: Border.all(color: AppTheme.outlineVariant),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryContainer.withOpacity(0.05),
+                          color: AppTheme.primaryContainer.withValues(alpha: 0.05),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         )

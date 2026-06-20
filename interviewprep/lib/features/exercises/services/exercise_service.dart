@@ -1,62 +1,60 @@
-import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/models/exercise.dart';
+import '../../../core/models/exercise_models.dart';
 
 class ExerciseService {
   final ApiClient _apiClient = ApiClient();
 
-  Future<List<Exercise>> getExercises({
-    String? domaine,
-    String? difficulte,
-    String? tags,
-    int skip = 0,
-    int limit = 10,
-  }) async {
+  Future<List<ExerciceResponse>> getExercises({String? domaine, String? difficulte}) async {
     try {
-      final queryParameters = <String, dynamic>{
-        'domaine': ?domaine,
-        'difficulte': ?difficulte,
-        'tags': ?tags,
-        'skip': skip,
-        'limit': limit,
-      };
-      final response = await _apiClient.dio.get(
-        '/exercises',
-        queryParameters: queryParameters,
-      );
+      final queryParams = <String, dynamic>{};
+      if (domaine != null) queryParams['domaine'] = domaine;
+      if (difficulte != null) queryParams['difficulte'] = difficulte;
 
-      final List<dynamic> data = response.data;
-      return data.map((json) => Exercise.fromJson(json)).toList();
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors du chargement des exercices');
+      final response = await _apiClient.dio.get('/exercises/', queryParameters: queryParams);
+      return (response.data as List).map((e) => ExerciceResponse.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération des exercices');
     }
   }
 
-  Future<Exercise> getExercise(String id) async {
+  Future<ExerciceResponse> getExercise(String id) async {
     try {
       final response = await _apiClient.dio.get('/exercises/$id');
-      return Exercise.fromJson(response.data);
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Exercice non trouvé');
+      return ExerciceResponse.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération de l\'exercice');
     }
   }
 
-  Future<Exercise> getRandomExercise({
-    String? domaine,
-    String? difficulte,
-  }) async {
+  Future<ExerciceResponse> getRandomExercise({String? domaine, String? difficulte}) async {
     try {
-      final queryParameters = <String, dynamic>{
-        'domaine': ?domaine,
-        'difficulte': ?difficulte,
-      };
-      final response = await _apiClient.dio.get(
-        '/exercises/random/get',
-        queryParameters: queryParameters,
-      );
-      return Exercise.fromJson(response.data);
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Aucun exercice trouvé');
+      final queryParams = <String, dynamic>{};
+      if (domaine != null) queryParams['domaine'] = domaine;
+      if (difficulte != null) queryParams['difficulte'] = difficulte;
+
+      final response = await _apiClient.dio.get('/exercises/random/get', queryParameters: queryParams);
+      return ExerciceResponse.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération d\'un exercice aléatoire');
+    }
+  }
+
+  Future<ExerciceResponse> createExercise(ExerciceCreateRequest req) async {
+    try {
+      final response = await _apiClient.dio.post('/exercises/', data: req.toJson());
+      return ExerciceResponse.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Erreur lors de la création de l\'exercice');
+    }
+  }
+
+  Future<ExerciceResponse> generateExercise(Map<String, dynamic> params) async {
+    try {
+      // params can be { "domaine": "...", "difficulte": "..." } depending on backend generate schema
+      final response = await _apiClient.dio.post('/exercises/generate', data: params);
+      return ExerciceResponse.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Erreur lors de la génération de l\'exercice');
     }
   }
 }

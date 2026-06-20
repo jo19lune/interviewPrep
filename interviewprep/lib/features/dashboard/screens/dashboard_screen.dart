@@ -5,7 +5,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/bottom_navigation.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
-import '../../../core/models/exercise.dart' as models;
+import '../../../core/models/progress.dart';
+import '../../../core/models/session_models.dart';
+import '../../../core/models/user.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -118,11 +120,71 @@ class DashboardScreen extends ConsumerWidget {
     final profileAsync = ref.watch(userProfileProvider);
     final historyAsync = ref.watch(sessionHistoryProvider);
 
+    void navigateTo(String route) {
+      if (ModalRoute.of(context)?.settings.name != route) {
+        context.go(route);
+      }
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(kToolbarHeight),
-        child: _buildAppBar(context, ref),
+        child: _buildAppBar(context, ref, profileAsync),
+      ),
+      drawer: Drawer(
+        child: Column(
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(color: AppTheme.primaryContainer),
+              child: Center(
+                child: Text(
+                  'InterviewPrep',
+                  style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.dashboard),
+              title: const Text('Tableau de bord'),
+              selected: true,
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.quiz),
+              title: const Text('Exercices'),
+              onTap: () {
+                Navigator.pop(context);
+                navigateTo('/exercises');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.bar_chart),
+              title: const Text('Statistiques'),
+              onTap: () {
+                Navigator.pop(context);
+                navigateTo('/statistics');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('À propos'),
+              onTap: () {
+                Navigator.pop(context);
+                navigateTo('/about');
+              },
+            ),
+            const Spacer(),
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                '© 2026 Projet d\'Étude\nTous droits réservés.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -136,11 +198,11 @@ class DashboardScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              profileAsync.when(
-                data: (profile) => _buildHeroSection(context, ref, profile, progressAsync),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => _buildHeroSection(context, ref, {'prenom': 'Alex'}, progressAsync),
-              ),
+                profileAsync.when(
+                 data: (profile) => _buildHeroSection(context, ref, profile, progressAsync),
+                 loading: () => const Center(child: CircularProgressIndicator()),
+                 error: (e, _) => _buildHeroSection(context, ref, User(id: '', courriel: '', estActif: true, creeLe: DateTime(1970)), progressAsync),
+               ),
               const SizedBox(height: 32),
               progressAsync.when(
                 data: (progress) => _buildRecommendationsSection(context, progress),
@@ -163,16 +225,25 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context, WidgetRef ref) {
+  PreferredSizeWidget _buildAppBar(BuildContext context, WidgetRef ref, AsyncValue<User> profileAsync) {
+    final initials = profileAsync.value?.initials ?? '?';
+    final avatarUrl = profileAsync.value?.avatarUrl;
+
     return AppBar(
       backgroundColor: AppTheme.surface,
       elevation: 1,
       shadowColor: Colors.black.withAlpha((0.05 * 255).round()),
       title: Row(
         children: [
-          const CircleAvatar(
-            backgroundColor: AppTheme.primaryContainer,
-            child: Icon(Icons.person, color: Colors.white),
+          GestureDetector(
+            onTap: () => context.push('/profile'),
+            child: CircleAvatar(
+              backgroundColor: AppTheme.primaryContainer,
+              backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+              child: avatarUrl == null 
+                ? Text(initials, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold))
+                : null,
+            ),
           ),
           const SizedBox(width: 12),
           Text(
@@ -203,10 +274,10 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildHeroSection(
     BuildContext context, 
     WidgetRef ref, 
-    Map<String, dynamic> profile, 
-    AsyncValue<models.UserProgress> progressAsync
+    User profile, 
+    AsyncValue<ProgressMeResponse> progressAsync
   ) {
-    final prenom = profile['prenom'] as String? ?? 'Alex';
+    final prenom = profile.prenom ?? '';
     
     return progressAsync.when(
       data: (progress) {
@@ -291,14 +362,14 @@ class DashboardScreen extends ConsumerWidget {
                             fit: StackFit.expand,
                             children: [
                               CircularProgressIndicator(
-                                value: progress.avgScore / 100,
+                                value: progress.bestScore / 100,
                                 strokeWidth: 12,
                                 backgroundColor: AppTheme.surfaceContainerLow,
                                 valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.tertiaryFixed),
                               ),
                               Center(
                                 child: Text(
-                                  '${progress.avgScore.round()}%',
+                                  '${progress.bestScore.round()}%',
                                   style: Theme.of(context).textTheme.displayMedium?.copyWith(
                                         color: AppTheme.primaryContainer,
                                         fontWeight: FontWeight.bold,
@@ -309,8 +380,8 @@ class DashboardScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Text('Taux de réussite moyen', style: Theme.of(context).textTheme.labelLarge),
-                        Text('Basé sur l\'ensemble de vos sessions', style: Theme.of(context).textTheme.bodySmall),
+                        Text('Score de réussite', style: Theme.of(context).textTheme.labelLarge),
+                        Text('Meilleur score sur toutes vos sessions', style: Theme.of(context).textTheme.bodySmall),
                       ],
                     ),
                   ),
@@ -325,9 +396,8 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRecommendationsSection(BuildContext context, models.UserProgress progress) {
-    // Recommandations intelligentes basées sur les performances
-    final bool isExcellent = progress.avgScore >= 80;
+  Widget _buildRecommendationsSection(BuildContext context, ProgressMeResponse progress) {
+    final double avgScore = progress.avgScore;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,43 +416,31 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 16),
-        if (isExcellent) ...[
-          _buildRecommendationItem(
-            context,
-            icon: Icons.bolt,
-            iconColor: AppTheme.onSecondaryContainer,
-            iconBgColor: AppTheme.secondaryContainer,
-            title: 'Excellents résultats !',
-            subtitle: 'Votre score moyen est exceptionnel. Essayez des cas de niveau Expert pour repousser vos limites.',
-          ),
-          const SizedBox(height: 16),
-          _buildRecommendationItem(
-            context,
-            icon: Icons.star_rate,
-            iconColor: AppTheme.onTertiaryFixedVariant,
-            iconBgColor: AppTheme.tertiaryFixed,
-            title: 'Indicateurs clés',
-            subtitle: 'Continuez d\'ajouter des chiffres précis et des indicateurs de succès (KPI) dans vos études de cas.',
-          ),
-        ] else ...[
-          _buildRecommendationItem(
-            context,
-            icon: Icons.record_voice_over,
-            iconColor: AppTheme.onSecondaryContainer,
-            iconBgColor: AppTheme.secondaryContainer,
-            title: 'Améliorer la clarté',
-            subtitle: 'Essayez de détailler davantage vos explications techniques en utilisant des termes précis.',
-          ),
-          const SizedBox(height: 16),
-          _buildRecommendationItem(
-            context,
-            icon: Icons.psychology,
-            iconColor: AppTheme.onTertiaryFixedVariant,
-            iconBgColor: AppTheme.tertiaryFixed,
-            title: 'Méthode STAR',
-            subtitle: 'Pensez à structurer vos réponses : Situation, Tâche, Action, Résultat.',
-          ),
-        ],
+        _buildRecommendationItem(
+          context,
+          icon: Icons.lightbulb,
+          iconColor: AppTheme.onSecondaryContainer,
+          iconBgColor: AppTheme.secondaryContainer,
+          title: avgScore >= 70 ? 'Excellents résultats' : (avgScore >= 50 ? 'Bonne progression' : 'Continuer les efforts'),
+          subtitle: avgScore >= 70
+              ? 'Continuez d\'ajouter des chiffres précis et des indicateurs de succès (KPI) dans vos études de cas.'
+              : (avgScore >= 50
+                  ? 'Renforcez la structure STAR dans vos réponses et ajoutez des résultats mesurables.'
+                  : 'Pratiquez avec des exercices de niveau Débutant et structurez vos réponses avec la méthode STAR.'),
+        ),
+        const SizedBox(height: 16),
+        _buildRecommendationItem(
+          context,
+          icon: Icons.star_rate,
+          iconColor: AppTheme.onTertiaryFixedVariant,
+          iconBgColor: AppTheme.tertiaryFixed,
+          title: avgScore >= 70 ? 'Excellents résultats' : (avgScore >= 50 ? 'Bonne progression' : 'Continuer les efforts'),
+          subtitle: avgScore >= 70
+              ? 'Continuez d\'ajouter des chiffres précis et des indicateurs de succès (KPI) dans vos études de cas.'
+              : (avgScore >= 50
+                  ? 'Renforcez la structure STAR dans vos réponses et ajoutez des résultats mesurables.'
+                  : 'Pratiquez avec des exercices de niveau Débutant et structurez vos réponses avec la méthode STAR.'),
+        ),
       ],
     );
   }
@@ -429,7 +487,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRecentSessions(BuildContext context, List<models.Session> sessions) {
+  Widget _buildRecentSessions(BuildContext context, List<SessionResponse> sessions) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -487,16 +545,19 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSessionRow(BuildContext context, {required models.Session session}) {
-    final bool isGood = session.score >= 70.0;
-    final bool isWarning = session.score < 50.0;
+  Widget _buildSessionRow(BuildContext context, {required SessionResponse session}) {
+    final double sessionScore = session.score ?? 0.0;
+    final bool isGood = sessionScore >= 70.0;
+    final bool isWarning = sessionScore < 50.0;
     
     Color indicatorColor = isGood ? AppTheme.tertiaryFixed : (isWarning ? AppTheme.error : AppTheme.outlineVariant);
     Color scoreBg = isGood ? AppTheme.tertiaryFixed : (isWarning ? AppTheme.error.withAlpha((0.2 * 255).round()) : AppTheme.outlineVariant.withAlpha((0.2 * 255).round()));
     Color scoreColor = isGood ? AppTheme.onTertiaryFixedVariant : (isWarning ? AppTheme.error : AppTheme.onSurfaceVariant);
 
     // Formater la date proprement
-    final String formattedDate = '${session.commenceLe.day}/${session.commenceLe.month}/${session.commenceLe.year}';
+    final String formattedDate = session.commenceLe != null 
+        ? '${session.commenceLe!.day}/${session.commenceLe!.month}/${session.commenceLe!.year}'
+        : 'Inconnue';
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -527,7 +588,7 @@ class DashboardScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
-              '${session.score.round()}%', 
+              '${sessionScore.round()}%', 
               style: Theme.of(context).textTheme.labelLarge?.copyWith(color: scoreColor, fontSize: 12)
             ),
           ),

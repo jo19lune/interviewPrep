@@ -1,41 +1,43 @@
-import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/models/exercise.dart';
+import '../../../core/models/progress.dart';
+import '../../../core/models/session_models.dart';
 
 class DashboardService {
   final ApiClient _apiClient = ApiClient();
 
-  Future<UserProgress> getUserProgress() async {
+  Future<ProgressMeResponse> getUserProgress() async {
     try {
       final response = await _apiClient.dio.get('/progress/me');
-      return UserProgress.fromJson(response.data);
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors du chargement des progrès');
-    }
-  }
-
-  Future<List<Session>> getSessionHistory({int skip = 0, int limit = 20}) async {
-    try {
-      final response = await _apiClient.dio.get(
-        '/progress/history',
-        queryParameters: {
-          'skip': skip,
-          'limit': limit,
-        },
-      );
-      final List<dynamic> data = response.data;
-      return data.map((json) => Session.fromJson(json)).toList();
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors du chargement de l\'historique');
+      return ProgressMeResponse.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération de la progression de l\'utilisateur');
     }
   }
 
   Future<Map<String, dynamic>> getDetailedStats() async {
     try {
       final response = await _apiClient.dio.get('/progress/stats');
+      return response.data as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération des statistiques');
+    }
+  }
+
+  Future<List<SessionResponse>> getSessionHistory() async {
+    try {
+      final response = await _apiClient.dio.get('/progress/history');
+      return (response.data as List).map((e) => SessionResponse.fromJson(e)).toList();
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération de l\'historique');
+    }
+  }
+
+  Future<dynamic> exportData() async {
+    try {
+      final response = await _apiClient.dio.get('/progress/export');
       return response.data;
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors du chargement des statistiques');
+    } catch (e) {
+      throw Exception('Erreur lors de l\'exportation des données');
     }
   }
 }

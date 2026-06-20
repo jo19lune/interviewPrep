@@ -1,7 +1,8 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../services/exercise_service.dart';
-import '../../../core/models/exercise.dart';
+import '../../../core/models/exercise_models.dart';
 
 final exerciseServiceProvider = Provider<ExerciseService>((ref) {
   return ExerciseService();
@@ -51,7 +52,7 @@ final exerciseFiltersProvider = StateNotifierProvider<ExerciseFiltersNotifier, E
 });
 
 // Liste des exercices récupérée depuis le backend
-final exercisesListProvider = FutureProvider<List<Exercise>>((ref) async {
+final exercisesListProvider = FutureProvider<List<ExerciceResponse>>((ref) async {
   final service = ref.watch(exerciseServiceProvider);
   final filters = ref.watch(exerciseFiltersProvider);
   
@@ -62,4 +63,42 @@ final exercisesListProvider = FutureProvider<List<Exercise>>((ref) async {
 });
 
 // Exercice sélectionné pour s'entraîner
-final selectedExerciseProvider = StateProvider<Exercise?>((ref) => null);
+final selectedExerciseProvider = StateProvider<ExerciceResponse?>((ref) => null);
+
+// Générateur d'exercice via IA
+final exerciseGenerationProvider = AsyncNotifierProvider<ExerciseGenerationNotifier, ExerciceResponse?>(() {
+  return ExerciseGenerationNotifier();
+});
+
+class ExerciseGenerationNotifier extends AsyncNotifier<ExerciceResponse?> {
+  @override
+  FutureOr<ExerciceResponse?> build() => null;
+
+  Future<ExerciceResponse> generate({
+    required String domaine,
+    required String difficulte,
+    String? sujet,
+    int nombreQuestions = 10,
+  }) async {
+    state = const AsyncValue.loading();
+    final service = ref.read(exerciseServiceProvider);
+    
+    final value = await AsyncValue.guard(() async {
+      return await service.generateExercise({
+        'domaine': domaine,
+        'difficulte': difficulte,
+        'sujet': sujet,
+        'nombreQuestions': nombreQuestions,
+      });
+    });
+
+    if (value.hasError) {
+      state = AsyncValue.error(value.error!, value.stackTrace!);
+      throw value.error!;
+    }
+
+    state = AsyncValue.data(value.value);
+    ref.invalidate(exercisesListProvider);
+    return value.value!;
+  }
+}

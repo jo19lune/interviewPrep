@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../exercises/providers/exercise_provider.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
 import '../providers/simulation_provider.dart';
-import '../../../core/models/exercise.dart' as models;
+import '../../../core/models/exercise_models.dart';
 
 class SimulationScreen extends ConsumerStatefulWidget {
   const SimulationScreen({super.key});
@@ -16,13 +17,43 @@ class SimulationScreen extends ConsumerStatefulWidget {
 
 class _SimulationScreenState extends ConsumerState<SimulationScreen> {
   final _textController = TextEditingController();
+  final _subjectController = TextEditingController();
   final _scrollController = ScrollController();
+  final FlutterTts _flutterTts = FlutterTts();
+  int _questionCount = 10;
+
+  @override
+  void initState() {
+    super.initState();
+    _initTts();
+  }
 
   @override
   void dispose() {
     _textController.dispose();
+    _subjectController.dispose();
     _scrollController.dispose();
+    _flutterTts.stop();
     super.dispose();
+  }
+
+  Future<void> _initTts() async {
+    await _flutterTts.setLanguage("fr-FR");
+    await _flutterTts.setSpeechRate(0.9);
+    await _flutterTts.setVolume(1.0);
+    await _flutterTts.setPitch(1.0);
+  }
+
+  Future<void> _speak(String text) async {
+    try {
+      await _flutterTts.speak(text);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erreur synthèse vocale')),
+        );
+      }
+    }
   }
 
   void _scrollToBottom() {
@@ -53,24 +84,47 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
     }
   }
 
-  // Simuler une transcription vocale pour impressionner l'utilisateur
-  void _simulateVoiceInput(SimulationNotifier notifier) {
-    notifier.toggleRecording();
-    
+  Future<void> _cancelSimulation(SimulationNotifier notifier) async {
+    final shouldCancel = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Annuler la simulation ?'),
+        content: const Text('La session sera marquee comme annulee et aucun bilan ne sera genere.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Continuer'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.error),
+            child: const Text('Annuler'),
+          ),
+        ],
+      ),
+    );
+    if (shouldCancel != true) return;
+
+    try {
+      await notifier.cancel();
+      if (mounted) {
+        context.go('/exercises');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+    }
+  }
+
+  // Synthèse vocale de la question
+  void _speakCurrentQuestion() {
     final state = ref.read(simulationProvider);
-    if (state.isRecording) {
-      // Démarrage de la simulation d'enregistrement
-      Future.delayed(const Duration(seconds: 4), () {
-        if (mounted && ref.read(simulationProvider).isRecording) {
-          // Remplir le champ de saisie avec une réponse vocale prédéfinie pertinente
-          String mockSpeech = "Dans mon précédent projet, nous avons fait face à une urgence technique majeure en production. J'ai rassemblé l'équipe technique, nous avons isolé l'anomalie en 2 heures et mis en place une solution pérenne.";
-          _textController.text = mockSpeech;
-          notifier.toggleRecording();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Saisie vocale simulée avec succès.')),
-          );
-        }
-      });
+    final lastMessage = state.messages.isNotEmpty ? state.messages.last : null;
+    if (lastMessage != null && !lastMessage.isUser) {
+      _speak(lastMessage.text);
     }
   }
 
@@ -137,10 +191,32 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
   // 1. ÉCRAN INTRO
   Widget _buildIntroScreen(
     BuildContext context, 
-    models.Exercise exercise, 
+    ExerciceResponse exercise, 
     SimulationState state,
     SimulationNotifier notifier
   ) {
+    final userProgress = ref.watch(userProgressProvider);
+    final bestScore = userProgress.value?.bestScore ?? 0;
+    final streak = userProgress.value?.streak ?? 0;
+
+    String clarityValue;
+    if (bestScore >= 80) {
+      clarityValue = 'Excellent';
+    } else if (bestScore >= 60) {
+      clarityValue = 'Bien';
+    } else {
+      clarityValue = 'À renforcer';
+    }
+
+    String confidenceValue;
+    if (streak >= 7) {
+      confidenceValue = 'Élevée';
+    } else if (streak >= 3) {
+      confidenceValue = 'Moyenne';
+    } else {
+      confidenceValue = 'À renforcer';
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
@@ -229,7 +305,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        exercise.description ?? 'Notre recruteur virtuel IA va analyser vos réponses et générer un score factuel.',
+                        exercise.description.isEmpty ? 'Notre recruteur virtuel IA va analyser vos réponses et générer un score factuel.' : exercise.description,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.onSurfaceVariant),
                       ),
                       const SizedBox(height: 20),
@@ -239,7 +315,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                           Expanded(
                             child: _StatTile(
                               label: 'Clarté',
-                              value: '⚡️ Très bon',
+                              value: clarityValue,
                               color: AppTheme.secondaryColor,
                             ),
                           ),
@@ -247,7 +323,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                           Expanded(
                             child: _StatTile(
                               label: 'Confiance',
-                              value: '💡 A renforcer',
+                              value: confidenceValue,
                               color: AppTheme.primaryContainer,
                             ),
                           ),
@@ -257,12 +333,82 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.outlineVariant),
+                  ),
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Personnaliser la simulation',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: AppTheme.primaryContainer,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: _subjectController,
+                        decoration: InputDecoration(
+                          labelText: 'Sujet ou domaine cible',
+                          hintText: 'Ex: Flutter, data science, RH, vente B2B...',
+                          filled: true,
+                          fillColor: AppTheme.surface,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Nombre de questions',
+                            style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryContainer),
+                          ),
+                          Text(
+                            '$_questionCount',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.secondaryColor),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        value: _questionCount.toDouble(),
+                        min: 10,
+                        max: 30,
+                        divisions: 20,
+                        label: '$_questionCount questions',
+                        onChanged: (value) {
+                          setState(() => _questionCount = value.round());
+                        },
+                      ),
+                      const SizedBox(height: 18),
+                      _buildModelSelector(context, ref),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
                 state.isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton.icon(
                         onPressed: () async {
                           try {
-                            await notifier.start(exercise.id);
+                            final modelsData = ref.read(availableModelsProvider).value;
+                            final primaryModel = modelsData?['primary_model'] as String?;
+                            final selectedModel = ref.read(selectedModelProvider) ?? primaryModel;
+
+                            await notifier.start(
+                              exercise.id,
+                              subject: _subjectController.text,
+                              questionCount: _questionCount,
+                              model: selectedModel,
+                            );
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -272,7 +418,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                           }
                         },
                         icon: const Icon(Icons.mic, size: 24, color: Colors.white),
-                        label: const Text('Démarrer l’entretien', style: TextStyle(fontWeight: FontWeight.bold)),
+                        label: const Text('Démarrer l\'entretien', style: TextStyle(fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 18),
                           backgroundColor: AppTheme.secondaryColor,
@@ -288,12 +434,278 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
     );
   }
 
+  Widget _buildModelSelector(BuildContext context, WidgetRef ref) {
+    final modelsAsyncValue = ref.watch(availableModelsProvider);
+    
+    return modelsAsyncValue.when(
+      data: (data) {
+        final modelsList = List<String>.from(data['models'] ?? []);
+        final primaryModel = data['primary_model'] as String?;
+        final selectedModel = ref.watch(selectedModelProvider) ?? primaryModel;
+
+        if (modelsList.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Modèle d\'Intelligence Artificielle',
+              style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryContainer),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => _showModelSelectorBottomSheet(context, ref, modelsList, primaryModel),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.outlineVariant),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      (selectedModel?.contains('gemini') ?? false) ? Icons.auto_awesome : Icons.bolt,
+                      color: (selectedModel?.contains('gemini') ?? false) ? Colors.purple : Colors.green,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _formatModelName(selectedModel ?? ''),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryContainer,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.keyboard_arrow_down, color: AppTheme.onSurfaceVariant),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8.0),
+        child: Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2.0),
+          ),
+        ),
+      ),
+      error: (err, stack) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Text(
+          'Erreur lors du chargement des modèles : $err',
+          style: const TextStyle(color: AppTheme.error, fontSize: 13),
+        ),
+      ),
+    );
+  }
+
+  String _formatModelName(String modelName) {
+    if (modelName.isEmpty) return 'Modèle par défaut';
+    final parts = modelName.split('-');
+    if (parts.isEmpty) return modelName;
+    
+    final formattedParts = parts.map((part) {
+      if (part == 'gpt') return 'GPT';
+      if (part == 'tts') return 'TTS';
+      if (part.isEmpty) return '';
+      return part[0].toUpperCase() + part.substring(1);
+    }).toList();
+    
+    return formattedParts.join(' ');
+  }
+
+  void _showModelSelectorBottomSheet(
+    BuildContext context,
+    WidgetRef ref,
+    List<String> models,
+    String? primaryModel,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          maxChildSize: 0.85,
+          minChildSize: 0.4,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Modèle d\'entretien',
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                          color: AppTheme.primaryContainer,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Text(
+                      'Choisissez l\'intelligence artificielle qui mènera votre simulation d\'entretien.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      itemCount: models.length,
+                      itemBuilder: (context, index) {
+                        final model = models[index];
+                        final isPrimary = model == primaryModel;
+                        final currentSelected = ref.watch(selectedModelProvider) ?? primaryModel;
+                        final isSelected = model == currentSelected;
+                        final isGemini = model.contains('gemini');
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          elevation: isSelected ? 2 : 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(
+                              color: isSelected
+                                  ? AppTheme.secondaryColor
+                                  : AppTheme.outlineVariant.withAlpha((0.5 * 255).round()),
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          color: isSelected
+                              ? AppTheme.surfaceContainerLow
+                              : Colors.white,
+                          child: InkWell(
+                            onTap: () {
+                              ref.read(selectedModelProvider.notifier).state = model;
+                              Navigator.pop(context);
+                            },
+                            borderRadius: BorderRadius.circular(16),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: isGemini
+                                          ? Colors.purple.withAlpha((0.1 * 255).round())
+                                          : Colors.green.withAlpha((0.1 * 255).round()),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      isGemini ? Icons.auto_awesome : Icons.bolt,
+                                      color: isGemini ? Colors.purple : Colors.green,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Text(
+                                              _formatModelName(model),
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                                color: isSelected
+                                                    ? AppTheme.primaryContainer
+                                                    : AppTheme.onSurface,
+                                              ),
+                                            ),
+                                            if (isPrimary) ...[
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 2,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: AppTheme.primaryContainer,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: const Text(
+                                                  'Recommandé',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          isGemini
+                                              ? 'Fournisseur : Google Gemini'
+                                              : 'Fournisseur : OpenAI',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.outline,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: AppTheme.secondaryColor,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   // 2. ÉCRAN CHAT
   Widget _buildChatScreen(
     BuildContext context, 
     SimulationState state, 
     SimulationNotifier notifier,
-    models.Exercise exercise
+    ExerciceResponse exercise
   ) {
     // Scroll automatique au bas à chaque nouveau message
     _scrollToBottom();
@@ -328,10 +740,8 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.exit_to_app, color: AppTheme.error),
-            onPressed: () {
-              notifier.reset();
-              context.go('/dashboard');
-            },
+            tooltip: 'Annuler',
+            onPressed: state.isLoading ? null : () => _cancelSimulation(notifier),
           ),
         ],
       ),
@@ -353,7 +763,21 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                     children: [
                       Text('Live coaching', style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold, color: AppTheme.primaryContainer)),
                       const SizedBox(height: 8),
-                      Text('Répondez avec confiance, structurez votre pensée, et laissez l’IA vous guider.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.onSurfaceVariant)),
+                      LinearProgressIndicator(
+                        value: state.questionCount == 0
+                            ? 0
+                            : (state.answerCount / state.questionCount).clamp(0, 1).toDouble(),
+                        backgroundColor: AppTheme.surfaceContainerLow,
+                        color: AppTheme.secondaryColor,
+                        minHeight: 6,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${state.answerCount}/${state.questionCount} questions repondues${state.subject == null || state.subject!.isEmpty ? '' : ' - ${state.subject}'}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 8),
+                      Text('Répondez avec confiance, structurez votre pensée, et laissez l\'IA vous guider.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.onSurfaceVariant)),
                     ],
                   ),
                 ),
@@ -430,67 +854,56 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: AppTheme.outlineVariant),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (state.isRecording) ...[
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 10.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.fiber_manual_record, color: Colors.red, size: 14),
-                        SizedBox(width: 6),
-                        Text(
-                          'Enregistrement de votre réponse vocale...',
-                          style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const LinearProgressIndicator(color: Colors.red, minHeight: 2),
-                  const SizedBox(height: 12),
-                ],
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        state.isRecording ? Icons.stop : Icons.mic,
-                        color: state.isRecording ? Colors.red : AppTheme.secondaryColor,
-                      ),
-                      onPressed: () => _simulateVoiceInput(notifier),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _textController,
-                        maxLines: null,
-                        decoration: InputDecoration(
-                          hintText: 'Saisissez votre réponse...',
-                          fillColor: AppTheme.surface,
-                          filled: true,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        ),
-                        onSubmitted: (_) => _sendAnswer(notifier),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    state.isLoading
-                        ? const SizedBox(
-                            width: 28,
-                            height: 28,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : IconButton(
-                            icon: const Icon(Icons.send, color: AppTheme.secondaryColor),
-                            onPressed: () => _sendAnswer(notifier),
-                          ),
-                  ],
-                ),
+child: Column(
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                 Row(
+                   children: [
+                     IconButton(
+                       icon: Icon(
+                         Icons.volume_up,
+                         color: AppTheme.secondaryColor,
+                       ),
+                       tooltip: 'Écouter la question',
+                       onPressed: () => _speakCurrentQuestion(),
+                     ),
+                     // Bouton Microphone interactif
+                     _MicButton(
+                       onTranscribed: (text) {
+                         _textController.text = text;
+                       },
+                     ),
+                     const SizedBox(width: 8),
+                     Expanded(
+                       child: TextField(
+                         controller: _textController,
+                         maxLines: null,
+                         decoration: InputDecoration(
+                           hintText: 'Saisissez votre réponse...',
+                           fillColor: AppTheme.surface,
+                           filled: true,
+                           border: OutlineInputBorder(
+                             borderRadius: BorderRadius.circular(16),
+                             borderSide: BorderSide.none,
+                           ),
+                           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                         ),
+                         onSubmitted: (_) => _sendAnswer(notifier),
+                       ),
+                     ),
+                     const SizedBox(width: 8),
+                     state.isLoading
+                         ? const SizedBox(
+                             width: 28,
+                             height: 28,
+                             child: CircularProgressIndicator(strokeWidth: 2),
+                           )
+                         : IconButton(
+                             icon: const Icon(Icons.send, color: AppTheme.secondaryColor),
+                             onPressed: () => _sendAnswer(notifier),
+                           ),
+                   ],
+                 ),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -517,7 +930,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                       ),
-                      child: const Text('Terminer l’entretien', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      child: const Text('Terminer l\'entretien', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -556,12 +969,37 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                   bottomRight: message.isUser ? Radius.zero : const Radius.circular(12),
                 ),
               ),
-              child: Text(
-                message.text,
-                style: TextStyle(
-                  color: message.isUser ? Colors.white : AppTheme.onSurface,
-                  fontSize: 14,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message.text,
+                    style: TextStyle(
+                      color: message.isUser ? Colors.white : AppTheme.onSurface,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (!message.isUser && message.scorePartiel != null) ...[
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _ScoreChip(label: 'Score', value: '${message.scorePartiel!.round()}%'),
+                        if (message.analysis != null)
+                          _ScoreChip(
+                            label: 'Structure',
+                            value: '${((message.analysis!['structure'] as num?)?.round() ?? 0)}%',
+                          ),
+                        if (message.analysis != null)
+                          _ScoreChip(
+                            label: 'Precision',
+                            value: '${((message.analysis!['precision'] as num?)?.round() ?? 0)}%',
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -824,6 +1262,35 @@ class _MiniBadge extends StatelessWidget {
   }
 }
 
+class _ScoreChip extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ScoreChip({
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppTheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        '$label $value',
+        style: const TextStyle(
+          color: AppTheme.onSecondaryContainer,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+}
+
 class _StatTile extends StatelessWidget {
   final String label;
   final String value;
@@ -864,6 +1331,116 @@ class _StatTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Bouton microphone interactif avec animation de pulse.
+/// Simule la transcription vocale en insérant du texte dans le champ de réponse.
+class _MicButton extends StatefulWidget {
+  final void Function(String text) onTranscribed;
+
+  const _MicButton({required this.onTranscribed});
+
+  @override
+  State<_MicButton> createState() => _MicButtonState();
+}
+
+class _MicButtonState extends State<_MicButton>
+    with SingleTickerProviderStateMixin {
+  bool _isRecording = false;
+  late AnimationController _animationController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+    _pulseAnimation =
+        Tween<double>(begin: 1.0, end: 1.3).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _toggleRecording() {
+    setState(() => _isRecording = !_isRecording);
+
+    if (!_isRecording) {
+      // Fin de l'enregistrement — transcription simulée
+      final transcriptions = [
+        'Je pense que la meilleure approche serait d\'analyser le problème en profondeur avant de proposer une solution.',
+        'Dans mon expérience précédente, j\'ai géré une situation similaire en collaborant avec l\'équipe et en fixant des priorités claires.',
+        'Je mettrais en place une communication transparente avec toutes les parties prenantes pour résoudre ce conflit.',
+      ];
+      transcriptions.shuffle();
+      widget.onTranscribed(transcriptions.first);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.mic_off, color: Colors.white, size: 16),
+                SizedBox(width: 8),
+                Text('Transcription terminée'),
+              ],
+            ),
+            duration: Duration(seconds: 2),
+            backgroundColor: AppTheme.primaryContainer,
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.mic, color: Colors.white, size: 16),
+                SizedBox(width: 8),
+                Text('Enregistrement en cours...'),
+              ],
+            ),
+            duration: Duration(seconds: 2),
+            backgroundColor: AppTheme.secondaryColor,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _isRecording ? _pulseAnimation.value : 1.0,
+          child: IconButton(
+            icon: Icon(
+              _isRecording ? Icons.mic : Icons.mic_none,
+              color: _isRecording ? AppTheme.error : AppTheme.outline,
+            ),
+            tooltip: _isRecording ? 'Arrêter l\'enregistrement' : 'Enregistrer une réponse vocale',
+            style: IconButton.styleFrom(
+              backgroundColor: _isRecording
+                  ? AppTheme.error.withAlpha((0.12 * 255).round())
+                  : Colors.transparent,
+            ),
+            onPressed: _toggleRecording,
+          ),
+        );
+      },
     );
   }
 }

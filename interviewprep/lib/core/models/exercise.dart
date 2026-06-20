@@ -81,12 +81,16 @@ class StartSimulationResponse {
   final String status;
   final String exerciseTitle;
   final String? firstQuestion;
+  final String? subject;
+  final int? questionCount;
 
   const StartSimulationResponse({
     required this.sessionId,
     required this.status,
     required this.exerciseTitle,
     this.firstQuestion,
+    this.subject,
+    this.questionCount,
   });
 
   factory StartSimulationResponse.fromJson(Map<String, dynamic> json) => _$StartSimulationResponseFromJson(json);

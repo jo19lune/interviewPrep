@@ -1,36 +1,42 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/models/exercise.dart';
+import '../../../core/models/session_models.dart';
 
 class SimulationService {
   final ApiClient _apiClient = ApiClient();
 
-  Future<StartSimulationResponse> startSimulation(String exerciseId) async {
+  Future<Map<String, dynamic>> getAvailableModels() async {
     try {
-      final response = await _apiClient.dio.post(
-        '/simulation/start',
-        queryParameters: {'exercice_id': exerciseId},
-      );
-      return StartSimulationResponse.fromJson(response.data);
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors du démarrage de la simulation');
+      final response = await _apiClient.dio.get('/simulation/models');
+      return response.data as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération des modèles');
     }
   }
 
-  Future<Map<String, dynamic>> submitAnswer(String sessionId, String answer) async {
+  Future<SessionResponse> startSimulation(String exerciseId, {String? subject, int? questionCount, String? model}) async {
     try {
-      final response = await _apiClient.dio.post(
-        '/simulation/answer',
-        queryParameters: {
-          'session_id': sessionId,
-          'reponse': answer,
-        },
-      );
-      return response.data;
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors de la soumission de la réponse');
+      final response = await _apiClient.dio.post('/simulation/start', data: {
+        'exercice_id': exerciseId,
+        'subject': ?subject,
+        'question_count': ?questionCount,
+        'model': ?model,
+      });
+      return SessionResponse.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Erreur lors du démarrage de la simulation');
+    }
+  }
+
+  Future<Map<String, dynamic>> submitAnswer(String sessionId, String content) async {
+    try {
+      final response = await _apiClient.dio.post('/simulation/answer', data: {
+        'session_id': sessionId,
+        'content': content,
+      });
+      return response.data as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception('Erreur lors de l\'envoi de la réponse');
     }
   }
 
@@ -40,36 +46,30 @@ class SimulationService {
         '/simulation/stream/$sessionId',
         options: Options(responseType: ResponseType.stream),
       );
-      final responseBody = response.data as ResponseBody;
-      await for (final line in responseBody.stream.cast<List<int>>()
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())) {
-        if (!line.startsWith('data:')) {
-          continue;
-        }
-        final payload = line.substring(5).trim();
-        if (payload.isEmpty || payload == '{}') {
-          continue;
-        }
-        final decoded = jsonDecode(payload);
-        if (decoded is Map<String, dynamic>) {
-          final text = decoded['text'] as String?;
-          if (text != null) {
-            yield text;
-          }
-        }
+      
+      final stream = response.data.stream;
+      await for (var chunk in stream) {
+        yield String.fromCharCodes(chunk);
       }
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors du streaming IA');
+    } catch (e) {
+      throw Exception('Erreur lors de la connexion au stream');
     }
   }
 
-  Future<Map<String, dynamic>> finishSimulation(String sessionId) async {
+  Future<void> cancelSimulation(String sessionId) async {
+    try {
+      await _apiClient.dio.post('/simulation/cancel/$sessionId');
+    } catch (e) {
+      throw Exception('Erreur lors de l\'annulation de la simulation');
+    }
+  }
+
+  Future<FeedbackResponse> finishSimulation(String sessionId) async {
     try {
       final response = await _apiClient.dio.post('/simulation/finish/$sessionId');
-      return response.data;
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors de la fin de la simulation');
+      return FeedbackResponse.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Erreur lors de la fin de la simulation');
     }
   }
 }

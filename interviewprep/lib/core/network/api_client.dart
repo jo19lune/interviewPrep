@@ -5,8 +5,32 @@ import 'api_base_url_stub.dart'
     if (dart.library.html) 'api_base_url_web.dart';
 
 class ApiClient {
-  static const String _configuredBaseUrl = String.fromEnvironment('API_BASE_URL');
-  static String get baseUrl => _configuredBaseUrl.isNotEmpty ? _configuredBaseUrl : defaultApiBaseUrl();
+  static const String _configuredBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+  );
+  static String get baseUrl =>
+      _configuredBaseUrl.isNotEmpty ? _configuredBaseUrl : defaultApiBaseUrl();
+
+  static String errorMessage(DioException error, String fallback) {
+    final data = error.response?.data;
+    if (data is Map) {
+      final detail = data['detail'];
+      if (detail is List) {
+        return detail.map((item) => item.toString()).join('\n');
+      }
+      if (detail != null) {
+        return detail.toString();
+      }
+      final message = data['message'];
+      if (message != null) {
+        return message.toString();
+      }
+    }
+    if (data is String && data.trim().isNotEmpty) {
+      return data;
+    }
+    return fallback;
+  }
 
   final Dio dio;
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
@@ -24,7 +48,8 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (DioException e, handler) async {
-          if (e.response?.statusCode == 401 && e.requestOptions.path != '/auth/refresh') {
+          if (e.response?.statusCode == 401 &&
+              e.requestOptions.path != '/auth/refresh') {
             final refreshed = await _refreshTokens();
             if (refreshed) {
               try {
@@ -50,7 +75,10 @@ class ApiClient {
     await saveTokens(accessToken: token);
   }
 
-  Future<void> saveTokens({required String accessToken, String? refreshToken}) async {
+  Future<void> saveTokens({
+    required String accessToken,
+    String? refreshToken,
+  }) async {
     await _storage.write(key: 'access_token', value: accessToken);
     if (refreshToken != null) {
       await _storage.write(key: 'refresh_token', value: refreshToken);

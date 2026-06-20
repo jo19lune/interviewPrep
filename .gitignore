@@ -2,3 +2,6 @@
 .github/
 maquette/
 .kilo/
+.kilocode/
+.sixth/
+*.log

@@ -1,15 +1,68 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/bottom_navigation.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
+
+  void _navigateTo(String route, BuildContext context) {
+    if (ModalRoute.of(context)?.settings.name != route) {
+      context.go(route);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('À propos'),
-        backgroundColor: Theme.of(context).primaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: AppTheme.surface,
+      ),
+      drawer: Drawer(
+        child: Column(
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(color: AppTheme.primaryContainer),
+              child: Center(
+                child: Text(
+                  'InterviewPrep',
+                  style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.dashboard),
+              title: const Text('Tableau de bord'),
+              onTap: () => _navigateTo('/dashboard', context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.quiz),
+              title: const Text('Exercices'),
+              onTap: () => _navigateTo('/exercises', context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.bar_chart),
+              title: const Text('Statistiques'),
+              onTap: () => _navigateTo('/statistics', context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.help_outline),
+              title: const Text('À propos'),
+              selected: true,
+              onTap: () => Navigator.pop(context),
+            ),
+            const Spacer(),
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                '© 2026 Projet d\'Étude\nTous droits réservés.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -17,12 +70,12 @@ class AboutScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Image.asset(
-              'lib/assets/mon_logo.png',
+              'assets/icon/logo.png',
               height: 100,
               errorBuilder: (context, error, stackTrace) => const Icon(
                 Icons.work,
                 size: 100,
-                color: Color(0xFF001A5E),
+                color: AppTheme.primaryContainer,
               ),
             ),
             const SizedBox(height: 24),
@@ -47,6 +100,7 @@ class AboutScreen extends StatelessWidget {
           ],
         ),
       ),
+      bottomNavigationBar: const MainBottomNavigation(),
     );
   }
 }
