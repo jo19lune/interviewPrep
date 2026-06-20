@@ -1,12 +1,12 @@
-"""Service d'integration avec modeles IA configurables (OpenAI, Anthropic)."""
+"""Service d'integration avec modeles IA configurables (Google GenAI)."""
 
 import json
 import logging
 import re
+import asyncio
 from typing import Any
 
-import anthropic
-import openai
+from google import genai
 
 logger = logging.getLogger(__name__)
 
@@ -17,22 +17,10 @@ class AIService:
     def __init__(self, settings: Any | None = None, primary_model: str | None = None):
         from app.config.settings import settings as app_settings
         self.settings = settings or app_settings
-        self.provider = self._resolve_provider()
         self.primary_model = primary_model or self.settings.ai_primary_model or self._default_model()
         self.fallback_model = self.settings.ai_fallback_model or self._fallback_model()
-        self.openai_client = None
-        self.anthropic_client = None
+        self.client = None
         self._init_clients()
-
-    def _resolve_provider(self) -> str:
-        explicit = (self.settings.ai_provider or "auto").lower()
-        if explicit in {"openai", "anthropic"}:
-            return explicit
-        if self.settings.openai_api_key:
-            return "openai"
-        if self.settings.anthropic_api_key:
-            return "anthropic"
-        return "openai"
 
     def _default_model(self) -> str:
         if self.settings.ai_primary_model:
@@ -44,27 +32,19 @@ class AIService:
     def _fallback_model(self) -> str:
         if self.settings.ai_fallback_model:
             return self.settings.ai_fallback_model
-        if self.provider == "openai":
-            models = list(self.openai_models)
-            if self.primary_model in models:
-                models.remove(self.primary_model)
-            return models[0] if models else ""
-        return ""
+        models = list(self.openai_models)
+        if self.primary_model in models:
+            models.remove(self.primary_model)
+        return models[0] if models else ""
 
     @property
     def openai_models(self) -> list[str]:
         return list(self.settings.openai_models or [])
 
     def _init_clients(self) -> None:
-        if self.provider == "openai" and self.settings.openai_api_key:
-            self.openai_client = openai.AsyncOpenAI(api_key=self.settings.openai_api_key)
-        elif self.provider == "anthropic" and self.settings.anthropic_api_key:
-            self.anthropic_client = anthropic.AsyncAnthropic(api_key=self.settings.anthropic_api_key)
-        else:
-            if self.settings.openai_api_key:
-                self.openai_client = openai.AsyncOpenAI(api_key=self.settings.openai_api_key)
-            elif self.settings.anthropic_api_key:
-                self.anthropic_client = anthropic.AsyncAnthropic(api_key=self.settings.anthropic_api_key)
+        api_key = self.settings.openai_api_key
+        if api_key:
+            self.client = genai.Client(api_key=api_key)
 
     async def generate_exercise(
         self,
@@ -78,13 +58,13 @@ class AIService:
         prompt = self._build_exercise_prompt(domaine, difficulte, sujet, nombre_questions)
         model = self.primary_model or self._default_model()
         try:
-            content = await self._complete(prompt=prompt, model=model, temperature=temperature, max_tokens=2000)
+            content = await self._complete(prompt=prompt, model=model)
             return self._parse_generate_exercise(content, domaine, difficulte)
         except Exception as exc:
             logger.error(f"Failed to generate exercise via {model}: {exc}")
             if self.fallback_model and self.fallback_model != model:
                 try:
-                    content = await self._complete(prompt=prompt, model=self.fallback_model, temperature=temperature, max_tokens=2000)
+                    content = await self._complete(prompt=prompt, model=self.fallback_model)
                     return self._parse_generate_exercise(content, domaine, difficulte)
                 except Exception as fallback_exc:
                     logger.error(f"Fallback exercise generation failed: {fallback_exc}")
@@ -101,13 +81,13 @@ class AIService:
         prompt = self._build_feedback_prompt(reponses, contexte, sujet)
         model = self.primary_model or self._default_model()
         try:
-            content = await self._complete(prompt=prompt, model=model, temperature=temperature, max_tokens=1200)
+            content = await self._complete(prompt=prompt, model=model)
             return self._parse_feedback_response(content)
         except Exception as exc:
             logger.error(f"Failed to generate feedback via {model}: {exc}")
             if self.fallback_model and self.fallback_model != model:
                 try:
-                    content = await self._complete(prompt=prompt, model=self.fallback_model, temperature=temperature, max_tokens=1200)
+                    content = await self._complete(prompt=prompt, model=self.fallback_model)
                     return self._parse_feedback_response(content)
                 except Exception as fallback_exc:
                     logger.error(f"Fallback feedback generation failed: {fallback_exc}")
@@ -134,38 +114,38 @@ class AIService:
         )
         model = self.primary_model or self._default_model()
         try:
-            text = await self._complete(prompt=prompt, model=model, temperature=temperature, max_tokens=600)
+            text = await self._complete(prompt=prompt, model=model)
             return text.strip()
         except Exception as exc:
             logger.error(f"Failed to generate next question via {model}: {exc}")
             if self.fallback_model and self.fallback_model != model:
                 try:
-                    text = await self._complete(prompt=prompt, model=self.fallback_model, temperature=temperature, max_tokens=600)
+                    text = await self._complete(prompt=prompt, model=self.fallback_model)
                     return text.strip()
                 except Exception as fallback_exc:
                     logger.error(f"Fallback question generation failed: {fallback_exc}")
             raise
 
-    async def _complete(self, prompt: str, model: str, temperature: float, max_tokens: int) -> str:
-        if self.openai_client:
-            completion = await self.openai_client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
-            return completion.choices[0].message.content or ""
-        if self.anthropic_client:
-            message = await self.anthropic_client.messages.create(
-                model=model,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            parts = message.content or []
-            text = "".join(part.text for part in parts if getattr(part, "text", None))
-            return text
-        raise RuntimeError("No AI client configured")
+    async def _complete(self, prompt: str, model: str) -> str:
+        if not self.client:
+            raise RuntimeError("No AI client configured")
+            
+        chat = self.client.chats.create(model=model)
+        
+        while True:
+            try:
+                response = await asyncio.to_thread(
+                    chat.send_message,
+                    prompt
+                )
+                return response.text or ""
+            except Exception as e:
+                if "429" in str(e):
+                    print("Quota atteint. Pause de 20 secondes avant de réessayer...\nS'il persiste, c'est peut ëtre parce que le quota est limiter par jours ou mois.")
+                    await asyncio.sleep(20)
+                else:
+                    print(f"Erreur : {e}")
+                    raise e
 
     def _build_exercise_prompt(self, domaine: str, difficulte: str, sujet: str | None, nombre_questions: int) -> str:
         sujet_text = sujet or f"{domaine} general"

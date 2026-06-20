@@ -106,6 +106,7 @@ async def start_simulation(
     db.add(ia_sim)
     await db.commit()
     await db.refresh(session)
+    await db.refresh(ia_sim)
 
     first_question = await _generate_next_question(exercice, session.reponses or [], 0, model=ia_sim.modele)
     

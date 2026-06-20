@@ -72,7 +72,7 @@ async def create_password_reset_code(db: AsyncSession, email: str) -> tuple[User
         return None, None
 
     user.reset_code = generate_reset_code()
-    user.reset_code_expires_at = datetime.now(timezone.utc) + timedelta(minutes=FORGOT_CODE_TTL_MINUTES)
+    user.reset_code_expires_at = (datetime.now(timezone.utc) + timedelta(minutes=FORGOT_CODE_TTL_MINUTES)).isoformat()
     db.add(user)
     await db.commit()
     await db.refresh(user)
