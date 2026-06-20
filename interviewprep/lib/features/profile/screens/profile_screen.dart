@@ -278,8 +278,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               profileServiceProvider,
                             );
                             await profileService.changePassword(
-                              oldPasswordController.text,
-                              newPasswordController.text,
+                              ChangePasswordRequest(
+                                ancienMotDePasse: oldPasswordController.text,
+                                nouveauMotDePasse: newPasswordController.text,
+                              ),
                             );
 
                             if (dialogContext.mounted) {

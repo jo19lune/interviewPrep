@@ -120,18 +120,18 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
       );
       
       final firstMsg = ChatMessage(
-        text: response.firstQuestion ?? "Bienvenue dans cette simulation d'entretien. Commençons par votre parcours. Pouvez-vous vous présenter ?",
+        text: "Bienvenue dans cette simulation d'entretien. Commençons par votre parcours. Pouvez-vous vous présenter ?",
         isUser: false,
         timestamp: DateTime.now(),
       );
 
       state = state.copyWith(
-        sessionId: response.sessionId,
-        exerciseTitle: response.exerciseTitle,
+        sessionId: response.id,
+        exerciseTitle: 'Simulation', // We don't have it in SessionResponse directly
         messages: [firstMsg],
         isLoading: false,
-        subject: response.subject ?? subject,
-        questionCount: response.questionCount ?? questionCount,
+        subject: subject,
+        questionCount: questionCount,
         answerCount: 0,
       );
     } catch (e) {
@@ -219,15 +219,14 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     try {
       final response = await _service.finishSimulation(state.sessionId!);
       
-      final fbData = response['feedback'] as Map<String, dynamic>;
       final feedback = Feedback(
-        id: fbData['id'] as String,
-        sessionId: fbData['session_id'] as String,
-        scoreGlobal: (fbData['score_global'] as num).toDouble(),
-        pointsForts: fbData['points_forts'] as List<dynamic>?,
-        ameliorations: fbData['ameliorations'] as List<dynamic>?,
-        recommandations: (fbData['recommandations'] as List<dynamic>?)?.map((e) => e.toString()).toList(),
-        genereLe: DateTime.parse(fbData['genere_le'] as String),
+        id: response.id,
+        sessionId: response.sessionId,
+        scoreGlobal: response.scoreGlobal,
+        pointsForts: response.pointsForts,
+        ameliorations: response.ameliorations,
+        recommandations: response.recommandations,
+        genereLe: response.genereLe ?? DateTime.now(),
       );
 
       state = state.copyWith(

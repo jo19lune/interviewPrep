@@ -5,38 +5,42 @@ import '../../../core/models/session_models.dart';
 class SimulationService {
   final ApiClient _apiClient = ApiClient();
 
-  Future<List<String>> getModels() async {
+  Future<Map<String, dynamic>> getAvailableModels() async {
     try {
       final response = await _apiClient.dio.get('/simulation/models');
-      return List<String>.from(response.data);
+      return response.data as Map<String, dynamic>;
     } catch (e) {
       throw Exception('Erreur lors de la récupération des modèles');
     }
   }
 
-  Future<SessionResponse> startSimulation(String exerciseId) async {
+  Future<SessionResponse> startSimulation(String exerciseId, {String? subject, int? questionCount, String? model}) async {
     try {
-      // Assuming payload has exercice_id
-      final response = await _apiClient.dio.post('/simulation/start', data: {'exercice_id': exerciseId});
+      final response = await _apiClient.dio.post('/simulation/start', data: {
+        'exercice_id': exerciseId,
+        if (subject != null) 'subject': subject,
+        if (questionCount != null) 'question_count': questionCount,
+        if (model != null) 'model': model,
+      });
       return SessionResponse.fromJson(response.data);
     } catch (e) {
       throw Exception('Erreur lors du démarrage de la simulation');
     }
   }
 
-  Future<void> sendAnswer(String sessionId, String content) async {
+  Future<Map<String, dynamic>> submitAnswer(String sessionId, String content) async {
     try {
-      await _apiClient.dio.post('/simulation/answer', data: {
+      final response = await _apiClient.dio.post('/simulation/answer', data: {
         'session_id': sessionId,
         'content': content,
       });
+      return response.data as Map<String, dynamic>;
     } catch (e) {
       throw Exception('Erreur lors de l\'envoi de la réponse');
     }
   }
 
-  // Stream could be using http directly or dio with stream response type
-  Stream<String> getStream(String sessionId) async* {
+  Stream<String> streamAIResponse(String sessionId) async* {
     try {
       final response = await _apiClient.dio.get(
         '/simulation/stream/$sessionId',
@@ -45,8 +49,6 @@ class SimulationService {
       
       final stream = response.data.stream;
       await for (var chunk in stream) {
-        // Assume chunk is List<int> and needs to be decoded from UTF-8 to string
-        // Often we parse SSE format here, but returning raw string for now
         yield String.fromCharCodes(chunk);
       }
     } catch (e) {

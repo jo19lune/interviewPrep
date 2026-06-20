@@ -1,19 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:interviewprep/core/network/api_client.dart';
-import 'package:interviewprep/features/profile/models/user_profile.dart';
+import 'package:interviewprep/core/models/auth_models.dart';
 import 'package:interviewprep/features/profile/services/profile_service.dart';
+import 'dart:io';
 
 final profileServiceProvider = Provider<ProfileService>((ref) {
-  final apiClient = ApiClient(); // Assuming ApiClient is a singleton or can be instantiated like this
-  return ProfileService(apiClient);
+  return ProfileService();
 });
 
-final profileProvider = StateNotifierProvider<ProfileNotifier, AsyncValue<UserProfile>>((ref) {
+final profileProvider = StateNotifierProvider<ProfileNotifier, AsyncValue<UserResponse>>((ref) {
   return ProfileNotifier(ref.read(profileServiceProvider));
 });
 
-class ProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
+class ProfileNotifier extends StateNotifier<AsyncValue<UserResponse>> {
   final ProfileService _profileService;
 
   ProfileNotifier(this._profileService) : super(const AsyncValue.loading()) {
@@ -38,10 +38,12 @@ class ProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
   }) async {
     try {
       final updatedProfile = await _profileService.updateProfile(
-        prenom: prenom,
-        nom: nom,
-        domaine: domaine,
-        niveau: niveau,
+        UserProfileUpdate(
+          prenom: prenom,
+          nom: nom,
+          domaine: domaine,
+          niveau: niveau,
+        ),
       );
       state = AsyncValue.data(updatedProfile);
     } catch (e) {
@@ -55,14 +57,9 @@ class ProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
     required String filename,
   }) async {
     try {
-      final avatarUrl = await _profileService.uploadAvatar(
-        bytes: bytes,
-        path: path,
-        filename: filename,
-      );
-      if (state.hasValue) {
-        state = AsyncValue.data(state.value!.copyWith(avatarUrl: avatarUrl));
-      }
+      if (path == null) throw Exception('Chemin de fichier manquant');
+      final updatedProfile = await _profileService.updateAvatar(File(path));
+      state = AsyncValue.data(updatedProfile);
     } catch (e) {
       rethrow;
     }

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../services/exercise_service.dart';
-import '../../../core/models/exercise.dart';
+import '../../../core/models/exercise_models.dart';
 
 final exerciseServiceProvider = Provider<ExerciseService>((ref) {
   return ExerciseService();
@@ -52,7 +52,7 @@ final exerciseFiltersProvider = StateNotifierProvider<ExerciseFiltersNotifier, E
 });
 
 // Liste des exercices récupérée depuis le backend
-final exercisesListProvider = FutureProvider<List<Exercise>>((ref) async {
+final exercisesListProvider = FutureProvider<List<ExerciceResponse>>((ref) async {
   final service = ref.watch(exerciseServiceProvider);
   final filters = ref.watch(exerciseFiltersProvider);
   
@@ -63,18 +63,18 @@ final exercisesListProvider = FutureProvider<List<Exercise>>((ref) async {
 });
 
 // Exercice sélectionné pour s'entraîner
-final selectedExerciseProvider = StateProvider<Exercise?>((ref) => null);
+final selectedExerciseProvider = StateProvider<ExerciceResponse?>((ref) => null);
 
 // Générateur d'exercice via IA
-final exerciseGenerationProvider = AsyncNotifierProvider<ExerciseGenerationNotifier, Exercise?>(() {
+final exerciseGenerationProvider = AsyncNotifierProvider<ExerciseGenerationNotifier, ExerciceResponse?>(() {
   return ExerciseGenerationNotifier();
 });
 
-class ExerciseGenerationNotifier extends AsyncNotifier<Exercise?> {
+class ExerciseGenerationNotifier extends AsyncNotifier<ExerciceResponse?> {
   @override
-  FutureOr<Exercise?> build() => null;
+  FutureOr<ExerciceResponse?> build() => null;
 
-  Future<Exercise> generate({
+  Future<ExerciceResponse> generate({
     required String domaine,
     required String difficulte,
     String? sujet,
@@ -84,12 +84,12 @@ class ExerciseGenerationNotifier extends AsyncNotifier<Exercise?> {
     final service = ref.read(exerciseServiceProvider);
     
     final value = await AsyncValue.guard(() async {
-      return await service.generateExercise(
-        domaine: domaine,
-        difficulte: difficulte,
-        sujet: sujet,
-        nombreQuestions: nombreQuestions,
-      );
+      return await service.generateExercise({
+        'domaine': domaine,
+        'difficulte': difficulte,
+        'sujet': sujet,
+        'nombreQuestions': nombreQuestions,
+      });
     });
 
     if (value.hasError) {
