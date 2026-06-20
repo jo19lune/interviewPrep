@@ -7,6 +7,13 @@ final simulationServiceProvider = Provider<SimulationService>((ref) {
   return SimulationService();
 });
 
+final availableModelsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final service = ref.watch(simulationServiceProvider);
+  return service.getAvailableModels();
+});
+
+final selectedModelProvider = StateProvider<String?>((ref) => null);
+
 class ChatMessage {
   final String text;
   final bool isUser;
@@ -101,6 +108,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     String exerciseId, {
     String? subject,
     int questionCount = 10,
+    String? model,
   }) async {
     state = state.copyWith(isLoading: true, clearFeedback: true, messages: []);
     try {
@@ -108,6 +116,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
         exerciseId,
         subject: subject,
         questionCount: questionCount,
+        model: model,
       );
       
       final firstMsg = ChatMessage(

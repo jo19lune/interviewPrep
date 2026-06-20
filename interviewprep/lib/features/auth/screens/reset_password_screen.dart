@@ -176,6 +176,11 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                       onPressed: isLoading ? null : () => context.go('/forgot-password'),
                       child: const Text('Renvoyer un code'),
                     ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: isLoading ? null : () => context.go('/login'),
+                      child: const Text('Retour à la connexion'),
+                    ),
                   ],
                 ),
               ),

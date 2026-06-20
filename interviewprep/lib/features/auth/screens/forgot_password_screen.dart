@@ -117,7 +117,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     ),
                     const SizedBox(height: 16),
                     TextButton(
-                      onPressed: isLoading ? null : () => context.pop(),
+                      onPressed: isLoading ? null : () => context.go('/login'),
                       child: const Text('Retour à la connexion'),
                     ),
                   ],

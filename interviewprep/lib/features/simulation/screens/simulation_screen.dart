@@ -388,6 +388,8 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                           setState(() => _questionCount = value.round());
                         },
                       ),
+                      const SizedBox(height: 18),
+                      _buildModelSelector(context, ref),
                     ],
                   ),
                 ),
@@ -397,10 +399,15 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                     : ElevatedButton.icon(
                         onPressed: () async {
                           try {
+                            final modelsData = ref.read(availableModelsProvider).value;
+                            final primaryModel = modelsData?['primary_model'] as String?;
+                            final selectedModel = ref.read(selectedModelProvider) ?? primaryModel;
+
                             await notifier.start(
                               exercise.id,
                               subject: _subjectController.text,
                               questionCount: _questionCount,
+                              model: selectedModel,
                             );
                           } catch (e) {
                             if (context.mounted) {
@@ -424,6 +431,272 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildModelSelector(BuildContext context, WidgetRef ref) {
+    final modelsAsyncValue = ref.watch(availableModelsProvider);
+    
+    return modelsAsyncValue.when(
+      data: (data) {
+        final modelsList = List<String>.from(data['models'] ?? []);
+        final primaryModel = data['primary_model'] as String?;
+        final selectedModel = ref.watch(selectedModelProvider) ?? primaryModel;
+
+        if (modelsList.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Modèle d\'Intelligence Artificielle',
+              style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryContainer),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => _showModelSelectorBottomSheet(context, ref, modelsList, primaryModel),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.outlineVariant),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      (selectedModel?.contains('gemini') ?? false) ? Icons.auto_awesome : Icons.bolt,
+                      color: (selectedModel?.contains('gemini') ?? false) ? Colors.purple : Colors.green,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _formatModelName(selectedModel ?? ''),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primaryContainer,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.keyboard_arrow_down, color: AppTheme.onSurfaceVariant),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8.0),
+        child: Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2.0),
+          ),
+        ),
+      ),
+      error: (err, stack) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Text(
+          'Erreur lors du chargement des modèles : $err',
+          style: const TextStyle(color: AppTheme.error, fontSize: 13),
+        ),
+      ),
+    );
+  }
+
+  String _formatModelName(String modelName) {
+    if (modelName.isEmpty) return 'Modèle par défaut';
+    final parts = modelName.split('-');
+    if (parts.isEmpty) return modelName;
+    
+    final formattedParts = parts.map((part) {
+      if (part == 'gpt') return 'GPT';
+      if (part == 'tts') return 'TTS';
+      if (part.isEmpty) return '';
+      return part[0].toUpperCase() + part.substring(1);
+    }).toList();
+    
+    return formattedParts.join(' ');
+  }
+
+  void _showModelSelectorBottomSheet(
+    BuildContext context,
+    WidgetRef ref,
+    List<String> models,
+    String? primaryModel,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          maxChildSize: 0.85,
+          minChildSize: 0.4,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Modèle d\'entretien',
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                          color: AppTheme.primaryContainer,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Text(
+                      'Choisissez l\'intelligence artificielle qui mènera votre simulation d\'entretien.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      itemCount: models.length,
+                      itemBuilder: (context, index) {
+                        final model = models[index];
+                        final isPrimary = model == primaryModel;
+                        final currentSelected = ref.watch(selectedModelProvider) ?? primaryModel;
+                        final isSelected = model == currentSelected;
+                        final isGemini = model.contains('gemini');
+
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          elevation: isSelected ? 2 : 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(
+                              color: isSelected
+                                  ? AppTheme.secondaryColor
+                                  : AppTheme.outlineVariant.withAlpha((0.5 * 255).round()),
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          color: isSelected
+                              ? AppTheme.surfaceContainerLow
+                              : Colors.white,
+                          child: InkWell(
+                            onTap: () {
+                              ref.read(selectedModelProvider.notifier).state = model;
+                              Navigator.pop(context);
+                            },
+                            borderRadius: BorderRadius.circular(16),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: isGemini
+                                          ? Colors.purple.withAlpha((0.1 * 255).round())
+                                          : Colors.green.withAlpha((0.1 * 255).round()),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      isGemini ? Icons.auto_awesome : Icons.bolt,
+                                      color: isGemini ? Colors.purple : Colors.green,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Text(
+                                              _formatModelName(model),
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                                color: isSelected
+                                                    ? AppTheme.primaryContainer
+                                                    : AppTheme.onSurface,
+                                              ),
+                                            ),
+                                            if (isPrimary) ...[
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 2,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: AppTheme.primaryContainer,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: const Text(
+                                                  'Recommandé',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          isGemini
+                                              ? 'Fournisseur : Google Gemini'
+                                              : 'Fournisseur : OpenAI',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.outline,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isSelected)
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: AppTheme.secondaryColor,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

@@ -7,10 +7,22 @@ import '../../../core/models/exercise.dart';
 class SimulationService {
   final ApiClient _apiClient = ApiClient();
 
+  Future<Map<String, dynamic>> getAvailableModels() async {
+    try {
+      final response = await _apiClient.dio.get('/simulation/models');
+      return response.data;
+    } on DioException catch (e) {
+      throw Exception(
+        ApiClient.errorMessage(e, 'Erreur lors de la récupération des modèles'),
+      );
+    }
+  }
+
   Future<StartSimulationResponse> startSimulation(
     String exerciseId, {
     String? subject,
     int questionCount = 10,
+    String? model,
   }) async {
     try {
       final response = await _apiClient.dio.post(
@@ -20,6 +32,8 @@ class SimulationService {
           'nombre_questions': questionCount,
           if (subject != null && subject.trim().isNotEmpty)
             'sujet': subject.trim(),
+          if (model != null && model.isNotEmpty)
+            'modele': model,
         },
       );
       return StartSimulationResponse.fromJson(response.data);
