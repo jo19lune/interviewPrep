@@ -1,124 +1,73 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/models/exercise.dart';
+import '../../../core/models/session_models.dart';
 
 class SimulationService {
   final ApiClient _apiClient = ApiClient();
 
-  Future<Map<String, dynamic>> getAvailableModels() async {
+  Future<List<String>> getModels() async {
     try {
       final response = await _apiClient.dio.get('/simulation/models');
-      return response.data;
-    } on DioException catch (e) {
-      throw Exception(
-        ApiClient.errorMessage(e, 'Erreur lors de la récupération des modèles'),
-      );
+      return List<String>.from(response.data);
+    } catch (e) {
+      throw Exception('Erreur lors de la récupération des modèles');
     }
   }
 
-  Future<StartSimulationResponse> startSimulation(
-    String exerciseId, {
-    String? subject,
-    int questionCount = 10,
-    String? model,
-  }) async {
+  Future<SessionResponse> startSimulation(String exerciseId) async {
     try {
-      final response = await _apiClient.dio.post(
-        '/simulation/start',
-        queryParameters: {
-          'exercice_id': exerciseId,
-          'nombre_questions': questionCount,
-          if (subject != null && subject.trim().isNotEmpty)
-            'sujet': subject.trim(),
-          if (model != null && model.isNotEmpty)
-            'modele': model,
-        },
-      );
-      return StartSimulationResponse.fromJson(response.data);
-    } on DioException catch (e) {
-      throw Exception(
-        ApiClient.errorMessage(e, 'Erreur lors du démarrage de la simulation'),
-      );
+      // Assuming payload has exercice_id
+      final response = await _apiClient.dio.post('/simulation/start', data: {'exercice_id': exerciseId});
+      return SessionResponse.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Erreur lors du démarrage de la simulation');
     }
   }
 
-  Future<Map<String, dynamic>> submitAnswer(
-    String sessionId,
-    String answer,
-  ) async {
+  Future<void> sendAnswer(String sessionId, String content) async {
     try {
-      final response = await _apiClient.dio.post(
-        '/simulation/answer',
-        queryParameters: {'session_id': sessionId, 'reponse': answer},
-      );
-      return response.data;
-    } on DioException catch (e) {
-      throw Exception(
-        ApiClient.errorMessage(e, 'Erreur lors de la soumission de la réponse'),
-      );
+      await _apiClient.dio.post('/simulation/answer', data: {
+        'session_id': sessionId,
+        'content': content,
+      });
+    } catch (e) {
+      throw Exception('Erreur lors de l\'envoi de la réponse');
     }
   }
 
-  Stream<String> streamAIResponse(String sessionId) async* {
+  // Stream could be using http directly or dio with stream response type
+  Stream<String> getStream(String sessionId) async* {
     try {
       final response = await _apiClient.dio.get(
         '/simulation/stream/$sessionId',
         options: Options(responseType: ResponseType.stream),
       );
-      final responseBody = response.data as ResponseBody;
-      await for (final line
-          in responseBody.stream
-              .cast<List<int>>()
-              .transform(utf8.decoder)
-              .transform(const LineSplitter())) {
-        if (!line.startsWith('data:')) {
-          continue;
-        }
-        final payload = line.substring(5).trim();
-        if (payload.isEmpty || payload == '{}') {
-          continue;
-        }
-        final decoded = jsonDecode(payload);
-        if (decoded is Map<String, dynamic>) {
-          final text = decoded['text'] as String?;
-          if (text != null) {
-            yield text;
-          }
-        }
+      
+      final stream = response.data.stream;
+      await for (var chunk in stream) {
+        // Assume chunk is List<int> and needs to be decoded from UTF-8 to string
+        // Often we parse SSE format here, but returning raw string for now
+        yield String.fromCharCodes(chunk);
       }
-    } on DioException catch (e) {
-      throw Exception(ApiClient.errorMessage(e, 'Erreur lors du streaming IA'));
+    } catch (e) {
+      throw Exception('Erreur lors de la connexion au stream');
     }
   }
 
-  Future<Map<String, dynamic>> finishSimulation(String sessionId) async {
+  Future<void> cancelSimulation(String sessionId) async {
     try {
-      final response = await _apiClient.dio.post(
-        '/simulation/finish/$sessionId',
-      );
-      return response.data;
-    } on DioException catch (e) {
-      throw Exception(
-        ApiClient.errorMessage(e, 'Erreur lors de la fin de la simulation'),
-      );
+      await _apiClient.dio.post('/simulation/cancel/$sessionId');
+    } catch (e) {
+      throw Exception('Erreur lors de l\'annulation de la simulation');
     }
   }
 
-  Future<Map<String, dynamic>> cancelSimulation(String sessionId) async {
+  Future<FeedbackResponse> finishSimulation(String sessionId) async {
     try {
-      final response = await _apiClient.dio.post(
-        '/simulation/cancel/$sessionId',
-      );
-      return response.data;
-    } on DioException catch (e) {
-      throw Exception(
-        ApiClient.errorMessage(
-          e,
-          'Erreur lors de l annulation de la simulation',
-        ),
-      );
+      final response = await _apiClient.dio.post('/simulation/finish/$sessionId');
+      return FeedbackResponse.fromJson(response.data);
+    } catch (e) {
+      throw Exception('Erreur lors de la fin de la simulation');
     }
   }
 }

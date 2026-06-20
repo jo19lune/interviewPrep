@@ -1,24 +1,24 @@
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/models/auth_models.dart';
 
 class AuthService {
   final ApiClient _apiClient = ApiClient();
 
-  Future<void> login(String email, String password) async {
+  Future<AuthResponse> login(String email, String password) async {
     try {
+      final req = UserLoginRequest(courriel: email, motDePasse: password);
       final response = await _apiClient.dio.post(
         '/auth/login',
-        data: {'courriel': email, 'mot_de_passe': password},
+        data: req.toJson(),
       );
 
-      final token = response.data['access_token'];
-      final refreshToken = response.data['refresh_token'];
-      if (token != null) {
-        await _apiClient.saveTokens(
-          accessToken: token,
-          refreshToken: refreshToken,
-        );
-      }
+      final authResponse = AuthResponse.fromJson(response.data);
+      await _apiClient.saveTokens(
+        accessToken: authResponse.accessToken,
+        refreshToken: authResponse.refreshToken,
+      );
+      return authResponse;
     } catch (e) {
       if (e is DioException) {
         throw Exception(ApiClient.errorMessage(e, 'Erreur de connexion'));
@@ -27,37 +27,49 @@ class AuthService {
     }
   }
 
-  Future<void> register(String fullName, String email, String password) async {
+  Future<AuthResponse> register(String fullName, String email, String password) async {
     try {
-      // Pour fullName, on peut le séparer en prénom/nom ou passer tout dans 'prenom' si le backend le permet
       final parts = fullName.split(' ');
       final prenom = parts.isNotEmpty ? parts[0] : '';
       final nom = parts.length > 1 ? parts.sublist(1).join(' ') : '';
 
+      final req = UserRegisterRequest(courriel: email, motDePasse: password, prenom: prenom, nom: nom);
       final response = await _apiClient.dio.post(
         '/auth/register',
-        data: {
-          'courriel': email,
-          'mot_de_passe': password,
-          'prenom': prenom,
-          'nom': nom,
-        },
+        data: req.toJson(),
       );
 
-      final token = response.data['access_token'];
-      final refreshToken = response.data['refresh_token'];
-      if (token != null) {
-        await _apiClient.saveTokens(
-          accessToken: token,
-          refreshToken: refreshToken,
-        );
-      }
+      final authResponse = AuthResponse.fromJson(response.data);
+      await _apiClient.saveTokens(
+        accessToken: authResponse.accessToken,
+        refreshToken: authResponse.refreshToken,
+      );
+      return authResponse;
     } catch (e) {
       if (e is DioException) {
         throw Exception(ApiClient.errorMessage(e, 'Erreur d\'inscription'));
       }
       throw Exception('Erreur inattendue');
     }
+  }
+
+  Future<AuthResponse> refresh() async {
+      try {
+        final response = await _apiClient.dio.post('/auth/refresh');
+        final authResponse = AuthResponse.fromJson(response.data);
+        await _apiClient.saveTokens(
+          accessToken: authResponse.accessToken,
+          refreshToken: authResponse.refreshToken,
+        );
+        return authResponse;
+      } catch (e) {
+        throw Exception('Erreur de rafraichissement');
+      }
+  }
+
+  Future<UserResponse> getMe() async {
+    final response = await _apiClient.dio.get('/auth/me');
+    return UserResponse.fromJson(response.data);
   }
 
   Future<void> logout() async {
@@ -75,5 +87,20 @@ class AuthService {
     } catch (e) {
       throw Exception('Erreur inattendue');
     }
+  }
+
+  Future<void> forgotPassword(String email) async {
+    final req = ForgotPasswordRequest(courriel: email);
+    await _apiClient.dio.post('/auth/forgot-password', data: req.toJson());
+  }
+
+  Future<void> verifyResetCode(String email, String code) async {
+    final req = VerifyResetCodeRequest(courriel: email, code: code);
+    await _apiClient.dio.post('/auth/verify-reset-code', data: req.toJson());
+  }
+
+  Future<void> resetPassword(String email, String code, String newPassword) async {
+    final req = ResetPasswordRequest(courriel: email, code: code, nouveauMotDePasse: newPassword);
+    await _apiClient.dio.post('/auth/reset-password', data: req.toJson());
   }
 }
