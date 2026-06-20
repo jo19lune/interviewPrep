@@ -6,7 +6,7 @@ part of 'user_profile.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_UserProfile _$UserProfileFromJson(Map<String, dynamic> json) => _UserProfile(
+UserProfile _$UserProfileFromJson(Map<String, dynamic> json) => UserProfile(
   id: json['id'] as String,
   courriel: json['courriel'] as String,
   prenom: json['prenom'] as String?,
@@ -18,7 +18,7 @@ _UserProfile _$UserProfileFromJson(Map<String, dynamic> json) => _UserProfile(
   creeLe: DateTime.parse(json['cree_le'] as String),
 );
 
-Map<String, dynamic> _$UserProfileToJson(_UserProfile instance) =>
+Map<String, dynamic> _$UserProfileToJson(UserProfile instance) =>
     <String, dynamic>{
       'id': instance.id,
       'courriel': instance.courriel,

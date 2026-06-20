@@ -14,9 +14,9 @@ class ExerciseService {
   }) async {
     try {
       final queryParameters = <String, dynamic>{
-        if (domaine != null) 'domaine': domaine,
-        if (difficulte != null) 'difficulte': difficulte,
-        if (tags != null) 'tags': tags,
+        ...?domaine != null ? {'domaine': domaine} : null,
+        ...?difficulte != null ? {'difficulte': difficulte} : null,
+        ...?tags != null ? {'tags': tags} : null,
         'skip': skip,
         'limit': limit,
       };
@@ -49,8 +49,8 @@ class ExerciseService {
   }) async {
     try {
       final queryParameters = <String, dynamic>{
-        if (domaine != null) 'domaine': domaine,
-        if (difficulte != null) 'difficulte': difficulte,
+        ...?domaine != null ? {'domaine': domaine} : null,
+        ...?difficulte != null ? {'difficulte': difficulte} : null,
       };
       final response = await _apiClient.dio.get(
         '/exercises/random/get',
@@ -59,6 +59,34 @@ class ExerciseService {
       return Exercise.fromJson(response.data);
     } on DioException catch (e) {
       throw Exception(ApiClient.errorMessage(e, 'Aucun exercice trouvé'));
+    }
+  }
+
+  Future<Exercise> generateExercise({
+    required String domaine,
+    required String difficulte,
+    String? sujet,
+    int nombreQuestions = 10,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/exercises/generate',
+        queryParameters: {
+          'domaine': domaine,
+          'difficulte': difficulte,
+          if (sujet != null && sujet.trim().isNotEmpty) 'sujet': sujet.trim(),
+          'nombre_questions': nombreQuestions,
+          'save': true,
+        },
+      );
+      return Exercise.fromJson(response.data);
+    } on DioException catch (e) {
+      throw Exception(
+        ApiClient.errorMessage(
+          e,
+          'Erreur lors de la génération de l\'exercice',
+        ),
+      );
     }
   }
 }

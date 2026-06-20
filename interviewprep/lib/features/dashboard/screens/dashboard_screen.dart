@@ -119,7 +119,7 @@ class DashboardScreen extends ConsumerWidget {
     final profileAsync = ref.watch(userProfileProvider);
     final historyAsync = ref.watch(sessionHistoryProvider);
 
-    void _navigateTo(String route) {
+    void navigateTo(String route) {
       if (ModalRoute.of(context)?.settings.name != route) {
         context.go(route);
       }
@@ -129,7 +129,7 @@ class DashboardScreen extends ConsumerWidget {
       backgroundColor: AppTheme.background,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(kToolbarHeight),
-        child: _buildAppBar(context, ref),
+        child: _buildAppBar(context, ref, profileAsync),
       ),
       drawer: Drawer(
         child: Column(
@@ -154,7 +154,7 @@ class DashboardScreen extends ConsumerWidget {
               title: const Text('Exercices'),
               onTap: () {
                 Navigator.pop(context);
-                _navigateTo('/exercises');
+                navigateTo('/exercises');
               },
             ),
             ListTile(
@@ -162,7 +162,7 @@ class DashboardScreen extends ConsumerWidget {
               title: const Text('Statistiques'),
               onTap: () {
                 Navigator.pop(context);
-                _navigateTo('/statistics');
+                navigateTo('/statistics');
               },
             ),
             ListTile(
@@ -170,7 +170,7 @@ class DashboardScreen extends ConsumerWidget {
               title: const Text('À propos'),
               onTap: () {
                 Navigator.pop(context);
-                _navigateTo('/about');
+                navigateTo('/about');
               },
             ),
             const Spacer(),
@@ -220,19 +220,29 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
+      bottomNavigationBar: const MainBottomNavigation(),
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context, WidgetRef ref) {
+  PreferredSizeWidget _buildAppBar(BuildContext context, WidgetRef ref, AsyncValue<User> profileAsync) {
+    final initials = profileAsync.value?.initials ?? '?';
+    final avatarUrl = profileAsync.value?.avatarUrl;
+
     return AppBar(
       backgroundColor: AppTheme.surface,
       elevation: 1,
       shadowColor: Colors.black.withAlpha((0.05 * 255).round()),
       title: Row(
         children: [
-          const CircleAvatar(
-            backgroundColor: AppTheme.primaryContainer,
-            child: Icon(Icons.person, color: Colors.white),
+          GestureDetector(
+            onTap: () => context.push('/profile'),
+            child: CircleAvatar(
+              backgroundColor: AppTheme.primaryContainer,
+              backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+              child: avatarUrl == null 
+                ? Text(initials, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold))
+                : null,
+            ),
           ),
           const SizedBox(width: 12),
           Text(

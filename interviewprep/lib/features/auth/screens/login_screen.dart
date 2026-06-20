@@ -150,7 +150,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       border: Border.all(color: AppTheme.outlineVariant),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryContainer.withOpacity(0.05),
+                          color: AppTheme.primaryContainer.withValues(alpha: 0.05),
                           blurRadius: 12,
                           offset: const Offset(0, 4),
                         )
@@ -182,7 +182,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             children: [
                               Text('Password', style: Theme.of(context).textTheme.labelLarge),
                               TextButton(
-                                onPressed: () {},
+                                onPressed: () => context.go('/forgot-password'),
                                 style: TextButton.styleFrom(
                                   padding: EdgeInsets.zero,
                                   minimumSize: Size.zero,
@@ -248,7 +248,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.secondaryColor.withOpacity(0.3),
+                          color: AppTheme.secondaryColor.withValues(alpha: 0.3),
                           blurRadius: 15,
                         ),
                       ],
@@ -262,7 +262,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -282,7 +282,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             const SizedBox(height: 8),
                             Text(
                               'Join 50k+ professionals using our proprietary AI simulation engine to land top-tier roles.',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white.withOpacity(0.9)),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white.withValues(alpha: 0.9)),
                             ),
                           ],
                         ),
@@ -292,7 +292,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           child: Icon(
                             Icons.psychology,
                             size: 100,
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                           ),
                         ),
                       ],
@@ -337,7 +337,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           TextButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (dialogCtx) => AlertDialog(
+                                  backgroundColor: AppTheme.surfaceContainerLowest,
+                                  title: const Text('Politique de confidentialité'),
+                                  content: const Text(
+                                    'InterviewPrep respecte votre vie privée. Vos données d\'entraînement sont sécurisées et traitées conformément au RGPD pour vous fournir des analyses de performance de qualité. Vous pouvez à tout moment exercer votre droit à l\'oubli.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(dialogCtx),
+                                      child: const Text('Fermer'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                             child: Text('Privacy Policy', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppTheme.secondaryColor)),
                           ),
                           const SizedBox(width: 16),

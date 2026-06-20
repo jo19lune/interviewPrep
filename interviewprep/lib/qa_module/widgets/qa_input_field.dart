@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../providers/qa_module_provider.dart';
-import '../providers/qa_ui_providers.dart';
 
 class QaInputField extends ConsumerStatefulWidget {
   const QaInputField({super.key});
@@ -20,11 +19,19 @@ class _QaInputFieldState extends ConsumerState<QaInputField> {
     super.dispose();
   }
 
-  void _handleSend() {
+  void _handleSend() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    ref.read(qaModuleAnswerProvider.notifier).state = text;
     _controller.clear();
+    try {
+      await ref.read(qaModuleProvider.notifier).sendAnswer(text);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -53,11 +60,21 @@ class _QaInputFieldState extends ConsumerState<QaInputField> {
             ),
           ),
           const SizedBox(width: 8),
-          IconButton(
-            onPressed: isLoading ? null : _handleSend,
-            icon: const Icon(Icons.send_rounded),
-            color: isLoading ? AppTheme.onSurfaceVariant : AppTheme.primaryContainer,
-          ),
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else
+            IconButton(
+              onPressed: _handleSend,
+              icon: const Icon(Icons.send_rounded),
+              color: AppTheme.primaryContainer,
+            ),
         ],
       ),
     );

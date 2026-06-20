@@ -12,7 +12,10 @@ class ProfileService {
       final response = await _apiClient.dio.get('/profile/me');
       return UserProfile.fromJson(response.data);
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors de la récupération du profil');
+      throw Exception(
+        e.response?.data['detail'] ??
+            'Erreur lors de la récupération du profil',
+      );
     } catch (e) {
       throw Exception('Erreur inattendue: $e');
     }
@@ -28,21 +31,26 @@ class ProfileService {
       final response = await _apiClient.dio.put(
         '/profile/update',
         data: {
-          if (prenom != null) 'prenom': prenom,
-          if (nom != null) 'nom': nom,
-          if (domaine != null) 'domaine': domaine,
-          if (niveau != null) 'niveau': niveau,
+          ...?prenom != null ? {'prenom': prenom} : null,
+          ...?nom != null ? {'nom': nom} : null,
+          ...?domaine != null ? {'domaine': domaine} : null,
+          ...?niveau != null ? {'niveau': niveau} : null,
         },
       );
       return UserProfile.fromJson(response.data);
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors de la mise à jour du profil');
+      throw Exception(
+        e.response?.data['detail'] ?? 'Erreur lors de la mise à jour du profil',
+      );
     } catch (e) {
       throw Exception('Erreur inattendue: $e');
     }
   }
 
-  Future<void> changePassword(String currentPassword, String newPassword) async {
+  Future<void> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
     try {
       await _apiClient.dio.put(
         '/profile/change-password',
@@ -52,14 +60,50 @@ class ProfileService {
         },
       );
     } on DioException catch (e) {
-      throw Exception(e.response?.data['detail'] ?? 'Erreur lors du changement de mot de passe');
+      throw Exception(
+        e.response?.data['detail'] ??
+            'Erreur lors du changement de mot de passe',
+      );
     } catch (e) {
       throw Exception('Erreur inattendue: $e');
     }
   }
 
-  // Not strictly an API call to change avatar directly via URL in backend yet, 
-  // wait, the backend has an upload avatar, but the maquette uses a string URL for input. 
-  // Let's stick to updateProfile if avatar is updated via another mechanism or we can simulate it 
-  // as per backend: upload_avatar takes a File.
+  Future<String> uploadAvatar({
+    List<int>? bytes,
+    String? path,
+    required String filename,
+  }) async {
+    try {
+      final formData = FormData();
+      if (path != null) {
+        formData.files.add(
+          MapEntry(
+            'file',
+            await MultipartFile.fromFile(path, filename: filename),
+          ),
+        );
+      } else if (bytes != null) {
+        formData.files.add(
+          MapEntry('file', MultipartFile.fromBytes(bytes, filename: filename)),
+        );
+      } else {
+        throw Exception('Aucun fichier fourni');
+      }
+
+      final response = await _apiClient.dio.put(
+        '/profile/avatar',
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      return response.data['avatar_url'] as String;
+    } on DioException catch (e) {
+      throw Exception(
+        e.response?.data['detail'] ??
+            'Erreur lors du téléchargement de l\'avatar',
+      );
+    } catch (e) {
+      throw Exception('Erreur inattendue: $e');
+    }
+  }
 }

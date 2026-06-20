@@ -34,7 +34,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           const SnackBar(content: Text('Code envoyé à votre adresse email (valable 30 minutes)')),
         );
         if (_emailController.text.trim().isNotEmpty) {
-          context.go('/reset-password', extra: _emailController.text.trim());
+          final email = _emailController.text.trim();
+          context.go('/reset-password?email=${Uri.encodeComponent(email)}');
         }
       }
     } catch (e) {

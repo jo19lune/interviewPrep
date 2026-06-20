@@ -9,6 +9,7 @@ import '../../features/dashboard/screens/about_screen.dart';
 import '../../features/simulation/screens/simulation_screen.dart';
 import '../../features/exercises/screens/exercises_screen.dart';
 import '../../qa_module/screens/standalone_qa_screen.dart';
+import '../../features/profile/screens/profile_screen.dart';
 
 class AppRouter {
   static final router = GoRouter(
@@ -29,13 +30,17 @@ class AppRouter {
       GoRoute(
         path: '/reset-password',
         builder: (context, state) {
-          final email = state.uri.queryParameters['email'] ?? '';
+          final email = state.uri.queryParameters['email'] ?? (state.extra as String?) ?? '';
           return ResetPasswordScreen(email: email);
         },
       ),
       GoRoute(
         path: '/dashboard',
         builder: (context, state) => const DashboardScreen(),
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const ProfileScreen(),
       ),
       GoRoute(
         path: '/simulation',
@@ -55,7 +60,18 @@ class AppRouter {
       ),
       GoRoute(
         path: '/qa',
-        builder: (context, state) => const StandaloneQAScreen(),
+        builder: (context, state) {
+          final exerciseId = state.uri.queryParameters['exerciseId'];
+          final exerciseTitle = state.uri.queryParameters['exerciseTitle'];
+          final domaine = state.uri.queryParameters['domaine'];
+          final difficulte = state.uri.queryParameters['difficulte'];
+          return StandaloneQAScreen(
+            exerciseId: exerciseId,
+            exerciseTitle: exerciseTitle,
+            domaine: domaine,
+            difficulte: difficulte,
+          );
+        },
       ),
     ],
   );

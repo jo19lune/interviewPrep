@@ -29,7 +29,9 @@ class User {
     domaine: json['domaine'] as String?,
     niveau: json['niveau'] as String?,
     estActif: json['est_actif'] as bool? ?? true,
-    creeLe: DateTime.parse((json['cree_le'] as String?) ?? json['creeLe'] as String),
+    creeLe: DateTime.parse(
+      (json['cree_le'] as String?) ?? json['creeLe'] as String,
+    ),
     avatarUrl: json['avatar_url'] as String?,
   );
 
@@ -45,7 +47,8 @@ class User {
     'avatar_url': avatarUrl,
   };
 
-  String get fullName => [prenom, nom].where((s) => s != null && s.isNotEmpty).join(' ');
+  String get fullName =>
+      [prenom, nom].where((s) => s != null && s.isNotEmpty).join(' ');
 
   String get initials {
     final name = fullName.trim();
@@ -80,10 +83,10 @@ class UserProfileUpdateRequest {
       );
 
   Map<String, dynamic> toJson() => {
-    if (prenom != null) 'prenom': prenom,
-    if (nom != null) 'nom': nom,
-    if (domaine != null) 'domaine': domaine,
-    if (niveau != null) 'niveau': niveau,
+    ...?prenom != null ? {'prenom': prenom} : null,
+    ...?nom != null ? {'nom': nom} : null,
+    ...?domaine != null ? {'domaine': domaine} : null,
+    ...?niveau != null ? {'niveau': niveau} : null,
   };
 }
 
@@ -91,14 +94,12 @@ class AvatarUploadResponse {
   final String avatarUrl;
   final String message;
 
-  const AvatarUploadResponse({
-    required this.avatarUrl,
-    required this.message,
-  });
+  const AvatarUploadResponse({required this.avatarUrl, required this.message});
 
   factory AvatarUploadResponse.fromJson(Map<String, dynamic> json) =>
       AvatarUploadResponse(
-        avatarUrl: json['avatar_url'] as String? ?? json['avatarUrl'] as String? ?? '',
+        avatarUrl:
+            json['avatar_url'] as String? ?? json['avatarUrl'] as String? ?? '',
         message: json['message'] as String? ?? '',
       );
 

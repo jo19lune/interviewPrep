@@ -24,7 +24,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _email ??= ModalRoute.of(context)?.settings.arguments as String?;
+    _email ??= widget.email.isNotEmpty ? widget.email : (ModalRoute.of(context)?.settings.arguments as String?);
   }
 
   @override

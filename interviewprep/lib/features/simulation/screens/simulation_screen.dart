@@ -594,6 +594,12 @@ child: Column(
                        tooltip: 'Écouter la question',
                        onPressed: () => _speakCurrentQuestion(),
                      ),
+                     // Bouton Microphone interactif
+                     _MicButton(
+                       onTranscribed: (text) {
+                         _textController.text = text;
+                       },
+                     ),
                      const SizedBox(width: 8),
                      Expanded(
                        child: TextField(
@@ -1052,6 +1058,116 @@ class _StatTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Bouton microphone interactif avec animation de pulse.
+/// Simule la transcription vocale en insérant du texte dans le champ de réponse.
+class _MicButton extends StatefulWidget {
+  final void Function(String text) onTranscribed;
+
+  const _MicButton({required this.onTranscribed});
+
+  @override
+  State<_MicButton> createState() => _MicButtonState();
+}
+
+class _MicButtonState extends State<_MicButton>
+    with SingleTickerProviderStateMixin {
+  bool _isRecording = false;
+  late AnimationController _animationController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+    _pulseAnimation =
+        Tween<double>(begin: 1.0, end: 1.3).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _toggleRecording() {
+    setState(() => _isRecording = !_isRecording);
+
+    if (!_isRecording) {
+      // Fin de l'enregistrement — transcription simulée
+      final transcriptions = [
+        'Je pense que la meilleure approche serait d\'analyser le problème en profondeur avant de proposer une solution.',
+        'Dans mon expérience précédente, j\'ai géré une situation similaire en collaborant avec l\'équipe et en fixant des priorités claires.',
+        'Je mettrais en place une communication transparente avec toutes les parties prenantes pour résoudre ce conflit.',
+      ];
+      transcriptions.shuffle();
+      widget.onTranscribed(transcriptions.first);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.mic_off, color: Colors.white, size: 16),
+                SizedBox(width: 8),
+                Text('Transcription terminée'),
+              ],
+            ),
+            duration: Duration(seconds: 2),
+            backgroundColor: AppTheme.primaryContainer,
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.mic, color: Colors.white, size: 16),
+                SizedBox(width: 8),
+                Text('Enregistrement en cours...'),
+              ],
+            ),
+            duration: Duration(seconds: 2),
+            backgroundColor: AppTheme.secondaryColor,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _isRecording ? _pulseAnimation.value : 1.0,
+          child: IconButton(
+            icon: Icon(
+              _isRecording ? Icons.mic : Icons.mic_none,
+              color: _isRecording ? AppTheme.error : AppTheme.outline,
+            ),
+            tooltip: _isRecording ? 'Arrêter l\'enregistrement' : 'Enregistrer une réponse vocale',
+            style: IconButton.styleFrom(
+              backgroundColor: _isRecording
+                  ? AppTheme.error.withAlpha((0.12 * 255).round())
+                  : Colors.transparent,
+            ),
+            onPressed: _toggleRecording,
+          ),
+        );
+      },
     );
   }
 }

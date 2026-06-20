@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/bottom_navigation.dart';
 import '../../../core/models/exercise.dart';
 import '../providers/dashboard_provider.dart';
+import '../../exercises/providers/exercise_provider.dart';
 
 class StatisticsScreen extends ConsumerWidget {
   const StatisticsScreen({super.key});
@@ -64,7 +65,8 @@ class StatisticsScreen extends ConsumerWidget {
               statsAsync.when(
                 data: (stats) {
                   final sessions = historyAsync.value ?? [];
-                  return _buildStatsSummary(context, stats, sessions);
+                  final exercises = ref.watch(exercisesListProvider).value ?? [];
+                  return _buildStatsSummary(context, ref, stats, sessions, exercises);
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => _ErrorPanel(message: 'Erreur statistiques : $error'),
@@ -123,7 +125,7 @@ class StatisticsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsSummary(BuildContext context, Map<String, dynamic> stats, List<Session> sessions) {
+  Widget _buildStatsSummary(BuildContext context, WidgetRef ref, Map<String, dynamic> stats, List<Session> sessions, List exercises) {
     final terminatedSessions = sessions.where((s) => s.statut == 'TERMINEE').toList();
     final totalSimulations = terminatedSessions.length;
 
@@ -208,7 +210,20 @@ class StatisticsScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 24),
-        _InsightCard(title: insightTitle, description: insightDescription),
+        _InsightCard(
+          title: insightTitle,
+          description: insightDescription,
+          onPractice: exercises.isEmpty
+              ? null
+              : () {
+                  // Prend un exercice aléatoire parmi les disponibles
+                  final list = List.from(exercises);
+                  list.shuffle();
+                  final exercise = list.first;
+                  ref.read(selectedExerciseProvider.notifier).state = exercise;
+                  context.go('/simulation');
+                },
+        ),
         const SizedBox(height: 24),
         _SkillProficiencySection(skillEntries: domainEntries),
       ],
@@ -274,8 +289,13 @@ class _MetricCard extends StatelessWidget {
 class _InsightCard extends StatelessWidget {
   final String title;
   final String description;
+  final VoidCallback? onPractice;
 
-  const _InsightCard({required this.title, required this.description});
+  const _InsightCard({
+    required this.title,
+    required this.description,
+    this.onPractice,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -294,29 +314,38 @@ class _InsightCard extends StatelessWidget {
               color: Colors.white24,
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Text('AI Insight'.toUpperCase(), style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+            child: Text('AI Insight'.toUpperCase(),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2)),
           ),
           const SizedBox(height: 16),
           Text(
             title,
-            style: Theme.of(context).textTheme.displayMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 26),
+            style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 26),
           ),
           const SizedBox(height: 12),
           Text(
             description,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white.withAlpha((0.88 * 255).round())),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: Colors.white.withAlpha((0.88 * 255).round())),
           ),
           const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {},
+          ElevatedButton.icon(
+            onPressed: onPractice,
+            icon: const Icon(Icons.play_arrow, size: 18),
+            label: const Text('Démarrer une pratique suggérée',
+                style: TextStyle(fontWeight: FontWeight.bold)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.surfaceContainerLowest,
               foregroundColor: AppTheme.primaryContainer,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-            ),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              child: Text('Start Suggested Practice', style: TextStyle(fontWeight: FontWeight.bold)),
+              shape:
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             ),
           ),
         ],
@@ -390,7 +419,7 @@ class _SkillProficiencySection extends StatelessWidget {
                 ],
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );

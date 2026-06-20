@@ -116,6 +116,36 @@ class QAModuleNotifier extends StateNotifier<QAModuleState> {
     );
   }
 
+  Future<void> startSession() async {
+    if (state.isLoading) return;
+    state = state.copyWith(isLoading: true, messages: const []);
+    try {
+      final firstQuestion = await _service.generateNextQuestion(
+        previousResponses: const [],
+        domaine: state.domaine ?? 'COMPORTEMENTAL',
+        difficulte: state.difficulte ?? 'INTERMEDIAIRE',
+        sujet: state.subject,
+        questionIndex: 0,
+        totalQuestions: state.totalQuestions,
+      );
+
+      final botMessage = ChatMessage(
+        id: 'msg_${DateTime.now().millisecondsSinceEpoch}_bot',
+        text: firstQuestion,
+        isUser: false,
+        timestamp: DateTime.now(),
+      );
+
+      state = state.copyWith(
+        messages: [botMessage],
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false);
+      rethrow;
+    }
+  }
+
   Future<void> sendAnswer(String answerText) async {
     if (answerText.trim().isEmpty) return;
 

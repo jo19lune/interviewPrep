@@ -15,7 +15,12 @@ class MainBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final location = Uri.base.path;
+    String location;
+    try {
+      location = GoRouterState.of(context).uri.path;
+    } catch (_) {
+      location = Uri.base.path;
+    }
     final items = [
       _NavItem(route: '/dashboard', icon: Icons.dashboard, label: 'Dashboard'),
       _NavItem(route: '/exercises', icon: Icons.quiz, label: 'Exercises'),
@@ -30,7 +35,7 @@ class MainBottomNavigation extends StatelessWidget {
         border: const Border(top: BorderSide(color: AppTheme.outlineVariant)),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryContainer.withOpacity(0.05),
+            color: AppTheme.primaryContainer.withValues(alpha: 0.05),
             blurRadius: 12,
             offset: const Offset(0, -4),
           ),

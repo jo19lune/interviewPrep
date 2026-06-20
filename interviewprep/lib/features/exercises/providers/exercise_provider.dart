@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../services/exercise_service.dart';
@@ -63,3 +64,41 @@ final exercisesListProvider = FutureProvider<List<Exercise>>((ref) async {
 
 // Exercice sélectionné pour s'entraîner
 final selectedExerciseProvider = StateProvider<Exercise?>((ref) => null);
+
+// Générateur d'exercice via IA
+final exerciseGenerationProvider = AsyncNotifierProvider<ExerciseGenerationNotifier, Exercise?>(() {
+  return ExerciseGenerationNotifier();
+});
+
+class ExerciseGenerationNotifier extends AsyncNotifier<Exercise?> {
+  @override
+  FutureOr<Exercise?> build() => null;
+
+  Future<Exercise> generate({
+    required String domaine,
+    required String difficulte,
+    String? sujet,
+    int nombreQuestions = 10,
+  }) async {
+    state = const AsyncValue.loading();
+    final service = ref.read(exerciseServiceProvider);
+    
+    final value = await AsyncValue.guard(() async {
+      return await service.generateExercise(
+        domaine: domaine,
+        difficulte: difficulte,
+        sujet: sujet,
+        nombreQuestions: nombreQuestions,
+      );
+    });
+
+    if (value.hasError) {
+      state = AsyncValue.error(value.error!, value.stackTrace!);
+      throw value.error!;
+    }
+
+    state = AsyncValue.data(value.value);
+    ref.invalidate(exercisesListProvider);
+    return value.value!;
+  }
+}

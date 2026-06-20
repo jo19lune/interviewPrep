@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:interviewprep/core/network/api_client.dart';
 import 'package:interviewprep/features/profile/models/user_profile.dart';
 import 'package:interviewprep/features/profile/services/profile_service.dart';
@@ -43,6 +44,25 @@ class ProfileNotifier extends StateNotifier<AsyncValue<UserProfile>> {
         niveau: niveau,
       );
       state = AsyncValue.data(updatedProfile);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> uploadAvatar({
+    List<int>? bytes,
+    String? path,
+    required String filename,
+  }) async {
+    try {
+      final avatarUrl = await _profileService.uploadAvatar(
+        bytes: bytes,
+        path: path,
+        filename: filename,
+      );
+      if (state.hasValue) {
+        state = AsyncValue.data(state.value!.copyWith(avatarUrl: avatarUrl));
+      }
     } catch (e) {
       rethrow;
     }
