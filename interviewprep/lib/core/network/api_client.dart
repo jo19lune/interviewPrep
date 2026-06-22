@@ -12,6 +12,11 @@ class ApiClient {
       _configuredBaseUrl.isNotEmpty ? _configuredBaseUrl : defaultApiBaseUrl();
 
   static String errorMessage(DioException error, String fallback) {
+    final statusCode = error.response?.statusCode;
+    if (statusCode == 401) return 'Non autorisé';
+    if (statusCode == 429) return 'Trop de requêtes, veuillez patienter';
+    if (statusCode == 503) return 'Service indisponible';
+
     final data = error.response?.data;
     if (data is Map) {
       final detail = data['detail'];
