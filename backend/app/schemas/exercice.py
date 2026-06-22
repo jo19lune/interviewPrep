@@ -23,6 +23,14 @@ class ExerciceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ExerciceGenerateRequest(BaseModel):
+    """Requête de génération d'exercice via IA"""
+    domaine: str = Field(..., min_length=2, max_length=80)
+    difficulte: str = Field(..., min_length=2, max_length=80)
+    sujet: Optional[str] = Field(None, min_length=0, max_length=160)
+    nombreQuestions: int = Field(10, ge=1, le=30)
+    save: bool = Field(True)
+
 class ExerciceCreateRequest(BaseModel):
     """Requête de création d'exercice"""
     titre: str = Field(..., min_length=5, max_length=255)

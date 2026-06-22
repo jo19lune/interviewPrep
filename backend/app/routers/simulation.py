@@ -27,6 +27,7 @@ from app.models.exercice import Exercice
 from app.models.feedback import Retour
 from app.models.session import Session
 from app.models.user import User
+from app.schemas.session import SessionCreateRequest
 from app.services.ai_service import AIService
 
 router = APIRouter(prefix="/simulation", tags=["simulation"])
@@ -44,10 +45,7 @@ async def list_available_models(current_user: User = Depends(get_current_user)):
 
 @router.post("/start")
 async def start_simulation(
-    exercice_id: UUID,
-    sujet: str | None = Query(None, min_length=2, max_length=160),
-    nombre_questions: int = Query(10, ge=10, le=30),
-    modele: str | None = Query(None, description="Modèle d'IA spécifique à utiliser"),
+    request: SessionCreateRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -59,10 +57,7 @@ async def start_simulation(
     question.
 
     Args:
-        exercice_id (UUID): L'ID de l'exercice parent.
-        sujet (str | None): Sujet spécifique ou focus de la simulation.
-        nombre_questions (int): Nombre de questions ciblées pour la session.
-        modele (str | None): Le modèle d'IA choisi par l'utilisateur.
+        request (SessionCreateRequest): La requête contenant l'exercice, sujet, modèle, etc.
         current_user (User): L'utilisateur courant.
         db (AsyncSession): Session de base de données.
 
@@ -70,6 +65,11 @@ async def start_simulation(
         dict: L'ID de session, le statut, le titre, la première question 
         générée, et les métadonnées de la simulation.
     """
+    exercice_id = request.exercice_id
+    sujet = request.subject
+    nombre_questions = request.question_count
+    modele = request.model
+
     result = await db.execute(select(Exercice).where(Exercice.id == exercice_id))
     exercice = result.scalars().first()
 

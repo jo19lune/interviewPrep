@@ -23,6 +23,9 @@ class SessionResponse(BaseModel):
 class SessionCreateRequest(BaseModel):
     """Requête de démarrage de session"""
     exercice_id: UUID
+    subject: Optional[str] = None
+    question_count: int = 10
+    model: Optional[str] = None
 
 
 class FeedbackResponse(BaseModel):

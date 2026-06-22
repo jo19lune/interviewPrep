@@ -20,7 +20,7 @@ from app.core.validators import normalize_enum_filter
 from app.data.database import get_db
 from app.models.exercice import Exercice
 from app.models.user import User
-from app.schemas.exercice import ExerciceCreateRequest, ExerciceResponse
+from app.schemas.exercice import ExerciceCreateRequest, ExerciceResponse, ExerciceGenerateRequest
 from app.services.ai_service import AIService
 
 router = APIRouter(prefix="/exercises", tags=["exercises"])
@@ -192,11 +192,7 @@ async def create_exercise(
 
 @router.post("/generate", response_model=ExerciceResponse, status_code=status.HTTP_201_CREATED)
 async def generate_exercise(
-    domaine: str = Query(..., min_length=2, max_length=80),
-    difficulte: str = Query(..., min_length=2, max_length=80),
-    sujet: str | None = Query(None, min_length=0, max_length=160),
-    nombre_questions: int = Query(10, ge=1, le=30),
-    save: bool = Query(True),
+    request: ExerciceGenerateRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -207,11 +203,7 @@ async def generate_exercise(
     mesure en fonction du domaine, de la difficulté et d'un sujet spécifique.
     
     Args:
-        domaine (str): Le domaine cible (ex: TECHNIQUE).
-        difficulte (str): Le niveau de complexité souhaité (ex: AVANCE).
-        sujet (str | None): Sujet libre optionnel (ex: "React JS", "Gestion de conflit").
-        nombre_questions (int): Nombre de questions à générer.
-        save (bool): Indique si l'exercice doit être persisté en base de données.
+        request (ExerciceGenerateRequest): Les paramètres de génération.
         current_user (User): L'utilisateur authentifié.
         db (AsyncSession): Session de la base de données.
 
@@ -226,6 +218,12 @@ async def generate_exercise(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Dynamic exercise generation is disabled on this server",
         )
+
+    domaine = request.domaine
+    difficulte = request.difficulte
+    sujet = request.sujet
+    nombre_questions = request.nombreQuestions
+    save = request.save
 
     domaine_norm = normalize_enum_filter(domaine, {item.value for item in Domaine}, "domaine")
     difficulte_norm = normalize_enum_filter(difficulte, {item.value for item in Niveau}, "difficulte")

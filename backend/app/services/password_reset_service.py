@@ -5,16 +5,14 @@ from __future__ import annotations
 import random
 import string
 from datetime import datetime, timedelta, timezone
-from email.message import EmailMessage
 from typing import Optional
 
-import aiosmtplib
 from fastapi import BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config.settings import settings
 from app.models.user import User
 from app.services.auth_service import get_user_by_email, hash_password
+from app.services.email_service import send_reset_email
 
 FORGOT_CODE_TTL_MINUTES = 30
 FORGOT_CODE_LENGTH = 6
@@ -39,30 +37,6 @@ def code_is_expired(expires_at: datetime | str | None) -> bool:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
 
     return datetime.now(timezone.utc) > expires_at
-
-
-async def _send_reset_email(email: str, code: str) -> None:
-    """Envoi email (infra)."""
-    # Si config email absente, on no-op (comportement identique au code original)
-    if not settings.email_username or not settings.email_password:
-        return
-
-    msg = EmailMessage()
-    msg["Subject"] = "InterviewPrep - Reinitialisation de mot de passe"
-    msg["From"] = settings.default_from_email
-    msg["To"] = email
-    msg.set_content(
-        f"""Bonjour,\n\nVotre code de reinitialisation de mot de passe est: {code}\n\nCe code est valable {FORGOT_CODE_TTL_MINUTES} minutes.\n\nInterviewPrep"""
-    )
-
-    await aiosmtplib.send(
-        msg,
-        hostname=settings.email_host,
-        port=settings.email_port,
-        username=settings.email_username,
-        password=settings.email_password,
-        start_tls=True,
-    )
 
 
 async def create_password_reset_code(db: AsyncSession, email: str) -> tuple[User | None, str | None]:
@@ -91,7 +65,7 @@ async def send_password_reset_code_if_user_exists(
         # On ne révèle pas l'existence du compte
         return {"sent": False}
 
-    background_tasks.add_task(_send_reset_email, email, code)
+    background_tasks.add_task(send_reset_email, email, code)
     return {"sent": True, "expires_in_minutes": FORGOT_CODE_TTL_MINUTES}
 
 
