@@ -10,7 +10,7 @@ import json
 import os
 from typing import List
 
-from pydantic import AnyHttpUrl, Field, field_validator
+from pydantic import AnyHttpUrl, Field, field_validator, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -146,22 +146,22 @@ class Settings(BaseSettings):
     # Email
     email_host: str = Field(
         default="smtp.gmail.com",
-        validation_alias="EMAIL_HOST",
+        validation_alias="SMTP_HOST",
         description="Hôte du serveur SMTP."
     )
     email_port: int = Field(
         default=587,
-        validation_alias="EMAIL_PORT",
+        validation_alias="SMTP_PORT",
         description="Port du serveur SMTP."
     )
     email_username: str = Field(
         default="",
-        validation_alias="EMAIL_USERNAME",
+        validation_alias=AliasChoices("SMTP_USER"),
         description="Nom d'utilisateur pour l'authentification SMTP."
     )
     email_password: str = Field(
         default="",
-        validation_alias="EMAIL_PASSWORD",
+        validation_alias=AliasChoices("SMTP_PASSWORD"),
         description="Mot de passe ou App Password pour SMTP."
     )
     email_use_tls: bool = Field(
