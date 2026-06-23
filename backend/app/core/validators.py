@@ -15,7 +15,7 @@ def normalize_enum_filter(value: str | None, allowed: set[str], field_name: str)
 
     Cette fonction prend une chaîne de caractères, la nettoie, la convertit
     en majuscules et vérifie si elle fait partie d'un ensemble de valeurs
-    autorisées. Si la valeur n'est pas autorisée, une exception HTTP 422 
+    autorisées. Si la valeur n'est pas autorisée, une exception HTTP 422
     est levée avec un message clair.
 
     Args:

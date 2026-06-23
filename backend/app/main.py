@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config.settings import settings
 from app.core.exceptions import AppException
 from app.data.database import close_db, init_db
-from app.routers import auth, dashboard, exercices, profile, simulation
+from app.routers import auth, dashboard, exercices, profile, simulation, qa
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +139,7 @@ app.include_router(profile.router)
 app.include_router(exercices.router)
 app.include_router(dashboard.router)
 app.include_router(simulation.router)
+app.include_router(qa.router)
 
 
 # Info API

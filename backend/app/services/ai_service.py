@@ -140,11 +140,17 @@ class AIService:
                 )
                 return response.text or ""
             except Exception as e:
-                if "429" in str(e):
-                    print("Quota atteint. Pause de 20 secondes avant de réessayer...\nS'il persiste, c'est peut ëtre parce que le quota est limiter par jours ou mois.")
-                    await asyncio.sleep(20)
+                # Detection de limite de quota specifique a l'API
+                # GenAI (429 Too Many Requests, ResourceExhausted, etc.)
+                error_msg = str(e).lower()
+                if "429" in error_msg or "quota" in error_msg or "resourceexhausted" in error_msg:
+                    logger.warning(f"Quota atteint pour le modèle {model}. Basculement nécessaire si possible.")
+                    # Lever une exception specifique pour etre attrapee dans la methode appelante
+                    class QuotaExceededError(Exception):
+                        pass
+                    raise QuotaExceededError(f"Quota exceeded for model {model}: {e}")
                 else:
-                    print(f"Erreur : {e}")
+                    logger.error(f"Erreur API avec le modele {model}: {e}")
                     raise e
 
     def _build_exercise_prompt(self, domaine: str, difficulte: str, sujet: str | None, nombre_questions: int) -> str:
