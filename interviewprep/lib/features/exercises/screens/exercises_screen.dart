@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/bottom_navigation.dart';
 import '../providers/exercise_provider.dart';
 import '../../../core/models/exercise_models.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -724,7 +723,6 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
         backgroundColor: AppTheme.secondaryColor,
         foregroundColor: Colors.white,
       ),
-      bottomNavigationBar: const MainBottomNavigation(),
     );
   }
 
@@ -1050,16 +1048,28 @@ class _GenerateExerciseSheet extends ConsumerStatefulWidget {
 }
 
 class _GenerateExerciseSheetState
-    extends ConsumerState<_GenerateExerciseSheet> {
+    extends ConsumerState<_GenerateExerciseSheet>
+    with SingleTickerProviderStateMixin {
   String _selectedDomaine = 'TECHNIQUE';
   String _selectedNiveau = 'DEBUTANT';
   final _sujetController = TextEditingController();
   int _nombreQuestions = 10;
   bool _isGenerating = false;
+  late AnimationController _progressController;
+
+  @override
+  void initState() {
+    super.initState();
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 15), // Estimation de la durée max
+    );
+  }
 
   @override
   void dispose() {
     _sujetController.dispose();
+    _progressController.dispose();
     super.dispose();
   }
 
@@ -1238,35 +1248,51 @@ class _GenerateExerciseSheetState
               const SizedBox(height: 24),
 
               // Button Generate
-              SizedBox(
-                height: 52,
-                child: ElevatedButton.icon(
-                  onPressed: _isGenerating ? null : _generate,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.secondaryColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+              if (_isGenerating)
+                Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    AnimatedBuilder(
+                      animation: _progressController,
+                      builder: (context, child) {
+                        return LinearProgressIndicator(
+                          value: _progressController.value,
+                          backgroundColor: AppTheme.surfaceContainerLow,
+                          color: AppTheme.secondaryColor,
+                          minHeight: 8,
+                          borderRadius: BorderRadius.circular(4),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Création de l\'exercice en cours...',
+                      style: TextStyle(
+                        color: AppTheme.secondaryColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                )
+              else
+                SizedBox(
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: _generate,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.secondaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    icon: const Icon(Icons.auto_awesome, size: 18),
+                    label: const Text(
+                      'Générer l\'exercice',
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                  icon: _isGenerating
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Icon(Icons.auto_awesome, size: 18),
-                  label: Text(
-                    _isGenerating
-                        ? 'G\u00e9n\u00e9ration par l\'IA en cours...'
-                        : 'G\u00e9n\u00e9rer l\'exercice',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -1276,6 +1302,7 @@ class _GenerateExerciseSheetState
 
   Future<void> _generate() async {
     setState(() => _isGenerating = true);
+    _progressController.forward(from: 0.0);
     try {
       final generatedExercise = await ref
           .read(exerciseGenerationProvider.notifier)
@@ -1286,6 +1313,9 @@ class _GenerateExerciseSheetState
             nombreQuestions: _nombreQuestions,
           );
 
+      _progressController.value = 1.0;
+      await Future.delayed(const Duration(milliseconds: 300)); // Laisse le temps de voir la barre pleine
+
       if (mounted) {
         Navigator.pop(
           context,
@@ -1293,6 +1323,7 @@ class _GenerateExerciseSheetState
         ); // Return exercise to open sheet
       }
     } catch (e) {
+      _progressController.stop();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

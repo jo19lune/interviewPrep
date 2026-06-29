@@ -1,4 +1,5 @@
 import uuid
+import shutil
 from pathlib import Path
 from fastapi import UploadFile
 
@@ -11,6 +12,7 @@ def save_upload_file(upload_dir: str, upload_file: UploadFile) -> str:
     file_path = upload_path / unique_name
     
     with open(file_path, "wb") as buffer:
-        buffer.write(upload_file.file.read())
+        upload_file.file.seek(0)
+        shutil.copyfileobj(upload_file.file, buffer)
     
     return str(file_path)

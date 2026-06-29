@@ -229,6 +229,46 @@ class Settings(BaseSettings):
         validation_alias="UPLOAD_BASE_URL",
         description="URL de base publique pour accéder aux fichiers uploadés."
     )
+    storage_provider: str = Field(
+        default="local",
+        validation_alias="STORAGE_PROVIDER",
+        description="Fournisseur de stockage (local, s3, azure)."
+    )
+    s3_bucket: str = Field(
+        default="",
+        validation_alias="S3_BUCKET",
+        description="Nom du bucket S3."
+    )
+    s3_access_key: str = Field(
+        default="",
+        validation_alias="S3_ACCESS_KEY",
+        description="Clé d'accès AWS."
+    )
+    s3_secret_key: str = Field(
+        default="",
+        validation_alias="S3_SECRET_KEY",
+        description="Clé secrète AWS."
+    )
+    s3_region: str = Field(
+        default="us-east-1",
+        validation_alias="S3_REGION",
+        description="Région AWS du bucket S3."
+    )
+    s3_endpoint: str = Field(
+        default="",
+        validation_alias="S3_ENDPOINT",
+        description="Point d'accès personnalisé pour S3 (ex: MinIO)."
+    )
+    azure_connection_string: str = Field(
+        default="",
+        validation_alias="AZURE_CONNECTION_STRING",
+        description="Chaîne de connexion Azure Storage."
+    )
+    azure_container: str = Field(
+        default="",
+        validation_alias="AZURE_CONTAINER",
+        description="Nom du conteneur de blobs Azure."
+    )
 
     @field_validator("frontend_url", mode="before")
     @classmethod

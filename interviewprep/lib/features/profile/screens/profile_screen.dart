@@ -49,8 +49,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.dispose();
   }
 
+  Future<bool> _showConfirmationDialog(String title, String content) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.surfaceContainerLowest,
+        title: Text(title, style: const TextStyle(color: AppTheme.primaryContainer)),
+        content: Text(content, style: const TextStyle(color: AppTheme.onSurface)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Confirmer'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final confirmed = await _showConfirmationDialog(
+      'Confirmer la mise à jour',
+      'Voulez-vous vraiment enregistrer ces modifications de profil ?',
+    );
+    if (!confirmed) return;
 
     setState(() {
       _isSaving = true;
@@ -121,6 +148,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         return;
       }
 
+      final confirmed = await _showConfirmationDialog(
+        'Confirmer l\'avatar',
+        'Voulez-vous vraiment changer votre avatar ?',
+      );
+      if (!confirmed) return;
+
       setState(() {
         _isSaving = true;
       });
@@ -157,6 +190,49 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erreur lors de l\'envoi de l\'avatar: $e'),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _deleteAvatar() async {
+    final confirmed = await _showConfirmationDialog(
+      'Supprimer l\'avatar',
+      'Voulez-vous vraiment supprimer votre avatar ?',
+    );
+    if (!confirmed) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      await ref.read(profileProvider.notifier).deleteAvatar();
+      
+      // Invalider pour rafraîchir l'en-tête du tableau de bord
+      ref.invalidate(userProfileProvider);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Avatar supprimé avec succès !'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la suppression de l\'avatar: $e'),
             backgroundColor: AppTheme.error,
           ),
         );
@@ -269,6 +345,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ? null
                       : () async {
                           if (!dialogFormKey.currentState!.validate()) return;
+
+                          final confirmed = await showDialog<bool>(
+                            context: dialogContext,
+                            builder: (confirmContext) => AlertDialog(
+                              backgroundColor: AppTheme.surfaceContainerLowest,
+                              title: const Text('Confirmer le mot de passe', style: TextStyle(color: AppTheme.primaryContainer)),
+                              content: const Text('Voulez-vous vraiment modifier votre mot de passe ?', style: TextStyle(color: AppTheme.onSurface)),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(confirmContext).pop(false),
+                                  child: const Text('Annuler'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.of(confirmContext).pop(true),
+                                  child: const Text('Confirmer'),
+                                ),
+                              ],
+                            ),
+                          ) ?? false;
+                          
+                          if (!confirmed) return;
 
                           setState(() {
                             isSavingPassword = true;
@@ -422,40 +519,83 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       children: [
                         // Avatar avec modification cliquable
                         GestureDetector(
-                          onTap: _pickAndUploadAvatar,
+                          onTap: _isSaving ? null : _pickAndUploadAvatar,
                           child: Stack(
                             alignment: Alignment.bottomRight,
                             children: [
-                              CircleAvatar(
-                                radius: 52,
-                                backgroundColor: AppTheme.surfaceContainerLow,
-                                backgroundImage: avatarUrl != null
-                                    ? NetworkImage(avatarUrl)
-                                    : null,
-                                child: avatarUrl == null
-                                    ? const Icon(
-                                        Icons.person,
-                                        size: 52,
-                                        color: AppTheme.primaryContainer,
-                                      )
-                                    : null,
+                              Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 52,
+                                    backgroundColor: AppTheme.surfaceContainerLow,
+                                    backgroundImage: avatarUrl != null
+                                        ? NetworkImage(avatarUrl)
+                                        : null,
+                                    child: avatarUrl == null
+                                        ? const Icon(
+                                            Icons.person,
+                                            size: 52,
+                                            color: AppTheme.primaryContainer,
+                                          )
+                                        : null,
+                                  ),
+                                  if (_isSaving)
+                                    Container(
+                                      width: 104,
+                                      height: 104,
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withAlpha((0.3 * 255).round()),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Center(
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: const BoxDecoration(
-                                  color: AppTheme.secondaryColor,
-                                  shape: BoxShape.circle,
+                              if (!_isSaving)
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: const BoxDecoration(
+                                    color: AppTheme.secondaryColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
                                 ),
-                                child: const Icon(
-                                  Icons.camera_alt,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
-                              ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 12),
+                        Text(
+                          avatarUrl == null ? "Aucun avatar défini" : "Modifier l'avatar",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: avatarUrl == null ? AppTheme.outline : AppTheme.secondaryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (avatarUrl != null) ...[
+                          const SizedBox(height: 8),
+                          TextButton.icon(
+                            onPressed: _isSaving ? null : _deleteAvatar,
+                            icon: const Icon(Icons.delete_outline, color: AppTheme.error, size: 18),
+                            label: const Text(
+                              "Supprimer l'avatar",
+                              style: TextStyle(
+                                color: AppTheme.error,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 24),
 
                         // Champ Prénom
                         Column(

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/bottom_navigation.dart';
 import '../providers/qa_module_provider.dart';
 import '../widgets/qa_message_list.dart';
 import '../widgets/qa_input_field.dart';
@@ -165,7 +164,6 @@ class _StandaloneQAScreenState extends ConsumerState<StandaloneQAScreen> {
           : messages.isEmpty
               ? _buildIntroScreen(context, qaState)
               : _buildChatScreen(context, qaState),
-      bottomNavigationBar: const MainBottomNavigation(),
     );
   }
 

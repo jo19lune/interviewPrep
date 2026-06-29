@@ -23,11 +23,25 @@ class ApiClient {
       if (detail is List) {
         return detail.map((item) => item.toString()).join('\n');
       }
+      if (detail is Map) {
+        final code = detail['code'];
+        final msg = detail['message'] ?? detail['msg'] ?? detail['detail'];
+        if (msg != null) {
+          if (code != null) {
+            return '[$code] $msg';
+          }
+          return msg.toString();
+        }
+      }
       if (detail != null) {
         return detail.toString();
       }
+      final code = data['code'];
       final message = data['message'];
       if (message != null) {
+        if (code != null) {
+          return '[$code] $message';
+        }
         return message.toString();
       }
     }

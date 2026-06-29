@@ -83,14 +83,18 @@ async def upload_user_avatar(db: AsyncSession, current_user: User, file: UploadF
     
     await file.seek(0)
     
+    # Suppression de l'ancien avatar si présent
+    if current_user.avatar_url:
+        try:
+            from app.services.storage_service import StorageService
+            await StorageService.delete_file(current_user.avatar_url)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Failed to delete old avatar: {e}")
+            
+    from app.services.storage_service import StorageService
     upload_dir = settings.upload_dir
-    saved_path = await run_in_threadpool(save_upload_file, upload_dir, file)
-    
-    base_url = (settings.upload_base_url or "").rstrip("/")
-    if base_url:
-        avatar_url = f"{base_url}/static/{Path(saved_path).name}"
-    else:
-        avatar_url = f"/static/{Path(saved_path).name}"
+    avatar_url = await StorageService.upload_file(file, upload_dir)
     
     current_user.avatar_url = avatar_url
     db.add(current_user)
@@ -98,3 +102,13 @@ async def upload_user_avatar(db: AsyncSession, current_user: User, file: UploadF
     await db.refresh(current_user)
     
     return avatar_url
+
+
+async def delete_user_avatar(db: AsyncSession, current_user: User) -> None:
+    if current_user.avatar_url:
+        from app.services.storage_service import StorageService
+        await StorageService.delete_file(current_user.avatar_url)
+        current_user.avatar_url = None
+        db.add(current_user)
+        await db.commit()
+        await db.refresh(current_user)

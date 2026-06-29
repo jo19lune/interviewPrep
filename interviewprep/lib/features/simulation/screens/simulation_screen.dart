@@ -15,17 +15,23 @@ class SimulationScreen extends ConsumerStatefulWidget {
   ConsumerState<SimulationScreen> createState() => _SimulationScreenState();
 }
 
-class _SimulationScreenState extends ConsumerState<SimulationScreen> {
+class _SimulationScreenState extends ConsumerState<SimulationScreen>
+    with SingleTickerProviderStateMixin {
   final _textController = TextEditingController();
   final _subjectController = TextEditingController();
   final _scrollController = ScrollController();
   final FlutterTts _flutterTts = FlutterTts();
   int _questionCount = 10;
+  late AnimationController _progressController;
 
   @override
   void initState() {
     super.initState();
     _initTts();
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 15), // Estimation de la durée
+    );
   }
 
   @override
@@ -34,6 +40,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
     _subjectController.dispose();
     _scrollController.dispose();
     _flutterTts.stop();
+    _progressController.dispose();
     super.dispose();
   }
 
@@ -395,9 +402,33 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                 ),
                 const SizedBox(height: 24),
                 state.isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? Column(
+                        children: [
+                          AnimatedBuilder(
+                            animation: _progressController,
+                            builder: (context, child) {
+                              return LinearProgressIndicator(
+                                value: _progressController.value,
+                                backgroundColor: AppTheme.surfaceContainerLow,
+                                color: AppTheme.secondaryColor,
+                                minHeight: 8,
+                                borderRadius: BorderRadius.circular(4),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Initialisation de la simulation...',
+                            style: TextStyle(
+                              color: AppTheme.secondaryColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      )
                     : ElevatedButton.icon(
                         onPressed: () async {
+                          _progressController.forward(from: 0.0);
                           try {
                             final modelsData = ref.read(availableModelsProvider).value;
                             final primaryModel = modelsData?['primary_model'] as String?;
@@ -409,7 +440,9 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen> {
                               questionCount: _questionCount,
                               model: selectedModel,
                             );
+                            _progressController.value = 1.0;
                           } catch (e) {
+                            _progressController.stop();
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('Erreur: $e')),

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Textes Légaux - CGU et Politique de Confidentialité</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="legal-header">
+        <nav aria-label="Navigation principale">
+            <a href="index.html" class="back-link" aria-label="Retourner au formulaire d'inscription">
+                &larr; Retour au formulaire
+            </a>
+        </nav>
+        <h1>Mentions Légales</h1>
+    </header>
+
+    <main class="legal-content">
+        <section id="cgu" aria-labelledby="cgu-title">
+            <h2 id="cgu-title">Conditions Générales d'Utilisation (CGU)</h2>
+            <p><strong>Dernière mise à jour : 24 Juin 2026</strong></p>
+            <h3>1. Objet</h3>
+            <p>Les présentes CGU ont pour objet de définir les modalités de mise à disposition des services du site, et les conditions d'utilisation par l'utilisateur.</p>
+            <h3>2. Accès au site</h3>
+            <p>Le site est accessible gratuitement en tout lieu à tout utilisateur ayant un accès à Internet. Tous les frais supportés par l'utilisateur pour accéder au service sont à sa charge.</p>
+        </section>
+
+        <hr aria-hidden="true">
+
+        <section id="privacy" aria-labelledby="privacy-title">
+            <h2 id="privacy-title">Politique de Confidentialité</h2>
+            <p><strong>Conformité au Règlement Général sur la Protection des Données (RGPD)</strong></p>
+            <h3>1. Collecte des données</h3>
+            <p>Nous collectons votre adresse e-mail et un mot de passe sécurisé (hashé) dans le seul but de vous fournir l'accès à nos services.</p>
+            <h3>2. Sécurité</h3>
+            <p>Vos données sont protégées contre les vulnérabilités XSS et CSRF. Les sessions sont gérées via des tokens JWT ou des cookies avec les attributs <code>HttpOnly</code>, <code>Secure</code>, et <code>SameSite=Strict</code> pour empêcher tout vol de session ou requête inter-site falsifiée.</p>
+            <h3>3. Vos droits</h3>
+            <p>Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, de suppression et de portabilité de vos données. Vous pouvez exercer ces droits en nous contactant.</p>
+        </section>
+    </main>
+</body>
+</html>

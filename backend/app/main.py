@@ -83,7 +83,7 @@ app = FastAPI(
 # Montage du répertoire d'upload pour servir les avatars
 upload_dir = os.path.abspath(settings.upload_dir)
 os.makedirs(upload_dir, exist_ok=True)
-app.mount("/static", StaticFiles(directory=upload_dir), name="uploads-static")
+app.mount("/media", StaticFiles(directory=upload_dir), name="uploads-media")
 
 # Configuration CORS
 origins = [str(url).rstrip("/") for url in settings.frontend_url]

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/bottom_navigation.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../../../core/models/progress.dart';
@@ -120,71 +119,12 @@ class DashboardScreen extends ConsumerWidget {
     final profileAsync = ref.watch(userProfileProvider);
     final historyAsync = ref.watch(sessionHistoryProvider);
 
-    void navigateTo(String route) {
-      if (ModalRoute.of(context)?.settings.name != route) {
-        context.go(route);
-      }
-    }
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(kToolbarHeight),
         child: _buildAppBar(context, ref, profileAsync),
-      ),
-      drawer: Drawer(
-        child: Column(
-          children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: AppTheme.primaryContainer),
-              child: Center(
-                child: Text(
-                  'InterviewPrep',
-                  style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.dashboard),
-              title: const Text('Tableau de bord'),
-              selected: true,
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.quiz),
-              title: const Text('Exercices'),
-              onTap: () {
-                Navigator.pop(context);
-                navigateTo('/exercises');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.bar_chart),
-              title: const Text('Statistiques'),
-              onTap: () {
-                Navigator.pop(context);
-                navigateTo('/statistics');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('À propos'),
-              onTap: () {
-                Navigator.pop(context);
-                navigateTo('/about');
-              },
-            ),
-            const Spacer(),
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: Text(
-                '© 2026 Projet d\'Étude\nTous droits réservés.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 12),
-              ),
-            ),
-          ],
-        ),
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -221,7 +161,6 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
-      bottomNavigationBar: const MainBottomNavigation(),
     );
   }
 

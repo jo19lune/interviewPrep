@@ -13,7 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import get_current_user
 from app.data.database import get_db
 from app.models.user import User
-from app.schemas.user import ChangePasswordRequest, UserProfileUpdate, UserResponse
+from app.schemas.user import (
+    ChangePasswordRequest,
+    UserProfileUpdate,
+    UserResponse,
+)
 from app.services import profile_service
 
 router = APIRouter(prefix="/profile", tags=["profile"])
@@ -40,7 +44,7 @@ async def update_profile(
     return UserResponse.from_orm(user)
 
 
-@router.put("/avatar")
+@router.put("/avatar", response_model=UserResponse)
 async def upload_avatar(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
@@ -49,14 +53,8 @@ async def upload_avatar(
     """
     Upload et mise à jour de l'image de profil (Avatar).
     """
-    avatar_url = await profile_service.upload_user_avatar(db, current_user, file)
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content={
-            "message": "Avatar uploadé avec succès",
-            "avatar_url": avatar_url,
-        },
-    )
+    await profile_service.upload_user_avatar(db, current_user, file)
+    return UserResponse.from_orm(current_user)
 
 
 @router.put("/change-password")
@@ -73,3 +71,15 @@ async def change_password(
         status_code=status.HTTP_200_OK,
         content={"message": "Mot de passe modifié avec succès."}
     )
+
+
+@router.delete("/avatar", response_model=UserResponse)
+async def delete_avatar(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Supprime l'avatar actuel de l'utilisateur.
+    """
+    await profile_service.delete_user_avatar(db, current_user)
+    return UserResponse.from_orm(current_user)
