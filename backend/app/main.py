@@ -85,11 +85,10 @@ upload_dir = os.path.abspath(settings.upload_dir)
 os.makedirs(upload_dir, exist_ok=True)
 app.mount("/media", StaticFiles(directory=upload_dir), name="uploads-media")
 
-# Configuration CORS
-origins = [str(url).rstrip("/") for url in settings.frontend_url]
+# Configuration CORS (Accepte tous les frontends et appareils)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origin_regex="https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
