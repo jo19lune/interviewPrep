@@ -132,13 +132,14 @@ async def health_check() -> dict[str, str]:
     return {"status": "ok", "version": settings.app_version}
 
 
-# Inclure les routers
-app.include_router(auth.router)
-app.include_router(profile.router)
-app.include_router(exercices.router)
-app.include_router(dashboard.router)
-app.include_router(simulation.router)
-app.include_router(qa.router)
+# Inclure les routers sous le préfixe /api/v1
+API_V1_PREFIX = "/api/v1"
+app.include_router(auth.router, prefix=API_V1_PREFIX)
+app.include_router(profile.router, prefix=API_V1_PREFIX)
+app.include_router(exercices.router, prefix=API_V1_PREFIX)
+app.include_router(dashboard.router, prefix=API_V1_PREFIX)
+app.include_router(simulation.router, prefix=API_V1_PREFIX)
+app.include_router(qa.router, prefix=API_V1_PREFIX)
 
 
 # Info API

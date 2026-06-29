@@ -56,19 +56,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         backgroundColor: AppTheme.surface,
         elevation: 0,
         centerTitle: true,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.terminal, color: AppTheme.primaryContainer, size: 28),
-            const SizedBox(width: 8),
-            Text(
-              'InterviewPrep',
-              style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    color: AppTheme.primaryContainer,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-          ],
+        title: Text(
+          'InterviewPrep',
+          style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                color: AppTheme.primaryContainer,
+                fontWeight: FontWeight.bold,
+              ),
         ),
       ),
       body: SafeArea(
@@ -81,6 +74,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Center(
+                    child: Image.asset(
+                      'assets/icon/logo.png',
+                      height: 100,
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.work,
+                        size: 80,
+                        color: AppTheme.primaryContainer,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   // Header
                   Text(
                     'Create Account',

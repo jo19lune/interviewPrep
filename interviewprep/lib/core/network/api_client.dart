@@ -9,7 +9,7 @@ class ApiClient {
     'API_BASE_URL',
   );
   static String get baseUrl =>
-      _configuredBaseUrl.isNotEmpty ? _configuredBaseUrl : defaultApiBaseUrl();
+      '${_configuredBaseUrl.isNotEmpty ? _configuredBaseUrl : defaultApiBaseUrl()}/api/v1';
 
   static String errorMessage(DioException error, String fallback) {
     final statusCode = error.response?.statusCode;
