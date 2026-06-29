@@ -1,0 +1,9 @@
+export 'models/chat_message.dart';
+export 'services/qa_service.dart';
+export 'providers/qa_module_provider.dart';
+export 'providers/qa_ui_providers.dart';
+export 'widgets/qa_chat_bubble.dart';
+export 'widgets/qa_input_field.dart';
+export 'widgets/qa_message_list.dart';
+export 'widgets/qa_module_container.dart';
+export 'screens/standalone_qa_screen.dart';

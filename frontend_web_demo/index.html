@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inscription Sécurisée - Conformité RGPD</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="form-container">
+        <h1>Créer un compte</h1>
+        
+        <!-- Formulaire avec gestion des états ARIA pour l'accessibilité -->
+        <form id="secure-form" novalidate>
+            
+            <div class="form-group">
+                <label for="email">Adresse e-mail</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    required 
+                    aria-required="true"
+                    aria-invalid="false"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password">Mot de passe</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    required 
+                    aria-required="true"
+                    aria-invalid="false"
+                >
+            </div>
+
+            <!-- Case à cocher Se souvenir de moi (Session management) -->
+            <div class="form-group checkbox-group">
+                <input 
+                    type="checkbox" 
+                    id="remember-me" 
+                    name="remember-me"
+                >
+                <label for="remember-me">Se souvenir de moi</label>
+                <small id="remember-help" class="sr-only">Cochez cette case pour rester connecté en toute sécurité sur cet appareil.</small>
+            </div>
+
+            <!-- Case à cocher RGPD / CGU obligatoire -->
+            <div class="form-group checkbox-group">
+                <input 
+                    type="checkbox" 
+                    id="cgu-consent" 
+                    name="cgu-consent" 
+                    required 
+                    aria-required="true" 
+                    aria-invalid="false"
+                    aria-describedby="cgu-error"
+                >
+                <label for="cgu-consent">
+                    J'accepte les <a href="legal.html#cgu">Conditions Générales d'Utilisation</a> et la <a href="legal.html#privacy">Politique de Confidentialité</a>.
+                </label>
+            </div>
+            <!-- Message d'erreur dynamique (masqué par défaut) -->
+            <div id="cgu-error" class="error-message" role="alert" aria-live="assertive" hidden>
+                Vous devez accepter les Conditions Générales d'Utilisation et la Politique de Confidentialité pour continuer.
+            </div>
+
+            <button type="submit" id="submit-btn">S'inscrire</button>
+        </form>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

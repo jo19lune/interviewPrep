@@ -1,2 +1,7 @@
 .vscode/
 .github/
+maquette/
+.kilo/
+.kilocode/
+.sixth/
+*.log
