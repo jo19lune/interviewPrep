@@ -17,6 +17,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
@@ -54,19 +56,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         backgroundColor: AppTheme.surface,
         elevation: 0,
         centerTitle: true,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.terminal, color: AppTheme.primaryContainer, size: 28),
-            const SizedBox(width: 8),
-            Text(
-              'InterviewPrep',
-              style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    color: AppTheme.primaryContainer,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-          ],
+        title: Text(
+          'InterviewPrep',
+          style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                color: AppTheme.primaryContainer,
+                fontWeight: FontWeight.bold,
+              ),
         ),
       ),
       body: SafeArea(
@@ -79,6 +74,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Center(
+                    child: Image.asset(
+                      'assets/icon/logo.png',
+                      height: 100,
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.work,
+                        size: 80,
+                        color: AppTheme.primaryContainer,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   // Header
                   Text(
                     'Create Account',
@@ -149,11 +156,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           const SizedBox(height: 8),
                           TextFormField(
                             controller: _passwordController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               hintText: '••••••••',
-                              prefixIcon: Icon(Icons.lock_outline),
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                  color: AppTheme.outline,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                              ),
                             ),
-                            obscureText: true,
+                            obscureText: _obscurePassword,
                             validator: (value) => value!.length < 8 ? 'Minimum 8 caractères' : null,
                           ),
                           const SizedBox(height: 16),
@@ -163,11 +181,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           const SizedBox(height: 8),
                           TextFormField(
                             controller: _confirmPasswordController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               hintText: '••••••••',
-                              prefixIcon: Icon(Icons.lock_outline),
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                                  color: AppTheme.outline,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscureConfirmPassword = !_obscureConfirmPassword;
+                                  });
+                                },
+                              ),
                             ),
-                            obscureText: true,
+                            obscureText: _obscureConfirmPassword,
                             validator: (value) {
                               if (value!.isEmpty) return 'Veuillez confirmer';
                               if (value != _passwordController.text) return 'Les mots de passe ne correspondent pas';

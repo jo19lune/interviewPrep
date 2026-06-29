@@ -6,22 +6,17 @@ la sélection aléatoire et la génération dynamique d'exercices à l'aide
 de l'Intelligence Artificielle.
 """
 
-import random
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 
-from app.config.settings import settings
-from app.core.enums import Domaine, Niveau
 from app.core.security import get_current_user
-from app.core.validators import normalize_enum_filter
 from app.data.database import get_db
-from app.models.exercice import Exercice
 from app.models.user import User
-from app.schemas.exercice import ExerciceCreateRequest, ExerciceResponse
-from app.services.ai_service import AIService
+from app.schemas.exercice import ExerciceCreateRequest, ExerciceResponse, ExerciceGenerateRequest
+from app.services import exercice_service
+from app.services.ai_service import QuotaExceededError
 
 router = APIRouter(prefix="/exercises", tags=["exercises"])
 
@@ -37,45 +32,8 @@ async def list_exercises(
 ):
     """
     Récupère la liste des exercices disponibles.
-
-    Prend en charge la pagination et le filtrage optionnel par domaine,
-    niveau de difficulté et mots-clés (tags).
-
-    Args:
-        domaine (str | None): Filtre sur la catégorie métier.
-        difficulte (str | None): Filtre sur le niveau de difficulté.
-        tags (str | None): Tags séparés par des virgules pour la recherche.
-        skip (int): Nombre d'éléments à ignorer.
-        limit (int): Nombre maximum d'éléments à renvoyer.
-        db (AsyncSession): Session de la base de données.
-
-    Returns:
-        list[ExerciceResponse]: La liste des exercices correspondants.
     """
-    domaine_norm = normalize_enum_filter(domaine, {item.value for item in Domaine}, "domaine")
-    difficulte_norm = normalize_enum_filter(difficulte, {item.value for item in Niveau}, "difficulte")
-
-    query = select(Exercice)
-    if domaine_norm:
-        query = query.where(Exercice.domaine == domaine_norm)
-    if difficulte_norm:
-        query = query.where(Exercice.difficulte == difficulte_norm)
-
-    result = await db.execute(query)
-    exercises = result.scalars().all()
-
-    if tags:
-        tag_list = [tag.strip().lower() for tag in tags.split(",") if tag.strip()]
-        exercises = [
-            exercise
-            for exercise in exercises
-            if any(
-                tag in {str(item).lower() for item in (exercise.etiquettes or [])} 
-                for tag in tag_list
-            )
-        ]
-
-    exercises = exercises[skip : skip + limit]
+    exercises = await exercice_service.get_exercises_list(db, domaine, difficulte, tags, skip, limit)
     return [ExerciceResponse.from_orm(exercise) for exercise in exercises]
 
 
@@ -87,40 +45,9 @@ async def get_random_exercise(
 ):
     """
     Récupère un exercice aléatoire.
-
-    Utile pour les modes d'entraînement rapide ou l'utilisateur veut 
-    se tester sans choisir spécifiquement son sujet.
-
-    Args:
-        domaine (str | None): Si fourni, restreint le tirage à ce domaine.
-        difficulte (str | None): Si fourni, restreint le tirage à cette difficulté.
-        db (AsyncSession): Session de la base de données.
-
-    Returns:
-        ExerciceResponse: L'exercice sélectionné aléatoirement.
-
-    Raises:
-        HTTPException: Erreur 404 si aucun exercice ne correspond aux critères.
     """
-    domaine_norm = normalize_enum_filter(domaine, {item.value for item in Domaine}, "domaine")
-    difficulte_norm = normalize_enum_filter(difficulte, {item.value for item in Niveau}, "difficulte")
-
-    query = select(Exercice)
-    if domaine_norm:
-        query = query.where(Exercice.domaine == domaine_norm)
-    if difficulte_norm:
-        query = query.where(Exercice.difficulte == difficulte_norm)
-
-    result = await db.execute(query)
-    exercises = result.scalars().all()
-
-    if not exercises:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No exercises found matching criteria",
-        )
-
-    return ExerciceResponse.from_orm(random.choice(exercises))
+    exercise = await exercice_service.get_random_exercise_from_db(db, domaine, difficulte)
+    return ExerciceResponse.from_orm(exercise)
 
 
 @router.get("/{exercise_id}", response_model=ExerciceResponse)
@@ -130,26 +57,8 @@ async def get_exercise(
 ):
     """
     Récupère les détails complets d'un exercice spécifique.
-
-    Args:
-        exercise_id (UUID): L'identifiant unique de l'exercice.
-        db (AsyncSession): Session de la base de données.
-
-    Returns:
-        ExerciceResponse: Les informations détaillées de l'exercice.
-
-    Raises:
-        HTTPException: Erreur 404 si l'exercice n'existe pas.
     """
-    result = await db.execute(select(Exercice).where(Exercice.id == exercise_id))
-    exercise = result.scalars().first()
-
-    if not exercise:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Exercise not found",
-        )
-
+    exercise = await exercice_service.get_exercise_by_id(db, exercise_id)
     return ExerciceResponse.from_orm(exercise)
 
 
@@ -161,113 +70,32 @@ async def create_exercise(
 ):
     """
     Crée manuellement un nouvel exercice.
-
-    Endpoint réservé aux contributeurs (admin/experts) pour enrichir le 
-    catalogue standard.
-
-    Args:
-        request (ExerciceCreateRequest): Les données de création de l'exercice.
-        current_user (User): L'utilisateur authentifié (doit avoir les droits nécessaires).
-        db (AsyncSession): Session de la base de données.
-
-    Returns:
-        ExerciceResponse: L'exercice fraîchement créé.
     """
-    new_exercise = Exercice(
-        titre=request.titre,
-        description=request.description,
-        domaine=request.domaine,
-        difficulte=request.difficulte,
-        duree_sec=request.duree_sec,
-        questions=request.questions,
-        etiquettes=request.etiquettes,
-    )
-
-    db.add(new_exercise)
-    await db.commit()
-    await db.refresh(new_exercise)
-
-    return ExerciceResponse.from_orm(new_exercise)
+    exercise = await exercice_service.create_exercise_in_db(db, request)
+    return ExerciceResponse.from_orm(exercise)
 
 
 @router.post("/generate", response_model=ExerciceResponse, status_code=status.HTTP_201_CREATED)
 async def generate_exercise(
-    domaine: str = Query(..., min_length=2, max_length=80),
-    difficulte: str = Query(..., min_length=2, max_length=80),
-    sujet: str | None = Query(None, min_length=0, max_length=160),
-    nombre_questions: int = Query(10, ge=1, le=30),
-    save: bool = Query(True),
+    request: ExerciceGenerateRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Génère un exercice dynamiquement grâce à l'Intelligence Artificielle.
-
-    Fait appel au service IA configuré pour créer un scénario d'entretien sur 
-    mesure en fonction du domaine, de la difficulté et d'un sujet spécifique.
-    
-    Args:
-        domaine (str): Le domaine cible (ex: TECHNIQUE).
-        difficulte (str): Le niveau de complexité souhaité (ex: AVANCE).
-        sujet (str | None): Sujet libre optionnel (ex: "React JS", "Gestion de conflit").
-        nombre_questions (int): Nombre de questions à générer.
-        save (bool): Indique si l'exercice doit être persisté en base de données.
-        current_user (User): L'utilisateur authentifié.
-        db (AsyncSession): Session de la base de données.
-
-    Returns:
-        ExerciceResponse: L'exercice généré par l'IA.
-
-    Raises:
-        HTTPException: Erreur 400 si la fonctionnalité est désactivée.
     """
-    if not settings.ai_feature_generate_exercises:
+    try:
+        exercise = await exercice_service.generate_exercise_via_ai(db, request)
+    except QuotaExceededError as exc:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Dynamic exercise generation is disabled on this server",
-        )
-
-    domaine_norm = normalize_enum_filter(domaine, {item.value for item in Domaine}, "domaine")
-    difficulte_norm = normalize_enum_filter(difficulte, {item.value for item in Niveau}, "difficulte")
-
-    # On ignore le lint potentiel pour s'assurer d'utiliser les chaînes
-    domaine_str = domaine_norm if domaine_norm else domaine
-    difficulte_str = difficulte_norm if difficulte_norm else difficulte
-
-    ai_service = AIService()
-    generated = await ai_service.generate_exercise(
-        domaine=domaine_str,
-        difficulte=difficulte_str,
-        sujet=sujet,
-        nombre_questions=nombre_questions,
-    )
-
-    exercise = Exercice(
-        titre=generated.get("titre", f"Simulation {domaine_str}"),
-        description=generated.get("description"),
-        domaine=domaine_str,
-        difficulte=difficulte_str,
-        duree_sec=int(generated.get("duree_sec") or 300),
-        questions=generated.get("questions") or [],
-        etiquettes=generated.get("etiquettes") or [domaine_str],
-        difficulte_estimee=0,
-    )
-
-    if save:
-        db.add(exercise)
-        await db.commit()
-        await db.refresh(exercise)
-        return ExerciceResponse.from_orm(exercise)
-
-    return ExerciceResponse.model_validate({
-        "id": UUID(int=0),
-        "titre": exercise.titre,
-        "description": exercise.description,
-        "domaine": exercise.domaine,
-        "difficulte": exercise.difficulte,
-        "duree_sec": exercise.duree_sec,
-        "questions": exercise.questions,
-        "etiquettes": exercise.etiquettes,
-        "difficulte_estimee": exercise.difficulte_estimee,
-        "cree_le": None,
-    })
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Le service d'IA est temporairement indisponible : quota OpenAI dépassé. Veuillez réessayer plus tard.",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de la génération de l'exercice : {exc}",
+        ) from exc
+    if isinstance(exercise, ExerciceResponse):
+        return exercise
+    return ExerciceResponse.from_orm(exercise)

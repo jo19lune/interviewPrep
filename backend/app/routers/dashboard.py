@@ -6,20 +6,16 @@ consulter ses statistiques d'entraînement, son historique de
 sessions d'entretiens et son tableau de bord personnel.
 """
 
-from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import desc
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 
 from app.core.security import get_current_user
 from app.data.database import get_db
-from app.models.exercice import Exercice
-from app.models.session import Session
 from app.models.user import User
 from app.schemas.session import SessionResponse
+from app.services import stats_service
 
 router = APIRouter(prefix="/progress", tags=["progress"])
 
@@ -31,61 +27,8 @@ async def get_my_progress(
 ) -> dict[str, Any]:
     """
     Récupère la progression personnelle globale de l'utilisateur courant.
-
-    Calcule dynamiquement les statistiques principales telles que le 
-    nombre de sessions terminées, le score moyen, le meilleur score,
-    et la série actuelle (streak) de jours consécutifs d'entraînement.
-
-    Args:
-        current_user (User): L'utilisateur authentifié.
-        db (AsyncSession): La session de base de données.
-
-    Returns:
-        dict[str, Any]: Les statistiques consolidées de l'utilisateur.
     """
-    result = await db.execute(
-        select(Session)
-        .where(Session.utilisateur_id == current_user.id)
-        .where(Session.statut == "TERMINEE")
-        .order_by(desc(Session.termine_le))
-    )
-    sessions = result.scalars().all()
-
-    if not sessions:
-        return {
-            "total_sessions": 0,
-            "avg_score": 0.0,
-            "best_score": 0.0,
-            "streak": 0,
-            "last_session_date": None,
-        }
-
-    scores = [s.score for s in sessions if s.score is not None]
-    avg_score = sum(scores) / len(scores) if scores else 0.0
-    best_score = max(scores) if scores else 0.0
-
-    completed_dates = {
-        s.termine_le.date()
-        for s in sessions
-        if s.termine_le is not None
-    }
-    streak = 0
-    cursor = datetime.utcnow().date()
-    
-    if cursor not in completed_dates:
-        cursor = cursor - timedelta(days=1)
-        
-    while cursor in completed_dates:
-        streak += 1
-        cursor = cursor - timedelta(days=1)
-
-    return {
-        "total_sessions": len(sessions),
-        "avg_score": round(avg_score, 2),
-        "best_score": round(best_score, 2),
-        "streak": streak,
-        "last_session_date": sessions[0].termine_le,
-    }
+    return await stats_service.get_user_progress_stats(db, current_user.id)
 
 
 @router.get("/stats")
@@ -95,48 +38,8 @@ async def get_detailed_stats(
 ) -> dict[str, dict[str, Any]]:
     """
     Récupère les statistiques détaillées regroupées par domaine.
-
-    Analyse l'historique de l'utilisateur et calcule les scores 
-    moyens et les meilleurs scores obtenus pour chaque domaine 
-    spécifique (TECHNIQUE, COMPORTEMENTAL, etc.).
-
-    Args:
-        current_user (User): L'utilisateur authentifié.
-        db (AsyncSession): La session de base de données.
-
-    Returns:
-        dict[str, dict[str, Any]]: Un dictionnaire indexé par domaine, contenant
-        les métriques détaillées.
     """
-    result = await db.execute(
-        select(Session, Exercice)
-        .join(Exercice, Session.exercice_id == Exercice.id)
-        .where(Session.utilisateur_id == current_user.id)
-        .where(Session.statut == "TERMINEE")
-    )
-    rows = result.all()
-
-    domains_stats = {}
-    for session, exercice in rows:
-        domaine = exercice.domaine
-        if domaine not in domains_stats:
-            domains_stats[domaine] = {
-                "total": 0,
-                "avg_score": 0.0,
-                "best_score": 0.0,
-                "scores": [],
-            }
-        domains_stats[domaine]["total"] += 1
-        if session.score is not None:
-            domains_stats[domaine]["scores"].append(session.score)
-
-    for stats in domains_stats.values():
-        if stats["scores"]:
-            stats["avg_score"] = round(sum(stats["scores"]) / len(stats["scores"]), 2)
-            stats["best_score"] = round(max(stats["scores"]), 2)
-        del stats["scores"]
-
-    return domains_stats
+    return await stats_service.get_user_detailed_stats(db, current_user.id)
 
 
 @router.get("/history", response_model=list[SessionResponse])
@@ -148,26 +51,8 @@ async def get_session_history(
 ):
     """
     Récupère l'historique paginé des sessions de l'utilisateur.
-
-    Args:
-        skip (int): Nombre d'enregistrements à ignorer pour la pagination.
-        limit (int): Nombre maximum d'enregistrements à retourner (max 100).
-        current_user (User): L'utilisateur authentifié.
-        db (AsyncSession): La session de base de données.
-
-    Returns:
-        list[SessionResponse]: Liste sérialisée des sessions de l'utilisateur,
-        triée de la plus récente à la plus ancienne.
     """
-    result = await db.execute(
-        select(Session)
-        .where(Session.utilisateur_id == current_user.id)
-        .order_by(desc(Session.commence_le))
-        .offset(skip)
-        .limit(limit)
-    )
-    sessions = result.scalars().all()
-
+    sessions = await stats_service.get_user_session_history(db, current_user.id, skip, limit)
     return [SessionResponse.from_orm(s) for s in sessions]
 
 
@@ -178,16 +63,6 @@ async def export_progress_pdf(
 ) -> dict[str, Any]:
     """
     Exporte le rapport de progression au format PDF.
-
-    Fonctionnalité en cours de développement. Permettra de générer 
-    un bilan synthétique de l'apprentissage de l'utilisateur.
-
-    Args:
-        current_user (User): L'utilisateur authentifié.
-        db (AsyncSession): La session de base de données.
-
-    Returns:
-        dict[str, Any]: Statut de l'implémentation ou URL du document généré.
     """
     return {
         "message": "PDF export not yet implemented",

@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config.settings import settings
 from app.core.exceptions import AppException
 from app.data.database import close_db, init_db
-from app.routers import auth, dashboard, exercices, profile, simulation
+from app.routers import auth, dashboard, exercices, profile, simulation, qa
 
 logger = logging.getLogger(__name__)
 
@@ -83,13 +83,12 @@ app = FastAPI(
 # Montage du répertoire d'upload pour servir les avatars
 upload_dir = os.path.abspath(settings.upload_dir)
 os.makedirs(upload_dir, exist_ok=True)
-app.mount("/static", StaticFiles(directory=upload_dir), name="uploads-static")
+app.mount("/media", StaticFiles(directory=upload_dir), name="uploads-media")
 
-# Configuration CORS
-origins = [str(url).rstrip("/") for url in settings.frontend_url]
+# Configuration CORS (Accepte tous les frontends et appareils)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origin_regex="https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -133,12 +132,14 @@ async def health_check() -> dict[str, str]:
     return {"status": "ok", "version": settings.app_version}
 
 
-# Inclure les routers
-app.include_router(auth.router)
-app.include_router(profile.router)
-app.include_router(exercices.router)
-app.include_router(dashboard.router)
-app.include_router(simulation.router)
+# Inclure les routers sous le préfixe /api/v1
+API_V1_PREFIX = "/api/v1"
+app.include_router(auth.router, prefix=API_V1_PREFIX)
+app.include_router(profile.router, prefix=API_V1_PREFIX)
+app.include_router(exercices.router, prefix=API_V1_PREFIX)
+app.include_router(dashboard.router, prefix=API_V1_PREFIX)
+app.include_router(simulation.router, prefix=API_V1_PREFIX)
+app.include_router(qa.router, prefix=API_V1_PREFIX)
 
 
 # Info API

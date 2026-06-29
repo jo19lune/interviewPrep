@@ -9,20 +9,39 @@ class ApiClient {
     'API_BASE_URL',
   );
   static String get baseUrl =>
-      _configuredBaseUrl.isNotEmpty ? _configuredBaseUrl : defaultApiBaseUrl();
+      '${_configuredBaseUrl.isNotEmpty ? _configuredBaseUrl : defaultApiBaseUrl()}/api/v1';
 
   static String errorMessage(DioException error, String fallback) {
+    final statusCode = error.response?.statusCode;
+    if (statusCode == 401) return 'Non autorisé';
+    if (statusCode == 429) return 'Trop de requêtes, veuillez patienter';
+    if (statusCode == 503) return 'Service indisponible';
+
     final data = error.response?.data;
     if (data is Map) {
       final detail = data['detail'];
       if (detail is List) {
         return detail.map((item) => item.toString()).join('\n');
       }
+      if (detail is Map) {
+        final code = detail['code'];
+        final msg = detail['message'] ?? detail['msg'] ?? detail['detail'];
+        if (msg != null) {
+          if (code != null) {
+            return '[$code] $msg';
+          }
+          return msg.toString();
+        }
+      }
       if (detail != null) {
         return detail.toString();
       }
+      final code = data['code'];
       final message = data['message'];
       if (message != null) {
+        if (code != null) {
+          return '[$code] $message';
+        }
         return message.toString();
       }
     }

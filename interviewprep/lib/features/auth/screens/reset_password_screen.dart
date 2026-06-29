@@ -20,6 +20,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _submitted = false;
   String? _email;
+  bool _obscurePassword = true;
 
   @override
   void didChangeDependencies() {
@@ -129,12 +130,23 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _passwordController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Nouveau mot de passe',
                         hintText: 'Minimum 8 caractères',
-                        prefixIcon: Icon(Icons.lock_outline),
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                            color: AppTheme.outline,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
                       ),
-                      obscureText: true,
+                      obscureText: _obscurePassword,
                       enabled: !isLoading,
                       validator: (v) {
                         if (v == null || v.isEmpty) return 'Veuillez entrer un mot de passe';
@@ -145,12 +157,23 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _confirmController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Confirmer le mot de passe',
                         hintText: 'Retapez le mot de passe',
-                        prefixIcon: Icon(Icons.lock_outline),
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                            color: AppTheme.outline,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
                       ),
-                      obscureText: true,
+                      obscureText: _obscurePassword,
                       enabled: !isLoading,
                       validator: (v) {
                         if (v != _passwordController.text) return 'Les mots de passe ne correspondent pas';

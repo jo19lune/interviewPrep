@@ -10,6 +10,8 @@ from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.exc import IntegrityError
+from fastapi import HTTPException, status
 
 from app.config.settings import settings
 from app.core.exceptions import AuthenticationError
@@ -139,6 +141,38 @@ async def get_user_by_email(
         select(User).where(User.courriel == email.lower())
     )
     return result.scalars().first()
+
+
+async def register_new_user(session: AsyncSession, request_data: dict) -> Tuple[User, TokenResponse]:
+    email = request_data["courriel"]
+    existing_user = await get_user_by_email(session, email)
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered",
+        )
+
+    try:
+        new_user = User(
+            courriel=email,
+            mot_de_passe_hash=hash_password(request_data["mot_de_passe"]),
+            prenom=request_data["prenom"],
+            nom=request_data["nom"],
+            est_actif=True,
+        )
+        session.add(new_user)
+        await session.commit()
+        await session.refresh(new_user)
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered",
+        )
+
+    return await authenticate_user(session, email, request_data["mot_de_passe"])
+
+
 
 
 async def authenticate_user(

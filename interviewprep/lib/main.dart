@@ -28,15 +28,18 @@ class InterviewPrepApp extends ConsumerWidget {
         return Stack(
           children: [
             child ?? const SizedBox.shrink(),
-            if (startupAsync is AsyncLoading<void>)
-              const Positioned.fill(
-                child: ColoredBox(
-                  color: Color(0xCCFFFFFF),
-                  child: Center(
-                    child: CircularProgressIndicator(color: AppTheme.primaryContainer),
-                  ),
-                ),
-              ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 500),
+              child: (startupAsync is AsyncLoading<void>)
+                  ? const ColoredBox(
+                      key: ValueKey('startup_loading'),
+                      color: Color(0xCCFFFFFF),
+                      child: Center(
+                        child: CircularProgressIndicator(color: AppTheme.primaryContainer),
+                      ),
+                    )
+                  : const SizedBox.shrink(key: ValueKey('startup_done')),
+            ),
           ],
         );
       },

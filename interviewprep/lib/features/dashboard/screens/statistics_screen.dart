@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/bottom_navigation.dart';
 import '../../../core/models/session_models.dart';
 import '../providers/dashboard_provider.dart';
 import '../../exercises/providers/exercise_provider.dart';
@@ -81,7 +80,6 @@ class StatisticsScreen extends ConsumerWidget {
           ),
         ),
       ),
-      bottomNavigationBar: const MainBottomNavigation(),
     );
   }
 

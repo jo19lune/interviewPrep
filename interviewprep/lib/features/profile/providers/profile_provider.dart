@@ -63,4 +63,13 @@ class ProfileNotifier extends StateNotifier<AsyncValue<UserResponse>> {
       rethrow;
     }
   }
+
+  Future<void> deleteAvatar() async {
+    try {
+      final updatedProfile = await _profileService.deleteAvatar();
+      state = AsyncValue.data(updatedProfile);
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

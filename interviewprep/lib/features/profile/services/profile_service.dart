@@ -46,6 +46,18 @@ class ProfileService {
     }
   }
 
+  Future<UserResponse> deleteAvatar() async {
+    try {
+      final response = await _apiClient.dio.delete('/profile/avatar');
+      return UserResponse.fromJson(response.data);
+    } catch (e) {
+      if (e is DioException) {
+        throw Exception(ApiClient.errorMessage(e, 'Erreur lors de la suppression de l\'avatar'));
+      }
+      throw Exception('Erreur inattendue');
+    }
+  }
+
   Future<void> changePassword(ChangePasswordRequest req) async {
     try {
       await _apiClient.dio.put('/profile/change-password', data: req.toJson());

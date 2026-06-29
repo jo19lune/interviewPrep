@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/bottom_navigation.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -44,7 +43,7 @@ class AboutScreen extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.bar_chart),
               title: const Text('Statistiques'),
-              onTap: () => _navigateTo('/statistics', context),
+              onTap: () => _navigateTo('/dashboard/statistics', context),
             ),
             ListTile(
               leading: const Icon(Icons.help_outline),
@@ -100,7 +99,6 @@ class AboutScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: const MainBottomNavigation(),
     );
   }
 }

@@ -16,6 +16,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _obscurePassword = true;
+  bool _isSuccessOverlayVisible = false;
 
   @override
   void dispose() {
@@ -31,7 +33,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           _emailController.text,
           _passwordController.text,
         );
-        if (mounted) context.go('/dashboard');
+        if (mounted) {
+          setState(() {
+            _isSuccessOverlayVisible = true;
+          });
+          // Petit délai pour afficher le spinner fluide de succès
+          await Future.delayed(const Duration(milliseconds: 800));
+          if (mounted) context.go('/dashboard');
+        }
       } catch (e) {
         if (mounted) {
           final msg = e.toString().replaceAll('Exception: ', '').trim();
@@ -99,24 +108,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         backgroundColor: AppTheme.surface,
         elevation: 0,
         centerTitle: true,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.terminal, color: AppTheme.primaryContainer, size: 28),
-            const SizedBox(width: 8),
-            Text(
-              'InterviewPrep',
-              style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    color: AppTheme.primaryContainer,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-          ],
+        title: Text(
+          'InterviewPrep',
+          style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                color: AppTheme.primaryContainer,
+                fontWeight: FontWeight.bold,
+              ),
         ),
       ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
+        child: Stack(
+          children: [
+            Center(
+              child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
@@ -124,6 +128,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Center(
+                    child: Image.asset(
+                      'assets/icon/logo.png',
+                      height: 100,
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.work,
+                        size: 80,
+                        color: AppTheme.primaryContainer,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   // Welcome Header
                   Text(
                     'Welcome back',
@@ -195,11 +211,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(height: 8),
                           TextFormField(
                             controller: _passwordController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               hintText: '••••••••',
-                              prefixIcon: Icon(Icons.lock_outline),
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                  color: AppTheme.outline,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                              ),
                             ),
-                            obscureText: true,
+                            obscureText: _obscurePassword,
                             validator: (value) => value!.isEmpty ? 'Veuillez entrer votre mot de passe' : null,
                           ),
                           const SizedBox(height: 24),
@@ -372,7 +399,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
+        // Overlay de chargement
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: _isSuccessOverlayVisible
+              ? Container(
+                  key: const ValueKey('success_overlay'),
+                  color: Colors.white.withAlpha((0.9 * 255).round()),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(color: AppTheme.secondaryColor),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Connexion réussie...',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: AppTheme.primaryContainer,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(key: ValueKey('empty')),
+        ),
+      ],
+    ),
+  ),
+);
+}
 }
