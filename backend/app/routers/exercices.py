@@ -8,7 +8,7 @@ de l'Intelligence Artificielle.
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user
@@ -16,6 +16,7 @@ from app.data.database import get_db
 from app.models.user import User
 from app.schemas.exercice import ExerciceCreateRequest, ExerciceResponse, ExerciceGenerateRequest
 from app.services import exercice_service
+from app.services.ai_service import QuotaExceededError
 
 router = APIRouter(prefix="/exercises", tags=["exercises"])
 
@@ -83,7 +84,18 @@ async def generate_exercise(
     """
     Génère un exercice dynamiquement grâce à l'Intelligence Artificielle.
     """
-    exercise = await exercice_service.generate_exercise_via_ai(db, request)
+    try:
+        exercise = await exercice_service.generate_exercise_via_ai(db, request)
+    except QuotaExceededError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Le service d'IA est temporairement indisponible : quota OpenAI dépassé. Veuillez réessayer plus tard.",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de la génération de l'exercice : {exc}",
+        ) from exc
     if isinstance(exercise, ExerciceResponse):
         return exercise
     return ExerciceResponse.from_orm(exercise)

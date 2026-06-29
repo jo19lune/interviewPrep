@@ -1,4 +1,4 @@
-"""Service d'integration avec modeles IA configurables (Google GenAI)."""
+"""Service d'integration avec modeles IA configurables (OpenAI)."""
 
 import json
 import logging
@@ -8,9 +8,14 @@ import time
 from hashlib import sha256
 from typing import Any
 
-from google import genai
+from openai import AsyncOpenAI, APIStatusError, RateLimitError
 
 logger = logging.getLogger(__name__)
+
+
+class QuotaExceededError(Exception):
+    """Levée quand le quota OpenAI est atteint (HTTP 429 / insufficient_quota)."""
+    pass
 
 
 class AIService:
@@ -57,7 +62,7 @@ class AIService:
     def _init_clients(self) -> None:
         api_key = self.settings.openai_api_key
         if api_key:
-            self.client = genai.Client(api_key=api_key)
+            self.client = AsyncOpenAI(api_key=api_key)
 
     def _clean_input(self, val: Any) -> str:
         """Nettoie et valide les chaines envoyees a l'IA (trim, suppression des caracteres de controle)."""
@@ -197,27 +202,28 @@ class AIService:
             
         # 4. Exécuter l'appel à l'API IA
         try:
-            chat = self.client.chats.create(model=model)
-            while True:
-                try:
-                    response = await asyncio.to_thread(
-                        chat.send_message,
-                        prompt
-                    )
-                    result_text = response.text or ""
-                    # Enregistrer dans le cache
-                    self._cache[cache_key] = (time.time(), result_text)
-                    return result_text
-                except Exception as e:
-                    error_msg = str(e).lower()
-                    if "429" in error_msg or "quota" in error_msg or "resourceexhausted" in error_msg:
-                        logger.warning(f"Quota atteint pour le modèle {model}. Basculement nécessaire si possible.")
-                        class QuotaExceededError(Exception):
-                            pass
-                        raise QuotaExceededError(f"Quota exceeded for model {model}: {e}")
-                    else:
-                        logger.error(f"Erreur API avec le modele {model}: {e}")
-                        raise e
+            try:
+                response = await self.client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7,
+                )
+                result_text = response.choices[0].message.content or ""
+                # Enregistrer dans le cache
+                self._cache[cache_key] = (time.time(), result_text)
+                return result_text
+            except RateLimitError as e:
+                logger.warning(f"Quota atteint pour le modèle {model}. Basculement nécessaire si possible.")
+                raise QuotaExceededError(f"Quota exceeded for model {model}: {e}") from e
+            except APIStatusError as e:
+                if e.status_code == 429:
+                    logger.warning(f"Quota atteint pour le modèle {model}. Basculement nécessaire si possible.")
+                    raise QuotaExceededError(f"Quota exceeded for model {model}: {e}") from e
+                logger.error(f"Erreur API avec le modele {model}: {e}")
+                raise e
+            except Exception as e:
+                logger.error(f"Erreur API avec le modele {model}: {e}")
+                raise e
         finally:
             # 5. Libérer le verrou pour les autres requêtes en attente
             if is_first_request:

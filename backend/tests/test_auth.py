@@ -59,7 +59,7 @@ def client():
 async def test_register_new_user(client, test_db):
     """Tester la création d'un nouveau compte"""
     response = client.post(
-        "/auth/register",
+        "/api/v1/auth/register",
         json={
             "courriel": "test@example.com",
             "mot_de_passe": "SecurePassword123!",
@@ -79,7 +79,7 @@ def test_register_duplicate_email(client):
     """Tester l'enregistrement avec email déjà utilisé"""
     # Première inscription
     client.post(
-        "/auth/register",
+        "/api/v1/auth/register",
         json={
             "courriel": "test@example.com",
             "mot_de_passe": "SecurePassword123!"
@@ -88,7 +88,7 @@ def test_register_duplicate_email(client):
     
     # Deuxième inscription avec même email
     response = client.post(
-        "/auth/register",
+        "/api/v1/auth/register",
         json={
             "courriel": "test@example.com",
             "mot_de_passe": "DifferentPassword123!"
@@ -102,7 +102,7 @@ def test_login_success(client):
     """Tester une connexion réussie"""
     # S'enregistrer d'abord
     client.post(
-        "/auth/register",
+        "/api/v1/auth/register",
         json={
             "courriel": "test@example.com",
             "mot_de_passe": "SecurePassword123!"
@@ -111,7 +111,7 @@ def test_login_success(client):
     
     # Ensuite se connecter
     response = client.post(
-        "/auth/login",
+        "/api/v1/auth/login",
         json={
             "courriel": "test@example.com",
             "mot_de_passe": "SecurePassword123!"
@@ -128,7 +128,7 @@ def test_login_invalid_password(client):
     """Tester une connexion avec mauvais mot de passe"""
     # S'enregistrer d'abord
     client.post(
-        "/auth/register",
+        "/api/v1/auth/register",
         json={
             "courriel": "test@example.com",
             "mot_de_passe": "SecurePassword123!"
@@ -137,7 +137,7 @@ def test_login_invalid_password(client):
     
     # Essayer de se connecter avec mauvais mot de passe
     response = client.post(
-        "/auth/login",
+        "/api/v1/auth/login",
         json={
             "courriel": "test@example.com",
             "mot_de_passe": "WrongPassword!"
@@ -151,7 +151,7 @@ def test_get_profile_with_token(client):
     """Tester la récupération du profil avec un token valide"""
     # S'enregistrer et obtenir un token
     register_response = client.post(
-        "/auth/register",
+        "/api/v1/auth/register",
         json={
             "courriel": "test@example.com",
             "mot_de_passe": "SecurePassword123!",
@@ -162,7 +162,7 @@ def test_get_profile_with_token(client):
     
     # Récupérer le profil
     response = client.get(
-        "/auth/me",
+        "/api/v1/auth/me",
         headers={"Authorization": f"Bearer {token}"}
     )
     
@@ -174,6 +174,6 @@ def test_get_profile_with_token(client):
 
 def test_get_profile_without_token(client):
     """Tester la récupération du profil sans token"""
-    response = client.get("/auth/me")
+    response = client.get("/api/v1/auth/me")
     
     assert response.status_code == 403  # Forbidden ou 401
