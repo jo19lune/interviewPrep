@@ -275,7 +275,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                 onTap: () {
                   Navigator.pop(sheetCtx);
                   context.go(
-                    '/qa?exerciseId=${Uri.encodeComponent(exercise.id)}'
+                    '/exercises/qa?exerciseId=${Uri.encodeComponent(exercise.id)}'
                     '&exerciseTitle=${Uri.encodeComponent(exercise.titre)}'
                     '&domaine=${Uri.encodeComponent(exercise.domaine)}'
                     '&difficulte=${Uri.encodeComponent(exercise.difficulte)}',

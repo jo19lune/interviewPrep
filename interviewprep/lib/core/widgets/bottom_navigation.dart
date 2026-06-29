@@ -25,8 +25,8 @@ class MainBottomNavigation extends StatelessWidget {
       _NavItem(route: '/dashboard', icon: Icons.dashboard, label: 'Dashboard'),
       _NavItem(route: '/exercises', icon: Icons.quiz, label: 'Exercises'),
       _NavItem(route: '/simulation', icon: Icons.mic, label: 'Simulation'),
-      _NavItem(route: '/statistics', icon: Icons.bar_chart, label: 'Insights'),
-      _NavItem(route: '/about', icon: Icons.info_outline, label: 'About'),
+      _NavItem(route: '/dashboard/statistics', icon: Icons.bar_chart, label: 'Insights'),
+      _NavItem(route: '/dashboard/about', icon: Icons.info_outline, label: 'About'),
     ];
 
     return Container(

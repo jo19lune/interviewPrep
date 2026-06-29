@@ -43,7 +43,7 @@ class AboutScreen extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.bar_chart),
               title: const Text('Statistiques'),
-              onTap: () => _navigateTo('/statistics', context),
+              onTap: () => _navigateTo('/dashboard/statistics', context),
             ),
             ListTile(
               leading: const Icon(Icons.help_outline),

@@ -175,7 +175,7 @@ class DashboardScreen extends ConsumerWidget {
       title: Row(
         children: [
           GestureDetector(
-            onTap: () => context.push('/profile'),
+            onTap: () => context.go('/profile'),
             child: CircleAvatar(
               backgroundColor: AppTheme.primaryContainer,
               backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
@@ -197,7 +197,7 @@ class DashboardScreen extends ConsumerWidget {
       actions: [
         IconButton(
           icon: const Icon(Icons.bar_chart, color: AppTheme.primaryContainer),
-          onPressed: () => context.go('/statistics'),
+          onPressed: () => context.go('/dashboard/statistics'),
           tooltip: 'Insights',
         ),
         IconButton(
