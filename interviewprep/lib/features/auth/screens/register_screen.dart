@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
@@ -19,6 +20,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _acceptCGU = false;
 
   @override
   void dispose() {
@@ -30,6 +32,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   void _register() async {
+    if (!_acceptCGU) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Veuillez accepter les CGU et la Politique de confidentialité')),
+      );
+      return;
+    }
     if (_formKey.currentState!.validate()) {
       try {
         await ref.read(authStateProvider.notifier).register(
@@ -47,6 +55,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         }
       }
     }
+  }
+
+  void _showLegalDocument(String title, String content) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: SingleChildScrollView(
+          child: Text(content),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -202,6 +228,51 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               if (value != _passwordController.text) return 'Les mots de passe ne correspondent pas';
                               return null;
                             },
+                          ),
+                          const SizedBox(height: 16),
+
+                          // CGU Checkbox
+                          Semantics(
+                            label: 'Accepter les conditions générales et la politique de confidentialité',
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Checkbox(
+                                  value: _acceptCGU,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _acceptCGU = value ?? false;
+                                    });
+                                  },
+                                ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(top: 12.0),
+                                    child: RichText(
+                                      text: TextSpan(
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.onSurfaceVariant),
+                                        children: [
+                                          const TextSpan(text: 'J\'accepte les '),
+                                          TextSpan(
+                                            text: 'Conditions Générales d\'Utilisation',
+                                            style: const TextStyle(color: AppTheme.secondaryColor, decoration: TextDecoration.underline),
+                                            recognizer: TapGestureRecognizer()
+                                              ..onTap = () => _showLegalDocument('Conditions Générales d\'Utilisation', 'Contenu des CGU... (à compléter)'),
+                                          ),
+                                          const TextSpan(text: ' et la '),
+                                          TextSpan(
+                                            text: 'Politique de Confidentialité',
+                                            style: const TextStyle(color: AppTheme.secondaryColor, decoration: TextDecoration.underline),
+                                            recognizer: TapGestureRecognizer()
+                                              ..onTap = () => _showLegalDocument('Politique de Confidentialité', 'Contenu de la politique de confidentialité... (à compléter)'),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 24),
 

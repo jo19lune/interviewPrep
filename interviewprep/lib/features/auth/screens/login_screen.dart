@@ -18,6 +18,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
   bool _isSuccessOverlayVisible = false;
+  bool _rememberMe = false;
 
   @override
   void dispose() {
@@ -229,6 +230,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             obscureText: _obscurePassword,
                             validator: (value) => value!.isEmpty ? 'Veuillez entrer votre mot de passe' : null,
                           ),
+                          const SizedBox(height: 16),
+
+                          // Remember Me
+                          Semantics(
+                            label: 'Se souvenir de moi',
+                            child: Row(
+                              children: [
+                                Checkbox(
+                                  value: _rememberMe,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _rememberMe = value ?? false;
+                                    });
+                                  },
+                                ),
+                                Text(
+                                  'Se souvenir de moi',
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ],
+                            ),
+                          ),
                           const SizedBox(height: 24),
 
                           // Submit Button + Loading + (social logins supprimés)
@@ -369,6 +392,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 context: context,
                                 builder: (dialogCtx) => AlertDialog(
                                   backgroundColor: AppTheme.surfaceContainerLowest,
+                                  title: const Text('Conditions Générales d\'Utilisation'),
+                                  content: const Text('Contenu des CGU... (à compléter)'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(dialogCtx),
+                                      child: const Text('Fermer'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            child: Text('Terms of Service', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppTheme.secondaryColor)),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (dialogCtx) => AlertDialog(
+                                  backgroundColor: AppTheme.surfaceContainerLowest,
                                   title: const Text('Politique de confidentialité'),
                                   content: const Text(
                                     'InterviewPrep respecte votre vie privée. Vos données d\'entraînement sont sécurisées et traitées conformément au RGPD pour vous fournir des analyses de performance de qualité. Vous pouvez à tout moment exercer votre droit à l\'oubli.',
@@ -384,7 +427,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             },
                             child: Text('Privacy Policy', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppTheme.secondaryColor)),
                           ),
-                          const SizedBox(width: 16),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
                           TextButton.icon(
                             onPressed: () => _showForgetDialog(),
                             icon: const Icon(Icons.delete_forever, size: 14, color: AppTheme.error),

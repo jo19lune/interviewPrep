@@ -164,3 +164,29 @@ hr {
     border-top: 1px solid var(--border-color);
     margin: 2rem 0;
 }
+
+.site-footer {
+    text-align: center;
+    margin-top: 3rem;
+    padding: 2rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.site-footer .footer-links {
+    list-style: none;
+    padding: 0;
+    margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+}
+
+.site-footer .footer-links a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.site-footer .footer-links a:hover {
+    text-decoration: underline;
+}
