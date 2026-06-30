@@ -120,14 +120,14 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
       );
       
       final firstMsg = ChatMessage(
-        text: "Bienvenue dans cette simulation d'entretien. Commençons par votre parcours. Pouvez-vous vous présenter ?",
+        text: response['first_question'] ?? "Bienvenue dans cette simulation d'entretien. Commençons par votre parcours. Pouvez-vous vous présenter ?",
         isUser: false,
         timestamp: DateTime.now(),
       );
 
       state = state.copyWith(
-        sessionId: response.id,
-        exerciseTitle: 'Simulation', // We don't have it in SessionResponse directly
+        sessionId: response['session_id'],
+        exerciseTitle: response['exercise_title'] ?? 'Simulation',
         messages: [firstMsg],
         isLoading: false,
         subject: subject,
