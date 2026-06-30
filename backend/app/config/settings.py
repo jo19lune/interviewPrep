@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     Classe définissant les paramètres globaux de configuration.
     """
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="allow")
 
     # Base de données (Postgres uniquement)
     database_url: str = Field(
@@ -87,6 +87,32 @@ class Settings(BaseSettings):
     upload_dir: str = Field(default="/app/media", validation_alias="UPLOAD_DIR")
     upload_base_url: str = Field(validation_alias="UPLOAD_BASE_URL")
     storage_provider: str = Field(default="local", validation_alias="STORAGE_PROVIDER")
+
+    @property
+    def openai_models(self) -> List[str]:
+        models = []
+        
+        # Check in model_extra for OPENAI_MODEL_ID_* variables from .env
+        if self.model_extra:
+            for key, value in self.model_extra.items():
+                if key.upper().startswith("OPENAI_MODEL_ID_") and value:
+                    models.append(str(value))
+                    
+        # Fallback to os.environ just in case it was passed directly
+        for key, value in os.environ.items():
+            if key.upper().startswith("OPENAI_MODEL_ID_") and value:
+                if value not in models:
+                    models.append(value)
+                
+        if not models:
+            # Fallbacks just in case
+            if self.ai_primary_model:
+                models.append(self.ai_primary_model)
+            if self.ai_fallback_model and self.ai_fallback_model not in models:
+                models.append(self.ai_fallback_model)
+            if not models:
+                models = ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"]
+        return models
 
 
 settings = Settings()
