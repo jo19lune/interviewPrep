@@ -14,15 +14,15 @@ class SimulationService {
     }
   }
 
-  Future<SessionResponse> startSimulation(String exerciseId, {String? subject, int? questionCount, String? model}) async {
+  Future<Map<String, dynamic>> startSimulation(String exerciseId, {String? subject, int? questionCount, String? model}) async {
     try {
       final response = await _apiClient.dio.post('/simulation/start', data: {
         'exercice_id': exerciseId,
-        'subject': ?subject,
-        'question_count': ?questionCount,
-        'model': ?model,
+        'subject': subject,
+        'question_count': questionCount,
+        'model': model,
       });
-      return SessionResponse.fromJson(response.data);
+      return response.data as Map<String, dynamic>;
     } catch (e) {
       throw Exception('Erreur lors du démarrage de la simulation');
     }
