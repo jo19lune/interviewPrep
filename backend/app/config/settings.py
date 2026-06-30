@@ -53,7 +53,7 @@ class Settings(BaseSettings):
 
     # Base de donnees
     database_url: str = Field(
-        default="sqlite+aiosqlite:///./interviewprep_dev.db",
+        default="",
         validation_alias="DATABASE_URL",
         description="L'URL de connexion à la base de données principale."
     )
