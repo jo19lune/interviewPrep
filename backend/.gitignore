@@ -31,6 +31,7 @@ MANIFEST
 
 # Environment variables
 .env
+.env.production
 .env.local
 .env.*.local
 .env.docker

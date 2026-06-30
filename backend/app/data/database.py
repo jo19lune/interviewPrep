@@ -1,7 +1,8 @@
-"""Configuration et gestion de la base de donnees."""
+"""
+Configuration et gestion de la base de données (Postgres uniquement).
+"""
 
 import logging
-
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -13,12 +14,14 @@ logger = logging.getLogger(__name__)
 engine_kwargs = {
     "echo": settings.debug,
     "pool_pre_ping": True,
+    "pool_size": 10,
+    "max_overflow": 20,
 }
-if not settings.database_url.startswith("sqlite"):
-    engine_kwargs.update({"pool_size": 10, "max_overflow": 20})
 
+# Création du moteur async Postgres
 engine = create_async_engine(settings.database_url, **engine_kwargs)
 
+# Session async
 AsyncSessionLocal = sessionmaker(
     engine,
     class_=AsyncSession,
@@ -29,7 +32,7 @@ AsyncSessionLocal = sessionmaker(
 
 
 async def get_db() -> AsyncSession:
-    """Obtenir une session de base de donnees async."""
+    """Obtenir une session de base de données async."""
     async with AsyncSessionLocal() as session:
         try:
             yield session
@@ -38,7 +41,7 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db():
-    """Initialiser la base de donnees."""
+    """Initialiser la base de données (création des tables)."""
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
@@ -49,6 +52,6 @@ async def init_db():
 
 
 async def close_db():
-    """Fermer les connexions a la base de donnees."""
+    """Fermer les connexions à la base de données."""
     await engine.dispose()
     logger.info("Database connections closed")
