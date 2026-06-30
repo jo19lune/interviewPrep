@@ -15,7 +15,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AuthenticationError
 from app.data.database import get_db
 from app.models.user import User
-from app.services.auth_service import decode_token, get_user_by_id
+from app.services.auth_service import (
+    decode_token,
+    get_user_by_id,
+    is_token_revoked,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +28,10 @@ security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(security),
-    db: AsyncSession = Depends(get_db)
+    credentials: HTTPAuthorizationCredentials | None = Depends(
+        security, use_cache=False
+    ),
+    db: AsyncSession = Depends(get_db, use_cache=False)
 ) -> User:
     """
     Extrait et valide l'utilisateur courant à partir du token JWT.
@@ -55,6 +61,13 @@ async def get_current_user(
         )
 
     token = credentials.credentials
+    
+    if await is_token_revoked(db, token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token revoked (logged out)",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     
     try:
         payload = decode_token(token)

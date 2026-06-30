@@ -2,19 +2,31 @@
 Router d'authentification.
 
 Ce module gère tous les endpoints relatifs à la sécurité et aux comptes :
-inscription (register), connexion (login), rafraîchissement de jetons (refresh),
-suppression de compte et récupération de mot de passe (forgot-password).
+inscription (register), connexion (login), rafraîchissement de jetons
+(refresh), suppression de compte et récupération de mot de passe.
 """
 
 import asyncio
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Request,
+    status,
+)
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AuthenticationError
-from app.core.rate_limit import check_rate_limit, clear_attempts, record_failed_attempt
-from app.core.security import get_current_user
+from app.core.rate_limit import (
+    check_rate_limit,
+    clear_attempts,
+    record_failed_attempt,
+)
+from app.core.security import get_current_user, security
 from app.data.database import get_db
 from app.models.user import User
 from app.schemas.auth import (
@@ -33,6 +45,7 @@ from app.services.auth_service import (
     authenticate_user,
     refresh_user_tokens,
     register_new_user,
+    revoke_token,
 )
 from app.services.password_reset_service import (
     reset_user_password,
@@ -44,8 +57,14 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 logger = logging.getLogger(__name__)
 
 
-@router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-async def register(request: UserRegisterRequest, db: AsyncSession = Depends(get_db)):
+@router.post(
+    "/register",
+    response_model=AuthResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def register(
+    request: UserRegisterRequest, db: AsyncSession = Depends(get_db)
+):
     """
     Inscrit un nouvel utilisateur.
     """
@@ -76,7 +95,9 @@ async def login(
     check_rate_limit(rate_limit_key)
     
     try:
-        user, tokens = await authenticate_user(db, request.courriel, request.mot_de_passe)
+        user, tokens = await authenticate_user(
+            db, request.courriel, request.mot_de_passe
+        )
         clear_attempts(rate_limit_key)
     except AuthenticationError as e:
         record_failed_attempt(rate_limit_key)
@@ -93,7 +114,9 @@ async def login(
 
 
 @router.post("/refresh", response_model=AuthResponse)
-async def refresh(request: TokenRefreshRequest, db: AsyncSession = Depends(get_db)):
+async def refresh(
+    request: TokenRefreshRequest, db: AsyncSession = Depends(get_db)
+):
     """
     Génère une nouvelle paire de tokens à l'aide d'un Refresh Token valide.
     """
@@ -132,6 +155,19 @@ async def delete_me(
     return None
 
 
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def logout(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Déconnecte l'utilisateur en ajoutant son token à la blocklist.
+    """
+    if credentials:
+        await revoke_token(db, credentials.credentials)
+    return {"message": "Déconnexion réussie"}
+
+
 @router.post("/forgot-password")
 async def forgot_password(
     request: ForgotPasswordRequest,
@@ -146,13 +182,18 @@ async def forgot_password(
     rate_limit_key = f"forgot_{client_ip}"
     check_rate_limit(rate_limit_key)
     
-    result = await send_password_reset_code_if_user_exists(db, request.courriel, background_tasks)
+    result = await send_password_reset_code_if_user_exists(
+        db, request.courriel, background_tasks
+    )
     
     # Ne pas révéler l'existence du compte
     if not result.get("sent"):
         record_failed_attempt(rate_limit_key)
         await asyncio.sleep(0.5)  # Anti-timing
-        return {"message": "Si ce compte existe, un code de reinitialisation a ete envoye."}
+        return {
+            "message": "Si ce compte existe, "
+                       "un code de reinitialisation a ete envoye."
+        }
 
     clear_attempts(rate_limit_key)
     return {
@@ -169,7 +210,9 @@ async def verify_reset_code(
     """
     Vérifie si le code de réinitialisation fourni est valide.
     """
-    valid = await verify_password_reset_code(db, request.courriel, request.code)
+    valid = await verify_password_reset_code(
+        db, request.courriel, request.code
+    )
     if not valid:
         await asyncio.sleep(1)
         raise HTTPException(

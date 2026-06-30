@@ -12,10 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
+import uuid
 
 from app.config.settings import settings
 from app.core.exceptions import AuthenticationError
 from app.models.user import User
+from app.models.token_blocklist import TokenBlocklist
 
 
 class TokenResponse(BaseModel):
@@ -125,9 +127,7 @@ async def get_user_by_id(
 ) -> Optional[User]:
     """Récupérer un utilisateur par ID."""
 
-    from uuid import UUID
-
-    stmt = select(User).where(User.id == UUID(user_id))
+    stmt = select(User).where(User.id == uuid.UUID(user_id))
     result = await session.execute(stmt)
     return result.scalars().first()
 
@@ -143,7 +143,10 @@ async def get_user_by_email(
     return result.scalars().first()
 
 
-async def register_new_user(session: AsyncSession, request_data: dict) -> Tuple[User, TokenResponse]:
+async def register_new_user(
+    session: AsyncSession, request_data: dict
+) -> Tuple[User, TokenResponse]:
+    """Inscrire un nouvel utilisateur et retourner ses tokens."""
     email = request_data["courriel"]
     existing_user = await get_user_by_email(session, email)
     if existing_user:
@@ -163,16 +166,16 @@ async def register_new_user(session: AsyncSession, request_data: dict) -> Tuple[
         session.add(new_user)
         await session.commit()
         await session.refresh(new_user)
-    except IntegrityError:
+    except IntegrityError as exc:
         await session.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
-        )
+        ) from exc
 
-    return await authenticate_user(session, email, request_data["mot_de_passe"])
-
-
+    return await authenticate_user(
+        session, email, request_data["mot_de_passe"]
+    )
 
 
 async def authenticate_user(
@@ -246,3 +249,17 @@ async def refresh_user_tokens(
         access_token=create_access_token(user_id),
         refresh_token=create_refresh_token(user_id),
     )
+
+
+async def revoke_token(session: AsyncSession, token: str) -> None:
+    """Ajouter un token à la blocklist pour le révoquer (déconnexion)."""
+    blocked_token = TokenBlocklist(token=token)
+    session.add(blocked_token)
+    await session.commit()
+
+
+async def is_token_revoked(session: AsyncSession, token: str) -> bool:
+    """Vérifier si un token est dans la blocklist."""
+    stmt = select(TokenBlocklist).where(TokenBlocklist.token == token)
+    result = await session.execute(stmt)
+    return result.scalars().first() is not None
