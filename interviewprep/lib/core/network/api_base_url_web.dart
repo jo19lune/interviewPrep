@@ -1,1 +1,1 @@
-String defaultApiBaseUrl() => 'http://localhost:9000';
+String defaultApiBaseUrl() => 'https://interviewprep-backend-production.up.railway.app';
