@@ -1,5 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:async';
+import 'dart:io';
 import '../services/simulation_service.dart';
 import '../../../core/models/exercise.dart';
 
@@ -97,10 +103,29 @@ class SimulationState {
 
 class SimulationNotifier extends StateNotifier<SimulationState> {
   final SimulationService _service;
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  final FlutterTts _flutterTts = FlutterTts();
 
-  SimulationNotifier(this._service) : super(SimulationState());
+  SimulationNotifier(this._service) : super(SimulationState()) {
+    _initTts();
+  }
+
+  Future<void> _initTts() async {
+    await _flutterTts.setLanguage("fr-FR");
+    await _flutterTts.setSpeechRate(0.9);
+    await _flutterTts.setVolume(1.0);
+    await _flutterTts.setPitch(1.0);
+  }
+
+  @override
+  void dispose() {
+    _flutterTts.stop();
+    _audioRecorder.dispose();
+    super.dispose();
+  }
 
   void reset() {
+    _flutterTts.stop();
     state = SimulationState();
   }
 
@@ -134,6 +159,9 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
         questionCount: questionCount,
         answerCount: 0,
       );
+
+      // Lecture vocale automatique de la première question
+      unawaited(_flutterTts.speak(firstMsg.text));
     } catch (e) {
       state = state.copyWith(isLoading: false);
       rethrow;
@@ -142,6 +170,9 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
 
   Future<void> sendAnswer(String answerText) async {
     if (answerText.trim().isEmpty || state.sessionId == null) return;
+    
+    // Interrompre la synthèse vocale en cours
+    await _flutterTts.stop();
     
     final userMsg = ChatMessage(
       text: answerText,
@@ -157,7 +188,6 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     try {
       final response = await _service.submitAnswer(state.sessionId!, answerText);
       
-      // Mettre à jour les indicateurs en direct et afficher la question suivante
       final clarity = (response['clarity_score'] as num?)?.toDouble() ?? 80.0;
       final sentiment = response['sentiment'] as String? ?? 'Confident';
       final tip = response['coaching_tip'] as String? ?? '';
@@ -207,12 +237,105 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     }
   }
 
-  void toggleRecording() {
-    state = state.copyWith(isRecording: !state.isRecording);
+  /// Démarre l'enregistrement audio après avoir vérifié la permission microphone.
+  Future<void> startRecording() async {
+    final status = await Permission.microphone.request();
+    if (status.isGranted) {
+      final dir = await getTemporaryDirectory();
+      final path = '${dir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await _audioRecorder.start(const RecordConfig(), path: path);
+      state = state.copyWith(isRecording: true);
+    } else {
+      throw Exception("Permission microphone refusée. Veuillez l'accorder dans les paramètres.");
+    }
+  }
+
+  /// Arrête l'enregistrement, envoie le fichier audio au backend, puis supprime le fichier local.
+  Future<void> stopAndSendRecording() async {
+    final path = await _audioRecorder.stop();
+    if (path == null || path.isEmpty) {
+      state = state.copyWith(isRecording: false);
+      return;
+    }
+
+    state = state.copyWith(isRecording: false, isLoading: true);
+
+    try {
+      if (state.sessionId == null) {
+        throw Exception("Aucune session active pour envoyer la réponse audio.");
+      }
+      final response = await _service.submitAudioAnswer(state.sessionId!, path);
+
+      final clarity = (response['clarity_score'] as num?)?.toDouble() ?? 80.0;
+      final sentiment = response['sentiment'] as String? ?? 'Confident';
+      final tip = response['coaching_tip'] as String? ?? '';
+      final answerCount = (response['answer_count'] as num?)?.toInt() ?? state.answerCount + 1;
+      final analysis = response['analysis'] as Map<String, dynamic>?;
+      final nextQ = response['next_question'] as String? ?? 'Félicitations, simulation terminée !';
+
+      state = state.copyWith(
+        lastClarityScore: clarity,
+        lastSentiment: sentiment,
+        lastLiveCoachingTip: tip,
+        answerCount: answerCount,
+      );
+
+      // Ajouter le message utilisateur avec indication "audio"
+      final userMsg = ChatMessage(
+        text: "🎤 Réponse vocale transmise",
+        isUser: true,
+        timestamp: DateTime.now(),
+      );
+      state = state.copyWith(messages: [...state.messages, userMsg]);
+
+      // Streamer la réponse du recruteur
+      var streamedText = '';
+      var hasRecruiterMessage = false;
+      try {
+        await for (final token in _service.streamAIResponse(state.sessionId!)) {
+          streamedText += token;
+          hasRecruiterMessage = true;
+          _upsertRecruiterMessage(
+            streamedText,
+            clarity: clarity,
+            sentiment: sentiment,
+            tip: tip,
+            analysis: analysis,
+          );
+        }
+      } catch (_) {
+        streamedText = '';
+      }
+
+      if (!hasRecruiterMessage || streamedText.trim().isEmpty) {
+        _upsertRecruiterMessage(
+          nextQ,
+          clarity: clarity,
+          sentiment: sentiment,
+          tip: tip,
+          analysis: analysis,
+        );
+      }
+
+      state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(isLoading: false);
+      rethrow;
+    } finally {
+      // Suppression systématique du fichier audio temporaire
+      if (File(path).existsSync()) {
+        try {
+          File(path).deleteSync();
+        } catch (_) {
+          // Le fichier a déjà été nettoyé ou est inaccessible
+        }
+      }
+    }
   }
 
   Future<void> finish() async {
     if (state.sessionId == null) return;
+    _flutterTts.stop();
     state = state.copyWith(isLoading: true);
     try {
       final response = await _service.finishSimulation(state.sessionId!);
@@ -242,6 +365,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
       reset();
       return;
     }
+    _flutterTts.stop();
     state = state.copyWith(isLoading: true);
     try {
       await _service.cancelSimulation(state.sessionId!);
@@ -284,6 +408,9 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
       );
     }
     state = state.copyWith(messages: messages);
+
+    // Lecture vocale automatique pour les messages du recruteur
+    unawaited(_flutterTts.speak(text));
   }
 }
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
@@ -16,9 +18,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final _storage = const FlutterSecureStorage();
   bool _obscurePassword = true;
   bool _isSuccessOverlayVisible = false;
   bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRememberMe();
+  }
+
+  Future<void> _loadRememberMe() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rememberMe = prefs.getBool('remember_me') ?? false;
+
+    if (rememberMe) {
+      final savedEmail = await _storage.read(key: 'remembered_email');
+      final savedPassword = await _storage.read(key: 'remembered_password');
+      if (savedEmail != null && savedPassword != null) {
+        setState(() {
+          _emailController.text = savedEmail;
+          _passwordController.text = savedPassword;
+          _rememberMe = true;
+        });
+      }
+    }
+  }
+
+  Future<void> _saveRememberMe() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('remember_me', _rememberMe);
+    if (_rememberMe) {
+      await _storage.write(key: 'remembered_email', value: _emailController.text);
+      await _storage.write(key: 'remembered_password', value: _passwordController.text);
+    } else {
+      await _storage.delete(key: 'remembered_email');
+      await _storage.delete(key: 'remembered_password');
+    }
+  }
 
   @override
   void dispose() {
@@ -30,6 +68,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _login() async {
     if (_formKey.currentState!.validate()) {
       try {
+        await _saveRememberMe();
         await ref.read(authStateProvider.notifier).login(
           _emailController.text,
           _passwordController.text,
@@ -386,46 +425,54 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          TextButton(
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (dialogCtx) => AlertDialog(
-                                  backgroundColor: AppTheme.surfaceContainerLowest,
-                                  title: const Text('Conditions Générales d\'Utilisation'),
-                                  content: const Text('Contenu des CGU... (à compléter)'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(dialogCtx),
-                                      child: const Text('Fermer'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                            child: Text('Terms of Service', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppTheme.secondaryColor)),
+                          Semantics(
+                            label: 'Lire les conditions générales d\'utilisation',
+                            button: true,
+                            child: TextButton(
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (dialogCtx) => AlertDialog(
+                                    backgroundColor: AppTheme.surfaceContainerLowest,
+                                    title: const Text('Conditions Générales d\'Utilisation'),
+                                    content: const Text('Contenu des CGU... (à compléter)'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(dialogCtx),
+                                        child: const Text('Fermer'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                              child: Text('Terms of Service', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppTheme.secondaryColor)),
+                            ),
                           ),
                           const SizedBox(width: 8),
-                          TextButton(
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (dialogCtx) => AlertDialog(
-                                  backgroundColor: AppTheme.surfaceContainerLowest,
-                                  title: const Text('Politique de confidentialité'),
-                                  content: const Text(
-                                    'InterviewPrep respecte votre vie privée. Vos données d\'entraînement sont sécurisées et traitées conformément au RGPD pour vous fournir des analyses de performance de qualité. Vous pouvez à tout moment exercer votre droit à l\'oubli.',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(dialogCtx),
-                                      child: const Text('Fermer'),
+                          Semantics(
+                            label: 'Lire la politique de confidentialité',
+                            button: true,
+                            child: TextButton(
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (dialogCtx) => AlertDialog(
+                                    backgroundColor: AppTheme.surfaceContainerLowest,
+                                    title: const Text('Politique de confidentialité'),
+                                    content: const Text(
+                                      'InterviewPrep respecte votre vie privée. Vos données d\'entraînement sont sécurisées et traitées conformément au RGPD pour vous fournir des analyses de performance de qualité. Vous pouvez à tout moment exercer votre droit à l\'oubli.',
                                     ),
-                                  ],
-                                ),
-                              );
-                            },
-                            child: Text('Privacy Policy', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppTheme.secondaryColor)),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(dialogCtx),
+                                        child: const Text('Fermer'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                              child: Text('Privacy Policy', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppTheme.secondaryColor)),
+                            ),
                           ),
                         ],
                       ),

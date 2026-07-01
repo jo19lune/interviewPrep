@@ -32,11 +32,24 @@ class SimulationService {
     try {
       final response = await _apiClient.dio.post('/simulation/answer', data: {
         'session_id': sessionId,
-        'content': content,
+        'reponse': content,
       });
       return response.data as Map<String, dynamic>;
     } catch (e) {
       throw Exception('Erreur lors de l\'envoi de la réponse');
+    }
+  }
+
+  Future<Map<String, dynamic>> submitAudioAnswer(String sessionId, String filePath) async {
+    try {
+      final formData = FormData.fromMap({
+        'session_id': sessionId,
+        'audio': await MultipartFile.fromFile(filePath),
+      });
+      final response = await _apiClient.dio.post('/simulation/answer/audio', data: formData);
+      return response.data as Map<String, dynamic>;
+    } catch (e) {
+      throw Exception('Erreur lors de l\'envoi de la réponse audio');
     }
   }
 
@@ -67,7 +80,7 @@ class SimulationService {
   Future<FeedbackResponse> finishSimulation(String sessionId) async {
     try {
       final response = await _apiClient.dio.post('/simulation/finish/$sessionId');
-      return FeedbackResponse.fromJson(response.data);
+      return FeedbackResponse.fromJson(response.data['feedback']);
     } catch (e) {
       throw Exception('Erreur lors de la fin de la simulation');
     }
