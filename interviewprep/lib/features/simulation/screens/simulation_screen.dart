@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
@@ -20,17 +19,15 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen>
   final _textController = TextEditingController();
   final _subjectController = TextEditingController();
   final _scrollController = ScrollController();
-  final FlutterTts _flutterTts = FlutterTts();
   int _questionCount = 10;
   late AnimationController _progressController;
 
   @override
   void initState() {
     super.initState();
-    _initTts();
     _progressController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 15), // Estimation de la durée
+      duration: const Duration(seconds: 15),
     );
   }
 
@@ -39,28 +36,8 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen>
     _textController.dispose();
     _subjectController.dispose();
     _scrollController.dispose();
-    _flutterTts.stop();
     _progressController.dispose();
     super.dispose();
-  }
-
-  Future<void> _initTts() async {
-    await _flutterTts.setLanguage("fr-FR");
-    await _flutterTts.setSpeechRate(0.9);
-    await _flutterTts.setVolume(1.0);
-    await _flutterTts.setPitch(1.0);
-  }
-
-  Future<void> _speak(String text) async {
-    try {
-      await _flutterTts.speak(text);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Erreur synthèse vocale')),
-        );
-      }
-    }
   }
 
   void _scrollToBottom() {
@@ -123,15 +100,6 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen>
           SnackBar(content: Text('Erreur: $e')),
         );
       }
-    }
-  }
-
-  // Synthèse vocale de la question
-  void _speakCurrentQuestion() {
-    final state = ref.read(simulationProvider);
-    final lastMessage = state.messages.isNotEmpty ? state.messages.last : null;
-    if (lastMessage != null && !lastMessage.isUser) {
-      _speak(lastMessage.text);
     }
   }
 
@@ -892,15 +860,8 @@ child: Column(
                children: [
                  Row(
                    children: [
-                     IconButton(
-                       icon: Icon(
-                         Icons.volume_up,
-                         color: AppTheme.secondaryColor,
-                       ),
-                       tooltip: 'Écouter la question',
-                       onPressed: () => _speakCurrentQuestion(),
-                     ),
-                     // Bouton Microphone interactif
+                     const SizedBox(width: 4),
+                     // Bouton d'enregistrement vocal
                      _MicButton(
                        onTranscribed: (text) {
                          _textController.text = text;
