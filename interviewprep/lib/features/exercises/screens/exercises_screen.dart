@@ -110,10 +110,11 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
     final entries = stats.entries
         .where((e) => e.value is Map && (e.value as Map).containsKey('avg_score'))
         .toList();
-    entries.sort(
-      (a, b) => ((b.value as Map)['avg_score'] as num?)
-              ?.compareTo((a.value as Map)['avg_score'] as num?) ?? 0,
-    );
+    entries.sort((a, b) {
+      final aScore = ((a.value as Map)['avg_score'] as num?) ?? 0;
+      final bScore = ((b.value as Map)['avg_score'] as num?) ?? 0;
+      return bScore.compareTo(aScore);
+    });
     if (entries.isNotEmpty) {
       return {
         'key': entries.first.key,
@@ -231,9 +232,9 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              if (exercise.description.isNotEmpty) ...[
+              if ((exercise.description ?? '').isNotEmpty) ...[
                 Text(
-                  exercise.description,
+                  exercise.description ?? '',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppTheme.onSurfaceVariant,
                   ),
@@ -261,7 +262,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                 badgeTextColor: AppTheme.onTertiaryFixedVariant,
                 onTap: () {
                   Navigator.pop(sheetCtx);
-                  ref.read(selectedExerciseProvider.notifier).state = exercise;
+                  ref.read(selectedExerciseProvider.notifier).select(exercise);
                   context.go('/simulation');
                 },
               ),
@@ -788,7 +789,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        exercise.description,
+                        exercise.description ?? '',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppTheme.onSurfaceVariant,
                           fontSize: 14,
@@ -1133,7 +1134,7 @@ class _GenerateExerciseSheetState
 
               // Dropdown Domaine
               DropdownButtonFormField<String>(
-                value: _selectedDomaine,
+                initialValue: _selectedDomaine,
                 decoration: const InputDecoration(
                   labelText: 'Domaine de comp\u00e9tences',
                   prefixIcon: Icon(Icons.category_outlined),
@@ -1169,7 +1170,7 @@ class _GenerateExerciseSheetState
 
               // Dropdown Niveau
               DropdownButtonFormField<String>(
-                value: _selectedNiveau,
+                initialValue: _selectedNiveau,
                 decoration: const InputDecoration(
                   labelText: 'Niveau de difficult\u00e9',
                   prefixIcon: Icon(Icons.trending_up_outlined),

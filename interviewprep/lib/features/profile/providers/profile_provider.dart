@@ -7,15 +7,18 @@ final profileServiceProvider = Provider<ProfileService>((ref) {
   return ProfileService();
 });
 
-final profileProvider = StateNotifierProvider<ProfileNotifier, AsyncValue<UserResponse>>((ref) {
-  return ProfileNotifier(ref.read(profileServiceProvider));
+final profileProvider = NotifierProvider<ProfileNotifier, AsyncValue<UserResponse>>(() {
+  return ProfileNotifier();
 });
 
-class ProfileNotifier extends StateNotifier<AsyncValue<UserResponse>> {
-  final ProfileService _profileService;
+class ProfileNotifier extends Notifier<AsyncValue<UserResponse>> {
+  late final ProfileService _profileService;
 
-  ProfileNotifier(this._profileService) : super(const AsyncValue.loading()) {
+  @override
+  AsyncValue<UserResponse> build() {
+    _profileService = ref.watch(profileServiceProvider);
     fetchProfile();
+    return const AsyncValue.loading();
   }
 
   Future<void> fetchProfile() async {

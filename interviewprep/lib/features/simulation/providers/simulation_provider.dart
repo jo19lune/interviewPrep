@@ -19,7 +19,16 @@ final availableModelsProvider = FutureProvider<Map<String, dynamic>>((ref) async
   return service.getAvailableModels();
 });
 
-final selectedModelProvider = StateProvider<String?>((ref) => null);
+class SelectedModelNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void select(String? model) => state = model;
+}
+
+final selectedModelProvider = NotifierProvider<SelectedModelNotifier, String?>(() {
+  return SelectedModelNotifier();
+});
 
 String _generateId() => 'sim_msg_${DateTime.now().microsecondsSinceEpoch}_${Random().nextInt(9999)}';
 
@@ -84,13 +93,16 @@ class SimulationState {
   }
 }
 
-class SimulationNotifier extends StateNotifier<SimulationState> {
-  final SimulationService _service;
+class SimulationNotifier extends Notifier<SimulationState> {
+  late final SimulationService _service;
   final AudioRecorder _audioRecorder = AudioRecorder();
   final FlutterTts _flutterTts = FlutterTts();
 
-  SimulationNotifier(this._service) : super(SimulationState()) {
+  @override
+  SimulationState build() {
+    _service = ref.watch(simulationServiceProvider);
     _initTts();
+    return SimulationState();
   }
 
   Future<void> _initTts() async {
@@ -100,11 +112,9 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     await _flutterTts.setPitch(1.0);
   }
 
-  @override
   void dispose() {
     _flutterTts.stop();
     _audioRecorder.dispose();
-    super.dispose();
   }
 
   void reset() {
@@ -402,7 +412,6 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
   }
 }
 
-final simulationProvider = StateNotifierProvider<SimulationNotifier, SimulationState>((ref) {
-  final service = ref.watch(simulationServiceProvider);
-  return SimulationNotifier(service);
+final simulationProvider = NotifierProvider<SimulationNotifier, SimulationState>(() {
+  return SimulationNotifier();
 });

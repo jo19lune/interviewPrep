@@ -37,7 +37,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final statsAsync = ref.watch(detailedStatsProvider);
     final historyAsync = ref.watch(sessionHistoryProvider);
 
@@ -235,7 +235,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                   final list = List.from(exercises);
                   list.shuffle();
                   final exercise = list.first;
-                  ref.read(selectedExerciseProvider.notifier).state = exercise;
+                  ref.read(selectedExerciseProvider.notifier).select(exercise);
                   context.go('/simulation');
                 },
         ),

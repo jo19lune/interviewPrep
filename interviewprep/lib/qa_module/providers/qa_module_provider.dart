@@ -84,10 +84,14 @@ class QAModuleState {
   }
 }
 
-class QAModuleNotifier extends StateNotifier<QAModuleState> {
-  final QAService _service;
+class QAModuleNotifier extends Notifier<QAModuleState> {
+  late final QAService _service;
 
-  QAModuleNotifier(this._service) : super(const QAModuleState());
+  @override
+  QAModuleState build() {
+    _service = ref.watch(qaServiceProvider);
+    return const QAModuleState();
+  }
 
   void reset() {
     state = const QAModuleState();
@@ -222,7 +226,6 @@ class QAModuleNotifier extends StateNotifier<QAModuleState> {
   }
 }
 
-final qaModuleProvider = StateNotifierProvider<QAModuleNotifier, QAModuleState>((ref) {
-  final service = ref.watch(qaServiceProvider);
-  return QAModuleNotifier(service);
+final qaModuleProvider = NotifierProvider<QAModuleNotifier, QAModuleState>(() {
+  return QAModuleNotifier();
 });

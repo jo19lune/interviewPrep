@@ -7,6 +7,7 @@ import '../../exercises/providers/exercise_provider.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
 import '../providers/simulation_provider.dart';
 import '../../../core/models/exercise_models.dart';
+import '../../../qa_module/models/chat_message.dart';
 
 class SimulationScreen extends ConsumerStatefulWidget {
   const SimulationScreen({super.key});
@@ -281,7 +282,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen>
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        exercise.description.isEmpty ? 'Notre recruteur virtuel IA va analyser vos réponses et générer un score factuel.' : exercise.description,
+                        (exercise.description ?? '').isEmpty ? 'Notre recruteur virtuel IA va analyser vos réponses et générer un score factuel.' : (exercise.description ?? ''),
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.onSurfaceVariant),
                       ),
                       const SizedBox(height: 20),
@@ -606,7 +607,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen>
                               : Colors.white,
                           child: InkWell(
                             onTap: () {
-                              ref.read(selectedModelProvider.notifier).state = model;
+                              ref.read(selectedModelProvider.notifier).select(model);
                               Navigator.pop(context);
                             },
                             borderRadius: BorderRadius.circular(16),
