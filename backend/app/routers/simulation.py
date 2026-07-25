@@ -9,13 +9,14 @@ clôture avec génération du feedback global.
 
 import asyncio
 import json
+import os
+import tempfile
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-import os
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
@@ -27,6 +28,7 @@ from app.models.session import Session
 from app.models.user import User
 from app.schemas.session import SessionCreateRequest
 from app.services import simulation_service
+from app.services.ai_service import AIService
 
 router = APIRouter(prefix="/simulation", tags=["simulation"])
 
@@ -69,8 +71,6 @@ async def submit_answer(
     return await simulation_service.process_user_answer(db, current_user, request.session_id, request.reponse)
 
 
-import uuid
-
 @router.post("/answer/audio")
 async def submit_audio_answer(
     session_id: UUID,
@@ -84,22 +84,26 @@ async def submit_audio_answer(
     if not audio.content_type.startswith("audio/"):
         raise HTTPException(status_code=400, detail="Fichier non valide. Audio requis.")
     
-    # Création d'un nom de fichier sécurisé et unique
-    safe_filename = f"{session_id}_{uuid.uuid4()}.m4a"
-    temp_file_path = f"/tmp/{safe_filename}"
+    safe_filename = f"{session_id}_{UUID(bytes=os.urandom(16))}.m4a"
+    temp_dir = tempfile.gettempdir()
+    temp_file_path = os.path.join(temp_dir, safe_filename)
     
     try:
         with open(temp_file_path, "wb") as buffer:
             buffer.write(await audio.read())
         
-        # Appel réel à Whisper API ou STT Service :
-        # transcription_result = await ai_service.transcribe_audio(temp_file_path)
-        reponse_texte = "Transcription générée depuis l'audio" # Mock
+        if settings.ai_feature_transcribe_audio:
+            ai_service = AIService()
+            reponse_texte = await ai_service.transcribe_audio(temp_file_path)
+        else:
+            raise HTTPException(status_code=503, detail="Transcription audio désactivée sur ce serveur.")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Erreur lors du traitement audio.")
+        raise HTTPException(status_code=500, detail=f"Erreur lors du traitement audio: {e}")
     finally:
         if os.path.exists(temp_file_path):
-            os.remove(temp_file_path) # Nettoyage backend
+            os.remove(temp_file_path)
     
     return await simulation_service.process_user_answer(db, current_user, session_id, reponse_texte)
 

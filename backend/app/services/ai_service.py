@@ -126,6 +126,20 @@ class AIService:
                     logger.error(f"Fallback feedback generation failed: {fallback_exc}")
             raise
 
+    async def transcribe_audio(self, audio_file_path: str) -> str:
+        if not self.client:
+            raise RuntimeError("No AI client configured")
+        try:
+            with open(audio_file_path, "rb") as audio_file:
+                transcript = await self.client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                )
+            return transcript.text.strip()
+        except Exception as e:
+            logger.error(f"Audio transcription failed: {e}")
+            raise
+
     async def generate_next_question(
         self,
         previous_responses: list[str],

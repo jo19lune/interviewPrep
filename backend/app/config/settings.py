@@ -3,7 +3,6 @@ Module de configuration de l'application.
 """
 
 import json
-import os
 from typing import List
 
 from pydantic import AnyHttpUrl, Field, field_validator, AliasChoices
@@ -59,6 +58,10 @@ class Settings(BaseSettings):
     ai_primary_model: str = Field(validation_alias="AI_PRIMARY_MODEL")
     ai_fallback_model: str = Field(validation_alias="AI_FALLBACK_MODEL")
 
+    # AI feature toggles
+    ai_feature_generate_exercises: bool = Field(default=True, validation_alias="AI_FEATURE_GENERATE_EXERCISES")
+    ai_feature_transcribe_audio: bool = Field(default=True, validation_alias="AI_FEATURE_TRANSCRIBE_AUDIO")
+
     # Email
     email_host: str = Field(default="smtp.gmail.com", validation_alias="SMTP_HOST")
     email_port: int = Field(default=587, validation_alias="SMTP_PORT")
@@ -88,24 +91,25 @@ class Settings(BaseSettings):
     upload_base_url: str = Field(validation_alias="UPLOAD_BASE_URL")
     storage_provider: str = Field(default="local", validation_alias="STORAGE_PROVIDER")
 
+    # Stockage S3
+    s3_access_key: str = Field(default="", validation_alias="S3_ACCESS_KEY")
+    s3_secret_key: str = Field(default="", validation_alias="S3_SECRET_KEY")
+    s3_region: str = Field(default="", validation_alias="S3_REGION")
+    s3_endpoint: str = Field(default="", validation_alias="S3_ENDPOINT")
+    s3_bucket: str = Field(default="", validation_alias="S3_BUCKET")
+
+    # Stockage Azure
+    azure_connection_string: str = Field(default="", validation_alias="AZURE_CONNECTION_STRING")
+    azure_container: str = Field(default="", validation_alias="AZURE_CONTAINER")
+
     @property
     def openai_models(self) -> List[str]:
         models = []
-        
-        # Check in model_extra for OPENAI_MODEL_ID_* variables from .env
         if self.model_extra:
             for key, value in self.model_extra.items():
                 if key.upper().startswith("OPENAI_MODEL_ID_") and value:
                     models.append(str(value))
-                    
-        # Fallback to os.environ just in case it was passed directly
-        for key, value in os.environ.items():
-            if key.upper().startswith("OPENAI_MODEL_ID_") and value:
-                if value not in models:
-                    models.append(value)
-                
         if not models:
-            # Fallbacks just in case
             if self.ai_primary_model:
                 models.append(self.ai_primary_model)
             if self.ai_fallback_model and self.ai_fallback_model not in models:

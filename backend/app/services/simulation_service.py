@@ -264,12 +264,14 @@ def score_answer(question: dict | None, reponse: str) -> tuple[float, str, str, 
         correct_index = question.get("reponse_correcte")
         options = question.get("options", [])
         is_correct = False
+        reponse = reponse.strip()
         try:
-            submitted_index = int(reponse.strip())
-            is_correct = submitted_index == correct_index or submitted_index - 1 == correct_index
+            submitted_index = int(reponse)
+            if isinstance(correct_index, int):
+                is_correct = submitted_index == correct_index
         except ValueError:
             if isinstance(correct_index, int) and 0 <= correct_index < len(options):
-                is_correct = options[correct_index].lower() == reponse.strip().lower()
+                is_correct = options[correct_index].lower() == reponse.lower()
 
         if is_correct:
             return (

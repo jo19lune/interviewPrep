@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -862,11 +863,7 @@ child: Column(
                    children: [
                      const SizedBox(width: 4),
                      // Bouton d'enregistrement vocal
-                     _MicButton(
-                       onTranscribed: (text) {
-                         _textController.text = text;
-                       },
-                     ),
+                     _MicButton(),
                      const SizedBox(width: 8),
                      Expanded(
                        child: TextField(
@@ -1330,17 +1327,15 @@ class _StatTile extends StatelessWidget {
 }
 
 /// Bouton microphone interactif avec animation de pulse.
-/// Simule la transcription vocale en insérant du texte dans le champ de réponse.
-class _MicButton extends StatefulWidget {
-  final void Function(String text) onTranscribed;
-
-  const _MicButton({required this.onTranscribed});
+/// Utilise l'enregistrement audio réel et l'envoie au backend pour transcription.
+class _MicButton extends ConsumerStatefulWidget {
+  const _MicButton();
 
   @override
-  State<_MicButton> createState() => _MicButtonState();
+  ConsumerState<_MicButton> createState() => _MicButtonState();
 }
 
-class _MicButtonState extends State<_MicButton>
+class _MicButtonState extends ConsumerState<_MicButton>
     with SingleTickerProviderStateMixin {
   bool _isRecording = false;
   late AnimationController _animationController;
@@ -1366,49 +1361,65 @@ class _MicButtonState extends State<_MicButton>
     super.dispose();
   }
 
-  void _toggleRecording() {
-    setState(() => _isRecording = !_isRecording);
-
-    if (!_isRecording) {
-      // Fin de l'enregistrement — transcription simulée
-      final transcriptions = [
-        'Je pense que la meilleure approche serait d\'analyser le problème en profondeur avant de proposer une solution.',
-        'Dans mon expérience précédente, j\'ai géré une situation similaire en collaborant avec l\'équipe et en fixant des priorités claires.',
-        'Je mettrais en place une communication transparente avec toutes les parties prenantes pour résoudre ce conflit.',
-      ];
-      transcriptions.shuffle();
-      widget.onTranscribed(transcriptions.first);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.mic_off, color: Colors.white, size: 16),
-                SizedBox(width: 8),
-                Text('Transcription terminée'),
-              ],
+  Future<void> _toggleRecording() async {
+    final notifier = ref.read(simulationProvider.notifier);
+    if (_isRecording) {
+      try {
+        await notifier.stopAndSendRecording();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.mic_off, color: Colors.white, size: 16),
+                  SizedBox(width: 8),
+                  Text('Transcription terminée'),
+                ],
+              ),
+              duration: Duration(seconds: 2),
+              backgroundColor: AppTheme.primaryContainer,
             ),
-            duration: Duration(seconds: 2),
-            backgroundColor: AppTheme.primaryContainer,
-          ),
-        );
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur de transcription: $e'),
+              backgroundColor: AppTheme.error,
+            ),
+          );
+        }
       }
+      if (mounted) setState(() => _isRecording = false);
     } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.mic, color: Colors.white, size: 16),
-                SizedBox(width: 8),
-                Text('Enregistrement en cours...'),
-              ],
+      try {
+        await notifier.startRecording();
+        setState(() => _isRecording = true);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.mic, color: Colors.white, size: 16),
+                  SizedBox(width: 8),
+                  Text('Enregistrement en cours...'),
+                ],
+              ),
+              duration: Duration(seconds: 2),
+              backgroundColor: AppTheme.secondaryColor,
             ),
-            duration: Duration(seconds: 2),
-            backgroundColor: AppTheme.secondaryColor,
-          ),
-        );
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur: $e'),
+              backgroundColor: AppTheme.error,
+            ),
+          );
+        }
       }
     }
   }

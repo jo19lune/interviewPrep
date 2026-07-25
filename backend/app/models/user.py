@@ -6,7 +6,7 @@ d'authentification, le profil professionnel et les préférences
 de l'utilisateur, ainsi que ses relations avec d'autres entités.
 """
 
-from sqlalchemy import Boolean, Column, Enum, Index, String
+from sqlalchemy import Boolean, Column, DateTime, Enum, Index, String
 from sqlalchemy.orm import relationship
 
 from app.core.enums import Domaine, Niveau
@@ -59,7 +59,7 @@ class User(BaseModel):
     
     # Reset mot de passe
     reset_code = Column(String(6), nullable=True)
-    reset_code_expires_at = Column(String(64), nullable=True)
+    reset_code_expires_at = Column(DateTime, nullable=True)
     
     # Relations
     sessions = relationship(

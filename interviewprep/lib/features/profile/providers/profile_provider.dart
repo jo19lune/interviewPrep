@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:interviewprep/core/models/auth_models.dart';
 import 'package:interviewprep/features/profile/services/profile_service.dart';
 import 'dart:io';
@@ -56,8 +55,14 @@ class ProfileNotifier extends StateNotifier<AsyncValue<UserResponse>> {
     required String filename,
   }) async {
     try {
-      if (path == null) throw Exception('Chemin de fichier manquant');
-      final updatedProfile = await _profileService.updateAvatar(File(path));
+      UserResponse updatedProfile;
+      if (path != null) {
+        updatedProfile = await _profileService.updateAvatar(File(path));
+      } else if (bytes != null) {
+        updatedProfile = await _profileService.updateAvatarBytes(bytes, filename);
+      } else {
+        throw Exception('Aucune donnée d\'avatar fournie');
+      }
       state = AsyncValue.data(updatedProfile);
     } catch (e) {
       rethrow;
