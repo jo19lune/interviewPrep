@@ -107,15 +107,17 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
   }
 
   Map<String, dynamic>? _getTopSkillEntry(Map<String, dynamic> stats) {
-    final entries = stats.entries.toList();
+    final entries = stats.entries
+        .where((e) => e.value is Map && (e.value as Map).containsKey('avg_score'))
+        .toList();
     entries.sort(
-      (a, b) =>
-          (b.value['avg_score'] as num).compareTo(a.value['avg_score'] as num),
+      (a, b) => ((b.value as Map)['avg_score'] as num?)
+              ?.compareTo((a.value as Map)['avg_score'] as num?) ?? 0,
     );
     if (entries.isNotEmpty) {
       return {
         'key': entries.first.key,
-        'avg': (entries.first.value['avg_score'] as num).toDouble(),
+        'avg': ((entries.first.value as Map)['avg_score'] as num?)?.toDouble() ?? 0.0,
       };
     }
     return null;
@@ -126,7 +128,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
     final q = _searchQuery.toLowerCase();
     return exercises.where((ex) {
       return ex.titre.toLowerCase().contains(q) ||
-          ex.description.toLowerCase().contains(q) ||
+          (ex.description?.toLowerCase().contains(q) ?? false) ||
           ex.domaine.toLowerCase().contains(q) ||
           ex.difficulte.toLowerCase().contains(q);
     }).toList();

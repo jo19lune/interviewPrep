@@ -23,9 +23,12 @@ class DashboardService {
     }
   }
 
-  Future<List<SessionResponse>> getSessionHistory() async {
+  Future<List<SessionResponse>> getSessionHistory({int skip = 0, int limit = 50}) async {
     try {
-      final response = await _apiClient.dio.get('/progress/history');
+      final response = await _apiClient.dio.get('/progress/history', queryParameters: {
+        'skip': skip,
+        'limit': limit,
+      });
       return (response.data as List).map((e) => SessionResponse.fromJson(e)).toList();
     } catch (e) {
       throw Exception('Erreur lors de la récupération de l\'historique');

@@ -93,10 +93,10 @@ async def export_progress_pdf(
         elements.append(Paragraph("Résumé global", styles["Heading2"]))
         global_data = [
             ["Indicateur", "Valeur"],
-            ["Score moyen", f"{stats.get('score_moyen', 0):.1f}/100"],
-            ["Meilleur score", f"{stats.get('meilleur_score', 0):.1f}/100"],
+            ["Score moyen", f"{stats.get('avg_score', 0):.1f}/100"],
+            ["Meilleur score", f"{stats.get('best_score', 0):.1f}/100"],
             ["Sessions complétées", str(stats.get('total_sessions', 0))],
-            ["Série actuelle", f"{stats.get('serie', 0)} jours"],
+            ["Série actuelle", f"{stats.get('streak', 0)} jours"],
         ]
         t = Table(global_data, colWidths=[8*cm, 8*cm])
         t.setStyle(TableStyle([
@@ -111,18 +111,15 @@ async def export_progress_pdf(
 
         elements.append(Paragraph("Détail par domaine", styles["Heading2"]))
         domain_data = [["Domaine", "Sessions", "Score moyen", "Meilleur score"]]
-        domain_rows = detailed.get("domaines", [])
-        if isinstance(domain_rows, list) and domain_rows:
-            for d in domain_rows:
-                domain_data.append([
-                    d.get("domaine", "N/A"),
-                    str(d.get("sessions", 0)),
-                    f"{d.get('score_moyen', 0):.1f}",
-                    f"{d.get('meilleur_score', 0):.1f}",
-                ])
-        else:
-            for key, val in domain_rows.items() if isinstance(domain_rows, dict) else []:
-                domain_data.append([key, str(val.get("sessions", 0)), f"{val.get('score_moyen', 0):.1f}", f"{val.get('meilleur_score', 0):.1f}"])
+        if isinstance(detailed, dict):
+            for key, val in detailed.items():
+                if isinstance(val, dict):
+                    domain_data.append([
+                        key,
+                        str(val.get("total", 0)),
+                        f"{val.get('avg_score', 0):.1f}",
+                        f"{val.get('best_score', 0):.1f}",
+                    ])
 
         t2 = Table(domain_data, colWidths=[4*cm, 3*cm, 4*cm, 4*cm])
         t2.setStyle(TableStyle([
