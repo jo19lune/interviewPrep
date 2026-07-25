@@ -31,25 +31,28 @@ class ExerciceCreateRequest {
 class ExerciceResponse {
     final String id;
     final String titre;
-    final String description;
+    final String? description;
     final String domaine;
     final String difficulte;
     @JsonKey(name: 'duree_sec')
     final int dureeSec;
     final List<dynamic>? questions;
     final List<String>? etiquettes;
+    @JsonKey(name: 'difficulte_estimee')
+    final int? difficulteEstimee;
     @JsonKey(name: 'cree_le')
     final DateTime? creeLe;
 
     ExerciceResponse({
         required this.id,
         required this.titre,
-        required this.description,
+        this.description,
         required this.domaine,
         required this.difficulte,
         required this.dureeSec,
         this.questions,
         this.etiquettes,
+        this.difficulteEstimee,
         this.creeLe,
     });
 

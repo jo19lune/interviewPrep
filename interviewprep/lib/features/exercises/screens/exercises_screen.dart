@@ -1131,7 +1131,7 @@ class _GenerateExerciseSheetState
 
               // Dropdown Domaine
               DropdownButtonFormField<String>(
-                initialValue: _selectedDomaine,
+                value: _selectedDomaine,
                 decoration: const InputDecoration(
                   labelText: 'Domaine de comp\u00e9tences',
                   prefixIcon: Icon(Icons.category_outlined),
@@ -1167,7 +1167,7 @@ class _GenerateExerciseSheetState
 
               // Dropdown Niveau
               DropdownButtonFormField<String>(
-                initialValue: _selectedNiveau,
+                value: _selectedNiveau,
                 decoration: const InputDecoration(
                   labelText: 'Niveau de difficult\u00e9',
                   prefixIcon: Icon(Icons.trending_up_outlined),

@@ -132,7 +132,7 @@ async def generate_exercise_via_ai(db: AsyncSession, request: ExerciceGenerateRe
         duree_sec=int(generated.get("duree_sec") or 300),
         questions=generated.get("questions") or [],
         etiquettes=generated.get("etiquettes") or [domaine_str],
-        difficulte_estimee=0,
+        difficulte_estimee=int(generated.get("difficulte_estimee") or 0),
     )
 
     if save:

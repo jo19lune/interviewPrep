@@ -271,6 +271,7 @@ class AIService:
             f'  "domaine": "{domaine_clean}",\n'
             f'  "difficulte": "{difficulte_clean}",\n'
             '  "duree_sec": 300,\n'
+            '  "difficulte_estimee": 7,\n'
             '  "etiquettes": ["tag1", "tag2", "tag3"],\n'
             '  "questions": [\n'
             '    {\n'
@@ -382,6 +383,7 @@ class AIService:
                     parsed.setdefault("domaine", domaine)
                     parsed.setdefault("difficulte", difficulte)
                     parsed.setdefault("duree_sec", 300)
+                    parsed.setdefault("difficulte_estimee", 0)
                     parsed.setdefault("etiquettes", [])
                     parsed.setdefault("questions", [])
                     return parsed
