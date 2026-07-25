@@ -13,7 +13,7 @@ import os
 import tempfile
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +26,8 @@ from app.data.database import get_db
 from app.models.exercice import Exercice
 from app.models.session import Session
 from app.models.user import User
-from app.schemas.session import SessionCreateRequest
+from app.models.feedback import Retour
+from app.schemas.session import SessionCreateRequest, SessionResponse
 from app.services import simulation_service
 from app.services.ai_service import AIService
 
@@ -172,3 +173,63 @@ async def finish_simulation(
     Termine la simulation et déclenche la génération du feedback global.
     """
     return await simulation_service.finish_session_and_generate_feedback(db, current_user, session_id)
+
+
+@router.get("/sessions")
+async def list_user_sessions(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Liste toutes les sessions de l'utilisateur (terminées ou non).
+    """
+    from app.services.stats_service import get_user_session_history
+    sessions = await get_user_session_history(db, current_user.id, skip, limit)
+    return [SessionResponse.from_orm(s) for s in sessions]
+
+
+@router.get("/sessions/{session_id}")
+async def get_session_conversation(
+    session_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Récupère le détail complet d'une session : réponses, feedback, exercice.
+    """
+    result = await db.execute(
+        select(Session)
+        .options(selectinload(Session.ia_simulation), selectinload(Session.retour))
+        .where(
+            (Session.id == session_id) & (Session.utilisateur_id == current_user.id)
+        )
+    )
+    session = result.scalars().first()
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    ex_res = await db.execute(select(Exercice).where(Exercice.id == session.exercice_id))
+    exercice = ex_res.scalars().first()
+
+    feedback_data = None
+    if session.retour:
+        feedback_data = {
+            "id": str(session.retour.id),
+            "score_global": session.retour.score_global,
+            "points_forts": session.retour.points_forts or [],
+            "ameliorations": session.retour.ameliorations or [],
+            "recommandations": session.retour.recommandations or [],
+            "genere_le": session.retour.genere_le.isoformat(),
+        }
+
+    user_responses = simulation_service.user_responses(session.reponses or [])
+
+    return {
+        "session": SessionResponse.from_orm(session).model_dump(),
+        "feedback": feedback_data,
+        "exercise_title": exercice.titre if exercice else None,
+        "exercise_domaine": exercice.domaine if exercice else None,
+        "user_responses": user_responses,
+    }
