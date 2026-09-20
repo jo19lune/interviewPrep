@@ -48,7 +48,9 @@ async def generate_feedback(exercice, reponses, score, model=None):
         feedback = await AIService(primary_model=model).generate_feedback(
             user_responses(reponses), exercice.titre if exercice else "entretien", config.get("sujet")
         )
-        return normalize_feedback(feedback, score)
+        normalized = normalize_feedback(feedback, score)
+        normalized["score_global"] = score
+        return normalized
     except Exception:
         logger.exception("AI feedback generation failed; using local fallback")
         return fallback_feedback(score)

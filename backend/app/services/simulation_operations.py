@@ -53,7 +53,10 @@ async def process_user_answer(db, current_user, session_id: UUID, reponse: str):
     reponse = reponse.strip()
     if not reponse:
         raise HTTPException(status_code=422, detail="Answer cannot be empty")
-    result = await db.execute(select(Session).options(selectinload(Session.ia_simulation)).where(
+    result = await db.execute(select(Session).options(
+        selectinload(Session.ia_simulation),
+        selectinload(Session.retour),
+    ).where(
         (Session.id == session_id) & (Session.utilisateur_id == current_user.id)
     ))
     session = result.scalars().first()
@@ -77,9 +80,11 @@ async def process_user_answer(db, current_user, session_id: UUID, reponse: str):
     model = session.ia_simulation.modele if session.ia_simulation else None
     next_question = await generate_next_question(exercice, responses, index + 1, model)
     await db.commit()
-    return {"status": "received", "answer_count": len(responses), "clarity_score": clarity,
-            "sentiment": sentiment, "coaching_tip": tip, "analysis": analysis,
-            "next_question": next_question}
+    return {
+        "status": "received",
+        "answer_count": len(responses),
+        "next_question": next_question,
+    }
 
 
 async def cancel_active_session(db, current_user, session_id):
@@ -97,15 +102,26 @@ async def cancel_active_session(db, current_user, session_id):
 
 
 async def finish_session_and_generate_feedback(db, current_user, session_id):
-    result = await db.execute(select(Session).options(selectinload(Session.ia_simulation)).where(
+    result = await db.execute(select(Session).options(
+        selectinload(Session.ia_simulation),
+        selectinload(Session.retour),
+    ).where(
         (Session.id == session_id) & (Session.utilisateur_id == current_user.id)
     ))
     session = result.scalars().first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    if session.statut == "TERMINEE" and session.retour:
+        return _feedback_response(session)
+    if session.statut != "EN_COURS":
+        raise HTTPException(status_code=400, detail="Session is not active")
     session.statut, session.termine_le = "TERMINEE", datetime.utcnow()
     responses = user_responses(session.reponses or [])
-    scores = [r["score_partiel"] for r in responses if r.get("score_partiel") is not None]
+    scores = [
+        float(r["score_partiel"])
+        for r in responses
+        if isinstance(r.get("score_partiel"), (int, float))
+    ]
     score = float(sum(scores) / len(scores)) if scores else 75.0
     session.score = score
     ex_res = await db.execute(select(Exercice).where(Exercice.id == session.exercice_id))
@@ -131,8 +147,22 @@ async def finish_session_and_generate_feedback(db, current_user, session_id):
     db.add_all([session, feedback, prog])
     await db.commit()
     await db.refresh(feedback)
-    return {"session_id": str(session.id), "status": "finished", "score": session.score,
-            "feedback": {"id": str(feedback.id), "session_id": str(feedback.session_id),
-                         "score_global": feedback.score_global, "points_forts": feedback.points_forts,
-                         "ameliorations": feedback.ameliorations, "recommandations": feedback.recommandations,
-                         "genere_le": feedback.genere_le.isoformat()}}
+    return _feedback_response(session, feedback)
+
+
+def _feedback_response(session, feedback=None):
+    feedback = feedback or session.retour
+    return {
+        "session_id": str(session.id),
+        "status": "finished",
+        "score": session.score,
+        "feedback": {
+            "id": str(feedback.id),
+            "session_id": str(feedback.session_id),
+            "score_global": feedback.score_global,
+            "points_forts": feedback.points_forts,
+            "ameliorations": feedback.ameliorations,
+            "recommandations": feedback.recommandations,
+            "genere_le": feedback.genere_le.isoformat(),
+        },
+    }

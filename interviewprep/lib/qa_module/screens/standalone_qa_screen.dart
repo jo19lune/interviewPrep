@@ -417,24 +417,6 @@ class _StandaloneQAScreenState extends ConsumerState<StandaloneQAScreen> {
                   ],
                 ),
               ),
-              if (state.lastClarityScore != null) ...[
-                const SizedBox(width: 16),
-                Column(
-                  children: [
-                    Text(
-                      '${state.lastClarityScore!.round()}%',
-                      style: const TextStyle(
-                        color: AppTheme.primaryContainer,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    const Text('Clarté',
-                        style: TextStyle(
-                            fontSize: 11, color: AppTheme.onSurfaceVariant)),
-                  ],
-                ),
-              ],
             ],
           ),
         ),
