@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import 'reset_password_form.dart';
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   final String email;
@@ -10,7 +11,8 @@ class ResetPasswordScreen extends ConsumerStatefulWidget {
   const ResetPasswordScreen({super.key, this.email = ''});
 
   @override
-  ConsumerState<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
+  ConsumerState<ResetPasswordScreen> createState() =>
+      _ResetPasswordScreenState();
 }
 
 class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
@@ -25,7 +27,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _email ??= widget.email.isNotEmpty ? widget.email : (ModalRoute.of(context)?.settings.arguments as String?);
+    _email ??= widget.email.isNotEmpty
+        ? widget.email
+        : (ModalRoute.of(context)?.settings.arguments as String?);
   }
 
   @override
@@ -41,18 +45,25 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     final email = _email ?? '';
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Email manquant. Retournez à l\'étape précédente.')),
+        const SnackBar(
+          content: Text('Email manquant. Retournez à l\'étape précédente.'),
+        ),
       );
       return;
     }
     setState(() => _submitted = true);
     try {
       final notifier = ref.read(forgotPasswordProvider.notifier);
-      final valid = await notifier.verifyCode(email, _codeController.text.trim());
+      final valid = await notifier.verifyCode(
+        email,
+        _codeController.text.trim(),
+      );
       if (!mounted) return;
       if (!valid) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Code invalide ou expiré. Demandez un nouveau code.')),
+          const SnackBar(
+            content: Text('Code invalide ou expiré. Demandez un nouveau code.'),
+          ),
         );
         return;
       }
@@ -63,7 +74,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mot de passe réinitialisé. Connectez-vous.')),
+          const SnackBar(
+            content: Text('Mot de passe réinitialisé. Connectez-vous.'),
+          ),
         );
         if (mounted) context.go('/login');
       }
@@ -71,7 +84,11 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       if (mounted) {
         final msg = e.toString().replaceAll('Exception: ', '').trim();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg.isNotEmpty ? msg : 'Erreur lors de la réinitialisation')),
+          SnackBar(
+            content: Text(
+              msg.isNotEmpty ? msg : 'Erreur lors de la réinitialisation',
+            ),
+          ),
         );
       }
     } finally {
@@ -81,7 +98,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = _submitted || ref.watch(forgotPasswordProvider) is AsyncLoading;
+    final isLoading =
+        _submitted || ref.watch(forgotPasswordProvider) is AsyncLoading;
 
     return Scaffold(
       appBar: AppBar(
@@ -92,120 +110,22 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 16.0,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Icon(Icons.vpn_key, size: 48, color: AppTheme.primaryContainer),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Définir un nouveau mot de passe',
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                            color: AppTheme.primaryContainer,
-                            fontWeight: FontWeight.bold,
-                          ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 32),
-                    TextFormField(
-                      controller: _codeController,
-                      decoration: const InputDecoration(
-                        labelText: 'Code de vérification',
-                        hintText: '123456',
-                        prefixIcon: Icon(Icons.numbers),
-                      ),
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      enabled: !isLoading,
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Veuillez entrer le code';
-                        if (v.length != 6) return 'Le code doit contenir 6 chiffres';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      decoration: InputDecoration(
-                        labelText: 'Nouveau mot de passe',
-                        hintText: 'Minimum 8 caractères',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                            color: AppTheme.outline,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
-                      ),
-                      obscureText: _obscurePassword,
-                      enabled: !isLoading,
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Veuillez entrer un mot de passe';
-                        if (v.length < 8) return 'Minimum 8 caractères requis';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _confirmController,
-                      decoration: InputDecoration(
-                        labelText: 'Confirmer le mot de passe',
-                        hintText: 'Retapez le mot de passe',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                            color: AppTheme.outline,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
-                      ),
-                      obscureText: _obscurePassword,
-                      enabled: !isLoading,
-                      validator: (v) {
-                        if (v != _passwordController.text) return 'Les mots de passe ne correspondent pas';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : _submit,
-                        child: isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Text('Réinitialiser le mot de passe'),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: isLoading ? null : () => context.go('/forgot-password'),
-                      child: const Text('Renvoyer un code'),
-                    ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: isLoading ? null : () => context.go('/login'),
-                      child: const Text('Retour à la connexion'),
-                    ),
-                  ],
-                ),
+              child: ResetPasswordForm(
+                formKey: _formKey,
+                codeController: _codeController,
+                passwordController: _passwordController,
+                confirmController: _confirmController,
+                isLoading: isLoading,
+                obscurePassword: _obscurePassword,
+                onToggleObscure: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+                onSubmit: _submit,
               ),
             ),
           ),

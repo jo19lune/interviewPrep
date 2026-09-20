@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'app_routes.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
@@ -31,19 +32,22 @@ final GlobalKey<NavigatorState> _shellNavigatorProfileKey =
 class AppRouter {
   static final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/login',
+    initialLocation: AppRoutes.login,
     routes: [
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
-        path: '/register',
+        path: AppRoutes.login,
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.register,
         builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(
-        path: '/forgot-password',
+        path: AppRoutes.forgotPassword,
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(
-        path: '/reset-password',
+        path: AppRoutes.resetPassword,
         builder: (context, state) {
           final email =
               state.uri.queryParameters['email'] ??
@@ -61,7 +65,7 @@ class AppRouter {
             navigatorKey: _shellNavigatorDashboardKey,
             routes: [
               GoRoute(
-                path: '/dashboard',
+                path: AppRoutes.dashboard,
                 builder: (context, state) => const DashboardScreen(),
                 routes: [
                   GoRoute(
@@ -80,7 +84,7 @@ class AppRouter {
             navigatorKey: _shellNavigatorSimulationKey,
             routes: [
               GoRoute(
-                path: '/simulation',
+                path: AppRoutes.simulation,
                 builder: (context, state) => const SimulationScreen(),
               ),
             ],
@@ -89,7 +93,7 @@ class AppRouter {
             navigatorKey: _shellNavigatorExercisesKey,
             routes: [
               GoRoute(
-                path: '/exercises',
+                path: AppRoutes.exercises,
                 builder: (context, state) => const ExercisesScreen(),
                 routes: [
                   GoRoute(
@@ -119,7 +123,7 @@ class AppRouter {
             navigatorKey: _shellNavigatorProfileKey,
             routes: [
               GoRoute(
-                path: '/profile',
+                path: AppRoutes.profile,
                 builder: (context, state) => const ProfileScreen(),
               ),
             ],
@@ -127,7 +131,7 @@ class AppRouter {
         ],
       ),
       GoRoute(
-        path: '/simulation/history',
+        path: AppRoutes.simulationHistory,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const SessionHistoryScreen(),
         routes: [
@@ -142,7 +146,7 @@ class AppRouter {
         ],
       ),
       GoRoute(
-        path: '/activities/history',
+        path: AppRoutes.activityHistory,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ActivityHistoryScreen(),
       ),

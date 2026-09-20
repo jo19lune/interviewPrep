@@ -10,27 +10,9 @@ import '../services/simulation_service.dart';
 import '../../../core/models/exercise.dart';
 import '../../../qa_module/models/chat_message.dart';
 
-final simulationServiceProvider = Provider<SimulationService>((ref) {
-  return SimulationService();
-});
-
-final availableModelsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
-  final service = ref.watch(simulationServiceProvider);
-  return service.getAvailableModels();
-});
-
-class SelectedModelNotifier extends Notifier<String?> {
-  @override
-  String? build() => null;
-
-  void select(String? model) => state = model;
-}
-
-final selectedModelProvider = NotifierProvider<SelectedModelNotifier, String?>(() {
-  return SelectedModelNotifier();
-});
-
-String _generateId() => 'sim_msg_${DateTime.now().microsecondsSinceEpoch}_${Random().nextInt(9999)}';
+part 'simulation_audio_operations.dart';
+part 'simulation_message_operations.dart';
+part 'simulation_provider_definitions.dart';
 
 class SimulationState {
   final String? sessionId;
@@ -136,10 +118,12 @@ class SimulationNotifier extends Notifier<SimulationState> {
         questionCount: questionCount,
         model: model,
       );
-      
+
       final firstMsg = ChatMessage(
         id: _generateId(),
-        text: response['first_question'] ?? "Bienvenue dans cette simulation d'entretien. Commençons par votre parcours. Pouvez-vous vous présenter ?",
+        text:
+            response['first_question'] ??
+            "Bienvenue dans cette simulation d'entretien. Commençons par votre parcours. Pouvez-vous vous présenter ?",
         isUser: false,
         timestamp: DateTime.now(),
       );
@@ -164,10 +148,10 @@ class SimulationNotifier extends Notifier<SimulationState> {
 
   Future<void> sendAnswer(String answerText) async {
     if (answerText.trim().isEmpty || state.sessionId == null) return;
-    
+
     // Interrompre la synthèse vocale en cours
     await _flutterTts.stop();
-    
+
     final userMsg = ChatMessage(
       id: _generateId(),
       text: answerText,
@@ -181,14 +165,18 @@ class SimulationNotifier extends Notifier<SimulationState> {
     );
 
     try {
-      final response = await _service.submitAnswer(state.sessionId!, answerText);
-      
-      final answerCount = (response['answer_count'] as num?)?.toInt() ?? state.answerCount + 1;
-      final nextQ = response['next_question'] as String? ?? 'Félicitations, simulation terminée !';
-
-      state = state.copyWith(
-        answerCount: answerCount,
+      final response = await _service.submitAnswer(
+        state.sessionId!,
+        answerText,
       );
+
+      final answerCount =
+          (response['answer_count'] as num?)?.toInt() ?? state.answerCount + 1;
+      final nextQ =
+          response['next_question'] as String? ??
+          'Félicitations, simulation terminée !';
+
+      state = state.copyWith(answerCount: answerCount);
 
       var streamedText = '';
       var hasRecruiterMessage = false;
@@ -211,169 +199,5 @@ class SimulationNotifier extends Notifier<SimulationState> {
       state = state.copyWith(isLoading: false);
       rethrow;
     }
-  }
-
-  /// Démarre l'enregistrement audio après avoir vérifié la permission microphone.
-  Future<void> startRecording() async {
-    final status = await Permission.microphone.request();
-    if (status.isGranted) {
-      final dir = await getTemporaryDirectory();
-      final path = '${dir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
-      await _audioRecorder.start(const RecordConfig(), path: path);
-      state = state.copyWith(isRecording: true);
-    } else {
-      throw Exception("Permission microphone refusée. Veuillez l'accorder dans les paramètres.");
-    }
-  }
-
-  /// Arrête l'enregistrement, envoie le fichier audio au backend, puis supprime le fichier local.
-  Future<void> stopAndSendRecording() async {
-    final path = await _audioRecorder.stop();
-    if (path == null || path.isEmpty) {
-      state = state.copyWith(isRecording: false);
-      return;
-    }
-
-    state = state.copyWith(isRecording: false, isLoading: true);
-
-    try {
-      if (state.sessionId == null) {
-        throw Exception("Aucune session active pour envoyer la réponse audio.");
-      }
-      final response = await _service.submitAudioAnswer(state.sessionId!, path);
-
-      final answerCount = (response['answer_count'] as num?)?.toInt() ?? state.answerCount + 1;
-      final nextQ = response['next_question'] as String? ?? 'Félicitations, simulation terminée !';
-
-      state = state.copyWith(
-        answerCount: answerCount,
-      );
-
-      // Ajouter le message utilisateur avec indication "audio"
-      final userMsg = ChatMessage(
-        id: _generateId(),
-        text: "🎤 Réponse vocale transmise",
-        isUser: true,
-        timestamp: DateTime.now(),
-      );
-      state = state.copyWith(messages: [...state.messages, userMsg]);
-
-      // Streamer la réponse du recruteur
-      var streamedText = '';
-      var hasRecruiterMessage = false;
-      try {
-        await for (final token in _service.streamAIResponse(state.sessionId!)) {
-          streamedText += token;
-          hasRecruiterMessage = true;
-          _upsertRecruiterMessage(streamedText);
-        }
-      } catch (_) {
-        streamedText = '';
-      }
-
-      if (!hasRecruiterMessage || streamedText.trim().isEmpty) {
-        _upsertRecruiterMessage(nextQ);
-      }
-
-      state = state.copyWith(isLoading: false);
-    } catch (e) {
-      state = state.copyWith(isLoading: false);
-      rethrow;
-    } finally {
-      // Suppression systématique du fichier audio temporaire
-      if (File(path).existsSync()) {
-        try {
-          File(path).deleteSync();
-        } catch (_) {
-          // Le fichier a déjà été nettoyé ou est inaccessible
-        }
-      }
-    }
-  }
-
-  Future<void> finish() async {
-    if (state.sessionId == null) return;
-    _flutterTts.stop();
-    state = state.copyWith(isLoading: true);
-    try {
-      final response = await _service.finishSimulation(state.sessionId!);
-      
-      final feedback = Feedback(
-        id: response.id,
-        sessionId: response.sessionId,
-        scoreGlobal: response.scoreGlobal,
-        pointsForts: response.pointsForts,
-        ameliorations: response.ameliorations,
-        recommandations: response.recommandations,
-        genereLe: response.genereLe ?? DateTime.now(),
-      );
-
-      state = state.copyWith(
-        feedback: feedback,
-        isLoading: false,
-      );
-    } catch (e) {
-      state = state.copyWith(isLoading: false);
-      rethrow;
-    }
-  }
-
-  Future<void> cancel() async {
-    if (state.sessionId == null) {
-      reset();
-      return;
-    }
-    _flutterTts.stop();
-    state = state.copyWith(isLoading: true);
-    try {
-      await _service.cancelSimulation(state.sessionId!);
-      state = SimulationState();
-    } catch (e) {
-      state = state.copyWith(isLoading: false);
-      rethrow;
-    }
-  }
-
-  void _upsertRecruiterMessage(
-    String text, {
-    double? clarity,
-    String? sentiment,
-    String? tip,
-    Map<String, dynamic>? analysis,
-  }) {
-    final messages = [...state.messages];
-    if (messages.isNotEmpty && !messages.last.isUser) {
-      messages[messages.length - 1] = ChatMessage(
-        id: messages.last.id,
-        text: text,
-        isUser: false,
-        timestamp: messages.last.timestamp,
-        scorePartiel: clarity,
-        sentiment: sentiment,
-        coachingTip: tip,
-        analysis: analysis,
-      );
-    } else {
-      messages.add(
-        ChatMessage(
-          id: _generateId(),
-          text: text,
-          isUser: false,
-          timestamp: DateTime.now(),
-          scorePartiel: clarity,
-          sentiment: sentiment,
-          coachingTip: tip,
-          analysis: analysis,
-        ),
-      );
-    }
-    state = state.copyWith(messages: messages);
-
-    // Lecture vocale automatique pour les messages du recruteur
-    unawaited(_flutterTts.speak(text));
   }
 }
-
-final simulationProvider = NotifierProvider<SimulationNotifier, SimulationState>(() {
-  return SimulationNotifier();
-});
