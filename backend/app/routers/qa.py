@@ -1,12 +1,11 @@
 """Routes QA autonomes et évaluations persistées."""
 
 import logging
-from datetime import datetime
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user
+from app.core.time import utc_now
 from app.data.database import get_db
 from app.models.qa_feedback import QAFeedback
 from app.models.user import User
@@ -114,7 +113,7 @@ async def _create_persisted_feedback(
         points_forts=normalized["points_forts"],
         ameliorations=normalized["ameliorations"],
         recommandations=normalized["recommandations"],
-        genere_le=datetime.utcnow(),
+        genere_le=utc_now(),
     )
     db.add(feedback)
     await db.commit()

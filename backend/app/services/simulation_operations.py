@@ -1,6 +1,5 @@
 """Opérations de persistance des simulations."""
 
-from datetime import datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -9,6 +8,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
 from app.config.settings import settings
+from app.core.time import utc_now
 from app.models.ai_simulation import SimulationIA
 from app.models.exercice import Exercice
 from app.models.feedback import Retour
@@ -27,7 +27,7 @@ async def create_simulation_session(db, current_user, request):
     sujet = request.subject.strip() if request.subject else None
     session = Session(
         utilisateur_id=current_user.id, exercice_id=exercice.id,
-        commence_le=datetime.utcnow(), statut="EN_COURS",
+        commence_le=utc_now(), statut="EN_COURS",
         reponses=[{"type": "system", "simulation_config": {
             "sujet": sujet, "nombre_questions": request.question_count,
             "domaine": exercice.domaine, "difficulte": exercice.difficulte,
@@ -73,7 +73,7 @@ async def process_user_answer(db, current_user, session_id: UUID, reponse: str):
     clarity, sentiment, tip, analysis = score_answer(question, reponse)
     responses = list(session.reponses or [])
     responses.append({"texte": reponse, "question": question.get("enonce") if question else None,
-                      "timestamp": datetime.utcnow().isoformat(), "index": index,
+                      "timestamp": utc_now().isoformat(), "index": index,
                       "score_partiel": clarity, "sentiment": sentiment,
                       "coaching_tip": tip, "analysis": analysis})
     session.reponses = responses
@@ -96,7 +96,7 @@ async def cancel_active_session(db, current_user, session_id):
         raise HTTPException(status_code=404, detail="Session not found")
     if session.statut != "EN_COURS":
         raise HTTPException(status_code=400, detail="Only active sessions can be cancelled")
-    session.statut, session.termine_le = "ANNULEE", datetime.utcnow()
+    session.statut, session.termine_le = "ANNULEE", utc_now()
     await db.commit()
     return {"session_id": str(session.id), "status": "cancelled"}
 
@@ -115,7 +115,7 @@ async def finish_session_and_generate_feedback(db, current_user, session_id):
         return _feedback_response(session)
     if session.statut != "EN_COURS":
         raise HTTPException(status_code=400, detail="Session is not active")
-    session.statut, session.termine_le = "TERMINEE", datetime.utcnow()
+    session.statut, session.termine_le = "TERMINEE", utc_now()
     responses = user_responses(session.reponses or [])
     scores = [
         float(r["score_partiel"])
@@ -132,7 +132,7 @@ async def finish_session_and_generate_feedback(db, current_user, session_id):
     feedback = existing or Retour(session_id=session.id)
     feedback.score_global = data["score_global"]
     feedback.points_forts, feedback.ameliorations = data["points_forts"], data["ameliorations"]
-    feedback.recommandations, feedback.genere_le = data["recommandations"], datetime.utcnow()
+    feedback.recommandations, feedback.genere_le = data["recommandations"], utc_now()
     prog = (await db.execute(select(Progression).where(
         Progression.utilisateur_id == current_user.id))).scalars().first()
     if prog:

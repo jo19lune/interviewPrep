@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import datetime
+from app.core.time import utc_now
 from uuid import UUID
 
 import pytest
@@ -157,7 +157,7 @@ async def test_process_user_answer_does_not_expose_live_score(monkeypatch):
         session = Session(
             utilisateur_id=user.id,
             exercice_id=exercice.id,
-            commence_le=datetime.utcnow(),
+            commence_le=utc_now(),
             statut="EN_COURS",
             reponses=[{"type": "system", "simulation_config": {"nombre_questions": 1}}],
         )

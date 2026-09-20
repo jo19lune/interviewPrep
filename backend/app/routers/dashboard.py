@@ -8,7 +8,6 @@ sessions d'entretiens et son tableau de bord personnel.
 
 import os
 import tempfile
-from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
@@ -16,6 +15,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user
+from app.core.time import utc_now
 from app.data.database import get_db
 from app.models.user import User
 from app.schemas.session import SessionResponse
@@ -87,7 +87,7 @@ async def export_progress_pdf(
 
         elements.append(Paragraph(f"Rapport de progression - {current_user.prenom or ''} {current_user.nom or ''}", styles["Title"]))
         elements.append(Spacer(1, 0.5 * cm))
-        elements.append(Paragraph(f"Généré le {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}", styles["Normal"]))
+        elements.append(Paragraph(f"Généré le {utc_now().strftime('%d/%m/%Y %H:%M')}", styles["Normal"]))
         elements.append(Spacer(1, 1 * cm))
 
         elements.append(Paragraph("Résumé global", styles["Heading2"]))
