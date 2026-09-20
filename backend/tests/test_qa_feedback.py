@@ -1,6 +1,7 @@
 import os
 import sys
 from datetime import datetime
+from uuid import UUID
 
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -112,7 +113,7 @@ async def test_qa_feedback_calculates_and_persists_score(qa_client):
     assert body["ameliorations"]
 
     async with session_factory() as session:
-        saved = await session.get(QAFeedback, body["id"])
+        saved = await session.get(QAFeedback, UUID(body["id"]))
         assert saved is not None
         assert saved.score_global == body["score_global"]
 
