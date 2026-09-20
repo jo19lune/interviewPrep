@@ -35,7 +35,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         );
         if (_emailController.text.trim().isNotEmpty) {
           final email = _emailController.text.trim();
-          context.go('/reset-password?email=${Uri.encodeComponent(email)}');
+          context.go('/reset-password?email=${Uri.encodeQueryComponent(email)}');
         }
       }
     } catch (e) {

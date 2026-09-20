@@ -1,13 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 import '../services/simulation_service.dart';
 import '../../../core/models/exercise.dart';
+import '../../../qa_module/models/chat_message.dart';
 
 final simulationServiceProvider = Provider<SimulationService>((ref) {
   return SimulationService();
@@ -18,27 +19,18 @@ final availableModelsProvider = FutureProvider<Map<String, dynamic>>((ref) async
   return service.getAvailableModels();
 });
 
-final selectedModelProvider = StateProvider<String?>((ref) => null);
+class SelectedModelNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
 
-class ChatMessage {
-  final String text;
-  final bool isUser;
-  final DateTime timestamp;
-  final double? scorePartiel;
-  final String? sentiment;
-  final String? coachingTip;
-  final Map<String, dynamic>? analysis;
-
-  ChatMessage({
-    required this.text,
-    required this.isUser,
-    required this.timestamp,
-    this.scorePartiel,
-    this.sentiment,
-    this.coachingTip,
-    this.analysis,
-  });
+  void select(String? model) => state = model;
 }
+
+final selectedModelProvider = NotifierProvider<SelectedModelNotifier, String?>(() {
+  return SelectedModelNotifier();
+});
+
+String _generateId() => 'sim_msg_${DateTime.now().microsecondsSinceEpoch}_${Random().nextInt(9999)}';
 
 class SimulationState {
   final String? sessionId;
@@ -101,13 +93,16 @@ class SimulationState {
   }
 }
 
-class SimulationNotifier extends StateNotifier<SimulationState> {
-  final SimulationService _service;
+class SimulationNotifier extends Notifier<SimulationState> {
+  late final SimulationService _service;
   final AudioRecorder _audioRecorder = AudioRecorder();
   final FlutterTts _flutterTts = FlutterTts();
 
-  SimulationNotifier(this._service) : super(SimulationState()) {
+  @override
+  SimulationState build() {
+    _service = ref.watch(simulationServiceProvider);
     _initTts();
+    return SimulationState();
   }
 
   Future<void> _initTts() async {
@@ -117,11 +112,9 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     await _flutterTts.setPitch(1.0);
   }
 
-  @override
   void dispose() {
     _flutterTts.stop();
     _audioRecorder.dispose();
-    super.dispose();
   }
 
   void reset() {
@@ -145,6 +138,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
       );
       
       final firstMsg = ChatMessage(
+        id: _generateId(),
         text: response['first_question'] ?? "Bienvenue dans cette simulation d'entretien. Commençons par votre parcours. Pouvez-vous vous présenter ?",
         isUser: false,
         timestamp: DateTime.now(),
@@ -175,6 +169,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     await _flutterTts.stop();
     
     final userMsg = ChatMessage(
+      id: _generateId(),
       text: answerText,
       isUser: true,
       timestamp: DateTime.now(),
@@ -282,6 +277,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
 
       // Ajouter le message utilisateur avec indication "audio"
       final userMsg = ChatMessage(
+        id: _generateId(),
         text: "🎤 Réponse vocale transmise",
         isUser: true,
         timestamp: DateTime.now(),
@@ -386,6 +382,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     final messages = [...state.messages];
     if (messages.isNotEmpty && !messages.last.isUser) {
       messages[messages.length - 1] = ChatMessage(
+        id: messages.last.id,
         text: text,
         isUser: false,
         timestamp: messages.last.timestamp,
@@ -397,6 +394,7 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     } else {
       messages.add(
         ChatMessage(
+          id: _generateId(),
           text: text,
           isUser: false,
           timestamp: DateTime.now(),
@@ -414,7 +412,6 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
   }
 }
 
-final simulationProvider = StateNotifierProvider<SimulationNotifier, SimulationState>((ref) {
-  final service = ref.watch(simulationServiceProvider);
-  return SimulationNotifier(service);
+final simulationProvider = NotifierProvider<SimulationNotifier, SimulationState>(() {
+  return SimulationNotifier();
 });

@@ -107,15 +107,18 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
   }
 
   Map<String, dynamic>? _getTopSkillEntry(Map<String, dynamic> stats) {
-    final entries = stats.entries.toList();
-    entries.sort(
-      (a, b) =>
-          (b.value['avg_score'] as num).compareTo(a.value['avg_score'] as num),
-    );
+    final entries = stats.entries
+        .where((e) => e.value is Map && (e.value as Map).containsKey('avg_score'))
+        .toList();
+    entries.sort((a, b) {
+      final aScore = ((a.value as Map)['avg_score'] as num?) ?? 0;
+      final bScore = ((b.value as Map)['avg_score'] as num?) ?? 0;
+      return bScore.compareTo(aScore);
+    });
     if (entries.isNotEmpty) {
       return {
         'key': entries.first.key,
-        'avg': (entries.first.value['avg_score'] as num).toDouble(),
+        'avg': ((entries.first.value as Map)['avg_score'] as num?)?.toDouble() ?? 0.0,
       };
     }
     return null;
@@ -126,7 +129,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
     final q = _searchQuery.toLowerCase();
     return exercises.where((ex) {
       return ex.titre.toLowerCase().contains(q) ||
-          ex.description.toLowerCase().contains(q) ||
+          (ex.description?.toLowerCase().contains(q) ?? false) ||
           ex.domaine.toLowerCase().contains(q) ||
           ex.difficulte.toLowerCase().contains(q);
     }).toList();
@@ -229,9 +232,9 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              if (exercise.description.isNotEmpty) ...[
+              if ((exercise.description ?? '').isNotEmpty) ...[
                 Text(
-                  exercise.description,
+                  exercise.description ?? '',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppTheme.onSurfaceVariant,
                   ),
@@ -259,7 +262,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                 badgeTextColor: AppTheme.onTertiaryFixedVariant,
                 onTap: () {
                   Navigator.pop(sheetCtx);
-                  ref.read(selectedExerciseProvider.notifier).state = exercise;
+                  ref.read(selectedExerciseProvider.notifier).select(exercise);
                   context.go('/simulation');
                 },
               ),
@@ -786,7 +789,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        exercise.description,
+                        exercise.description ?? '',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppTheme.onSurfaceVariant,
                           fontSize: 14,

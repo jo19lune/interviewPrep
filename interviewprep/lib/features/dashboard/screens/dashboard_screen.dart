@@ -441,6 +441,10 @@ class DashboardScreen extends ConsumerWidget {
                     fontSize: 20,
                   ),
             ),
+            TextButton(
+              onPressed: () => context.go('/simulation/history'),
+              child: const Text('Voir tout', style: TextStyle(color: AppTheme.secondaryColor)),
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -498,40 +502,43 @@ class DashboardScreen extends ConsumerWidget {
         ? '${session.commenceLe!.day}/${session.commenceLe!.month}/${session.commenceLe!.year}'
         : 'Inconnue';
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: indicatorColor, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Entretien d\'évaluation', 
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppTheme.primaryContainer, fontWeight: FontWeight.bold)
-                ),
-                Text('Lancé le $formattedDate • Statut: ${session.statut}', style: Theme.of(context).textTheme.bodySmall),
-              ],
+    return InkWell(
+      onTap: () => context.push('/simulation/history/${session.id}'),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: indicatorColor, shape: BoxShape.circle),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: scoreBg,
-              borderRadius: BorderRadius.circular(4),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Entretien d\'évaluation', 
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppTheme.primaryContainer, fontWeight: FontWeight.bold)
+                  ),
+                  Text('Lancé le $formattedDate • Statut: ${session.statut}', style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
             ),
-            child: Text(
-              '${sessionScore.round()}%', 
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(color: scoreColor, fontSize: 12)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: scoreBg,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '${sessionScore.round()}%', 
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(color: scoreColor, fontSize: 12)
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

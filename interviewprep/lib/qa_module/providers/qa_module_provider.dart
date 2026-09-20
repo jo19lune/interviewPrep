@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import '../services/qa_service.dart';
 import '../models/chat_message.dart';
 
@@ -85,10 +84,14 @@ class QAModuleState {
   }
 }
 
-class QAModuleNotifier extends StateNotifier<QAModuleState> {
-  final QAService _service;
+class QAModuleNotifier extends Notifier<QAModuleState> {
+  late final QAService _service;
 
-  QAModuleNotifier(this._service) : super(const QAModuleState());
+  @override
+  QAModuleState build() {
+    _service = ref.watch(qaServiceProvider);
+    return const QAModuleState();
+  }
 
   void reset() {
     state = const QAModuleState();
@@ -163,9 +166,14 @@ class QAModuleNotifier extends StateNotifier<QAModuleState> {
 
     try {
       final previousResponses = state.messages
-          .where((m) => !m.isUser)
+          .where((m) => m.isUser)
           .map((m) => m.text)
           .toList();
+
+      final userMessages = state.messages.where((m) => m.isUser).toList();
+      final currentQuestion = userMessages.isNotEmpty
+          ? state.messages[state.messages.indexOf(userMessages.last) - 1].text
+          : '';
 
       final nextQuestion = await _service.generateNextQuestion(
         previousResponses: previousResponses,
@@ -176,7 +184,7 @@ class QAModuleNotifier extends StateNotifier<QAModuleState> {
         totalQuestions: state.totalQuestions,
       );
 
-      final scoreResult = await _service.sendAnswer(nextQuestion, answerText);
+      final scoreResult = await _service.sendAnswer(currentQuestion, answerText);
 
       final botMessage = ChatMessage(
         id: 'msg_${DateTime.now().millisecondsSinceEpoch}_bot',
@@ -218,7 +226,6 @@ class QAModuleNotifier extends StateNotifier<QAModuleState> {
   }
 }
 
-final qaModuleProvider = StateNotifierProvider<QAModuleNotifier, QAModuleState>((ref) {
-  final service = ref.watch(qaServiceProvider);
-  return QAModuleNotifier(service);
+final qaModuleProvider = NotifierProvider<QAModuleNotifier, QAModuleState>(() {
+  return QAModuleNotifier();
 });

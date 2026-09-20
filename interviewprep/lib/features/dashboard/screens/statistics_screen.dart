@@ -7,8 +7,15 @@ import '../../../core/models/session_models.dart';
 import '../providers/dashboard_provider.dart';
 import '../../exercises/providers/exercise_provider.dart';
 
-class StatisticsScreen extends ConsumerWidget {
+class StatisticsScreen extends ConsumerStatefulWidget {
   const StatisticsScreen({super.key});
+
+  @override
+  ConsumerState<StatisticsScreen> createState() => _StatisticsScreenState();
+}
+
+class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
+  String _selectedPeriod = '7D';
 
   static const _periods = ['7D', '1M', '3M', 'All'];
 
@@ -30,9 +37,19 @@ class StatisticsScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final statsAsync = ref.watch(detailedStatsProvider);
     final historyAsync = ref.watch(sessionHistoryProvider);
+
+    final filteredSessions = historyAsync.value?.where((s) {
+      if (_selectedPeriod == 'All') return true;
+      final cutoff = DateTime.now().subtract(
+        _selectedPeriod == '7D' ? const Duration(days: 7) :
+        _selectedPeriod == '1M' ? const Duration(days: 30) :
+        const Duration(days: 90),
+      );
+      return s.commenceLe != null && s.commenceLe!.isAfter(cutoff);
+    }).toList() ?? [];
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -63,19 +80,14 @@ class StatisticsScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               statsAsync.when(
                 data: (stats) {
-                  final sessions = historyAsync.value ?? [];
                   final exercises = ref.watch(exercisesListProvider).value ?? [];
-                  return _buildStatsSummary(context, ref, stats, sessions, exercises);
+                  return _buildStatsSummary(context, ref, stats, filteredSessions, exercises);
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => _ErrorPanel(message: 'Erreur statistiques : $error'),
               ),
               const SizedBox(height: 24),
-              historyAsync.when(
-                data: (sessions) => _HistoryTrendSection(sessions: sessions),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, _) => _ErrorPanel(message: 'Erreur historique : $error'),
-              ),
+              _HistoryTrendSection(sessions: filteredSessions),
             ],
           ),
         ),
@@ -104,7 +116,7 @@ class StatisticsScreen extends ConsumerWidget {
           spacing: 10,
           runSpacing: 10,
           children: _periods.map((period) {
-            final bool selected = period == _periods.first;
+            final bool selected = period == _selectedPeriod;
             return ChoiceChip(
               label: Text(period),
               selected: selected,
@@ -115,7 +127,7 @@ class StatisticsScreen extends ConsumerWidget {
                 fontWeight: FontWeight.w700,
               ),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              onSelected: (_) {},
+              onSelected: (_) => setState(() => _selectedPeriod = period),
             );
           }).toList(),
         ),
@@ -132,11 +144,16 @@ class StatisticsScreen extends ConsumerWidget {
         .toList();
 
     double avgClarity = 0.0;
-    if (domainEntries.isNotEmpty) {
-      avgClarity = domainEntries
-          .map((e) => (e.value as Map)['avg_score'] as num)
-          .reduce((a, b) => a + b) / domainEntries.length;
+    int totalWeight = 0;
+    double weightedSum = 0.0;
+    for (final entry in domainEntries) {
+      final data = entry.value as Map;
+      final avgScore = (data['avg_score'] as num).toDouble();
+      final count = (data['total'] as num?)?.toInt() ?? 1;
+      weightedSum += avgScore * count;
+      totalWeight += count;
     }
+    if (totalWeight > 0) avgClarity = weightedSum / totalWeight;
 
     double hoursPracticed = 0.0;
     for (final session in terminatedSessions) {
@@ -218,7 +235,7 @@ class StatisticsScreen extends ConsumerWidget {
                   final list = List.from(exercises);
                   list.shuffle();
                   final exercise = list.first;
-                  ref.read(selectedExerciseProvider.notifier).state = exercise;
+                  ref.read(selectedExerciseProvider.notifier).select(exercise);
                   context.go('/simulation');
                 },
         ),

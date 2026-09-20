@@ -1,6 +1,7 @@
 """Service des exercices."""
 
 import random
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -131,7 +132,7 @@ async def generate_exercise_via_ai(db: AsyncSession, request: ExerciceGenerateRe
         duree_sec=int(generated.get("duree_sec") or 300),
         questions=generated.get("questions") or [],
         etiquettes=generated.get("etiquettes") or [domaine_str],
-        difficulte_estimee=0,
+        difficulte_estimee=int(generated.get("difficulte_estimee") or 0),
     )
 
     if save:
@@ -140,15 +141,15 @@ async def generate_exercise_via_ai(db: AsyncSession, request: ExerciceGenerateRe
         await db.refresh(exercise)
         return exercise
 
-    return ExerciceResponse.model_validate({
-        "id": UUID(int=0),
-        "titre": exercise.titre,
-        "description": exercise.description,
-        "domaine": exercise.domaine,
-        "difficulte": exercise.difficulte,
-        "duree_sec": exercise.duree_sec,
-        "questions": exercise.questions,
-        "etiquettes": exercise.etiquettes,
-        "difficulte_estimee": exercise.difficulte_estimee,
-        "cree_le": None,
-    })
+    return ExerciceResponse(
+        id=UUID(int=0),
+        titre=exercise.titre,
+        description=exercise.description,
+        domaine=exercise.domaine,
+        difficulte=exercise.difficulte,
+        duree_sec=exercise.duree_sec,
+        questions=exercise.questions,
+        etiquettes=exercise.etiquettes,
+        difficulte_estimee=exercise.difficulte_estimee or 0,
+        cree_le=datetime.utcnow(),
+    )

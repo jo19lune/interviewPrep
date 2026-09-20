@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import '../services/exercise_service.dart';
 import '../../../core/models/exercise_models.dart';
 
@@ -8,7 +7,6 @@ final exerciseServiceProvider = Provider<ExerciseService>((ref) {
   return ExerciseService();
 });
 
-// État des filtres
 class ExerciseFilters {
   final String? domaine;
   final String? difficulte;
@@ -23,8 +21,9 @@ class ExerciseFilters {
   }
 }
 
-class ExerciseFiltersNotifier extends StateNotifier<ExerciseFilters> {
-  ExerciseFiltersNotifier() : super(const ExerciseFilters());
+class ExerciseFiltersNotifier extends Notifier<ExerciseFilters> {
+  @override
+  ExerciseFilters build() => const ExerciseFilters();
 
   void setDomaine(String? domaine) {
     if (domaine == 'Tous' || domaine == null) {
@@ -47,11 +46,10 @@ class ExerciseFiltersNotifier extends StateNotifier<ExerciseFilters> {
   }
 }
 
-final exerciseFiltersProvider = StateNotifierProvider<ExerciseFiltersNotifier, ExerciseFilters>((ref) {
+final exerciseFiltersProvider = NotifierProvider<ExerciseFiltersNotifier, ExerciseFilters>(() {
   return ExerciseFiltersNotifier();
 });
 
-// Liste des exercices récupérée depuis le backend
 final exercisesListProvider = FutureProvider<List<ExerciceResponse>>((ref) async {
   final service = ref.watch(exerciseServiceProvider);
   final filters = ref.watch(exerciseFiltersProvider);
@@ -62,10 +60,17 @@ final exercisesListProvider = FutureProvider<List<ExerciceResponse>>((ref) async
   );
 });
 
-// Exercice sélectionné pour s'entraîner
-final selectedExerciseProvider = StateProvider<ExerciceResponse?>((ref) => null);
+class SelectedExerciseNotifier extends Notifier<ExerciceResponse?> {
+  @override
+  ExerciceResponse? build() => null;
 
-// Générateur d'exercice via IA
+  void select(ExerciceResponse? exercise) => state = exercise;
+}
+
+final selectedExerciseProvider = NotifierProvider<SelectedExerciseNotifier, ExerciceResponse?>(() {
+  return SelectedExerciseNotifier();
+});
+
 final exerciseGenerationProvider = AsyncNotifierProvider<ExerciseGenerationNotifier, ExerciceResponse?>(() {
   return ExerciseGenerationNotifier();
 });

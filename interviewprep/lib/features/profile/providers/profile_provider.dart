@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:interviewprep/core/models/auth_models.dart';
 import 'package:interviewprep/features/profile/services/profile_service.dart';
 import 'dart:io';
@@ -8,15 +7,18 @@ final profileServiceProvider = Provider<ProfileService>((ref) {
   return ProfileService();
 });
 
-final profileProvider = StateNotifierProvider<ProfileNotifier, AsyncValue<UserResponse>>((ref) {
-  return ProfileNotifier(ref.read(profileServiceProvider));
+final profileProvider = NotifierProvider<ProfileNotifier, AsyncValue<UserResponse>>(() {
+  return ProfileNotifier();
 });
 
-class ProfileNotifier extends StateNotifier<AsyncValue<UserResponse>> {
-  final ProfileService _profileService;
+class ProfileNotifier extends Notifier<AsyncValue<UserResponse>> {
+  late final ProfileService _profileService;
 
-  ProfileNotifier(this._profileService) : super(const AsyncValue.loading()) {
+  @override
+  AsyncValue<UserResponse> build() {
+    _profileService = ref.watch(profileServiceProvider);
     fetchProfile();
+    return const AsyncValue.loading();
   }
 
   Future<void> fetchProfile() async {
@@ -56,8 +58,14 @@ class ProfileNotifier extends StateNotifier<AsyncValue<UserResponse>> {
     required String filename,
   }) async {
     try {
-      if (path == null) throw Exception('Chemin de fichier manquant');
-      final updatedProfile = await _profileService.updateAvatar(File(path));
+      UserResponse updatedProfile;
+      if (path != null) {
+        updatedProfile = await _profileService.updateAvatar(File(path));
+      } else if (bytes != null) {
+        updatedProfile = await _profileService.updateAvatarBytes(bytes, filename);
+      } else {
+        throw Exception('Aucune donnée d\'avatar fournie');
+      }
       state = AsyncValue.data(updatedProfile);
     } catch (e) {
       rethrow;

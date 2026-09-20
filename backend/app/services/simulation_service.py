@@ -13,6 +13,7 @@ from app.config.settings import settings
 from app.models.ai_simulation import SimulationIA
 from app.models.exercice import Exercice
 from app.models.feedback import Retour
+from app.models.progression import Progression
 from app.models.session import Session
 from app.models.user import User
 from app.schemas.session import SessionCreateRequest
@@ -239,6 +240,29 @@ async def finish_session_and_generate_feedback(db: AsyncSession, current_user: U
 
     db.add(session)
     db.add(feedback)
+
+    existing_prog = await db.execute(
+        select(Progression).where(Progression.utilisateur_id == current_user.id)
+    )
+    prog = existing_prog.scalars().first()
+    if prog:
+        prog.total_sessions += 1
+        prog.meilleur_score = max(prog.meilleur_score, global_score)
+        prog.score_moyen = round(
+            (prog.score_moyen * (prog.total_sessions - 1) + global_score) / prog.total_sessions, 2
+        ) if prog.total_sessions > 0 else global_score
+        prog.derniere_session_le = session.termine_le
+    else:
+        prog = Progression(
+            utilisateur_id=current_user.id,
+            domaine=exercice.domaine if exercice else None,
+            total_sessions=1,
+            score_moyen=global_score,
+            meilleur_score=global_score,
+            serie=0,
+            derniere_session_le=session.termine_le,
+        )
+    db.add(prog)
     await db.commit()
     await db.refresh(session)
     await db.refresh(feedback)
@@ -264,12 +288,14 @@ def score_answer(question: dict | None, reponse: str) -> tuple[float, str, str, 
         correct_index = question.get("reponse_correcte")
         options = question.get("options", [])
         is_correct = False
+        reponse = reponse.strip()
         try:
-            submitted_index = int(reponse.strip())
-            is_correct = submitted_index == correct_index or submitted_index - 1 == correct_index
+            submitted_index = int(reponse)
+            if isinstance(correct_index, int):
+                is_correct = submitted_index == correct_index
         except ValueError:
             if isinstance(correct_index, int) and 0 <= correct_index < len(options):
-                is_correct = options[correct_index].lower() == reponse.strip().lower()
+                is_correct = options[correct_index].lower() == reponse.lower()
 
         if is_correct:
             return (

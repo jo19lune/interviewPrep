@@ -46,6 +46,21 @@ class ProfileService {
     }
   }
 
+  Future<UserResponse> updateAvatarBytes(List<int> bytes, String filename) async {
+    try {
+      FormData formData = FormData.fromMap({
+        "file": MultipartFile.fromBytes(bytes, filename: filename),
+      });
+      final response = await _apiClient.dio.put('/profile/avatar', data: formData);
+      return UserResponse.fromJson(response.data);
+    } catch (e) {
+      if (e is DioException) {
+        throw Exception(ApiClient.errorMessage(e, 'Erreur lors de la mise à jour de l\'avatar'));
+      }
+      throw Exception('Erreur inattendue');
+    }
+  }
+
   Future<UserResponse> deleteAvatar() async {
     try {
       final response = await _apiClient.dio.delete('/profile/avatar');
