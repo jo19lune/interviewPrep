@@ -59,34 +59,6 @@ class QaChatBubble extends StatelessWidget {
                 height: 1.4,
               ),
             ),
-            if (coachingTip != null && coachingTip!.isNotEmpty && !isUserMsg) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppTheme.secondaryContainer.withAlpha((0.2 * 255).round()),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.lightbulb_outline, size: 14, color: AppTheme.secondaryColor),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        coachingTip!,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppTheme.onSecondaryContainer,
-                          fontStyle: FontStyle.italic,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
             const SizedBox(height: 4),
             Text(
               _formatTime(timestamp),

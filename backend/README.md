@@ -14,6 +14,20 @@ Le backend suit une architecture modulaire pour séparer les préoccupations :
 * **`app/core/`** : Configuration centrale, sécurité et utilitaires.
 * **`app/data/`** : Gestion de la base de données et scripts de seed.
 
+### Feedback IA des tests QA
+
+`POST /api/v1/qa/feedback` nécessite un token Bearer valide. Le backend calcule
+la note à partir des réponses utilisateur, demande à l'IA les points forts,
+axes d'amélioration et recommandations, puis sauvegarde un snapshot dans
+`qa_feedbacks`. La réponse contient `id`, `score_global`, `points_forts`,
+`ameliorations`, `recommandations` et `genere_le`.
+
+Appliquer la migration avant le démarrage en production :
+
+```bash
+alembic upgrade head
+```
+
 ## 📋 Prérequis
 
 * **Python** 3.9 ou supérieur

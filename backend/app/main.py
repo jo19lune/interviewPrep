@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config.settings import settings
 from app.core.exceptions import AppException
 from app.data.database import close_db, init_db
-from app.routers import auth, dashboard, exercices, profile, simulation, qa
+from app.routers import auth, dashboard, exercices, password_reset, profile, simulation, simulation_audio, qa
 
 logger = logging.getLogger(__name__)
 
@@ -135,10 +135,12 @@ async def health_check() -> dict[str, str]:
 # Inclure les routers sous le préfixe /api/v1
 API_V1_PREFIX = "/api/v1"
 app.include_router(auth.router, prefix=API_V1_PREFIX)
+app.include_router(password_reset.router, prefix=API_V1_PREFIX)
 app.include_router(profile.router, prefix=API_V1_PREFIX)
 app.include_router(exercices.router, prefix=API_V1_PREFIX)
 app.include_router(dashboard.router, prefix=API_V1_PREFIX)
 app.include_router(simulation.router, prefix=API_V1_PREFIX)
+app.include_router(simulation_audio.router, prefix=API_V1_PREFIX)
 app.include_router(qa.router, prefix=API_V1_PREFIX)
 
 

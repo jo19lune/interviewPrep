@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 engine_kwargs = {
     "echo": settings.debug,
     "pool_pre_ping": True,
-    "pool_size": 10,
-    "max_overflow": 20,
 }
+if not settings.database_url.startswith("sqlite"):
+    engine_kwargs.update(pool_size=10, max_overflow=20)
 
 # Création du moteur async Postgres
 engine = create_async_engine(settings.database_url, **engine_kwargs)

@@ -9,11 +9,9 @@ clôture avec génération du feedback global.
 
 import asyncio
 import json
-import os
-import tempfile
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +27,6 @@ from app.models.user import User
 from app.models.feedback import Retour
 from app.schemas.session import SessionCreateRequest, SessionResponse
 from app.services import simulation_service
-from app.services.ai_service import AIService
 
 router = APIRouter(prefix="/simulation", tags=["simulation"])
 
@@ -71,42 +68,6 @@ async def submit_answer(
     """
     return await simulation_service.process_user_answer(db, current_user, request.session_id, request.reponse)
 
-
-@router.post("/answer/audio")
-async def submit_audio_answer(
-    session_id: UUID,
-    audio: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Soumet une réponse utilisateur sous forme vocale, la transcrit et reçoit la question suivante.
-    """
-    if not audio.content_type.startswith("audio/"):
-        raise HTTPException(status_code=400, detail="Fichier non valide. Audio requis.")
-    
-    safe_filename = f"{session_id}_{UUID(bytes=os.urandom(16))}.m4a"
-    temp_dir = tempfile.gettempdir()
-    temp_file_path = os.path.join(temp_dir, safe_filename)
-    
-    try:
-        with open(temp_file_path, "wb") as buffer:
-            buffer.write(await audio.read())
-        
-        if settings.ai_feature_transcribe_audio:
-            ai_service = AIService()
-            reponse_texte = await ai_service.transcribe_audio(temp_file_path)
-        else:
-            raise HTTPException(status_code=503, detail="Transcription audio désactivée sur ce serveur.")
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur lors du traitement audio: {e}")
-    finally:
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
-    
-    return await simulation_service.process_user_answer(db, current_user, session_id, reponse_texte)
 
 @router.get("/stream/{session_id}")
 async def stream_ai_response(

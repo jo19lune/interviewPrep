@@ -795,40 +795,6 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen>
               ],
             ),
           ),
-          if (state.lastLiveCoachingTip != null && state.lastLiveCoachingTip!.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceContainerLow,
-                border: Border.all(color: AppTheme.secondaryContainer),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.lightbulb_outline, color: AppTheme.secondaryColor, size: 22),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'CONSEIL DE COACHING',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.secondaryColor, letterSpacing: 1.1),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          state.lastLiveCoachingTip!,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.onSurface),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
           Expanded(
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),

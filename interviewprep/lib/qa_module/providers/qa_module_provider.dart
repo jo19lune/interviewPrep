@@ -170,11 +170,6 @@ class QAModuleNotifier extends Notifier<QAModuleState> {
           .map((m) => m.text)
           .toList();
 
-      final userMessages = state.messages.where((m) => m.isUser).toList();
-      final currentQuestion = userMessages.isNotEmpty
-          ? state.messages[state.messages.indexOf(userMessages.last) - 1].text
-          : '';
-
       final nextQuestion = await _service.generateNextQuestion(
         previousResponses: previousResponses,
         domaine: state.domaine ?? 'COMPORTEMENTAL',
@@ -184,24 +179,15 @@ class QAModuleNotifier extends Notifier<QAModuleState> {
         totalQuestions: state.totalQuestions,
       );
 
-      final scoreResult = await _service.sendAnswer(currentQuestion, answerText);
-
       final botMessage = ChatMessage(
         id: 'msg_${DateTime.now().millisecondsSinceEpoch}_bot',
         text: nextQuestion,
         isUser: false,
         timestamp: DateTime.now(),
-        scorePartiel: scoreResult.score,
-        sentiment: scoreResult.sentiment,
-        coachingTip: scoreResult.coachingTip,
-        analysis: scoreResult.analysis,
       );
 
       state = state.copyWith(
         messages: [...state.messages, botMessage],
-        lastLiveCoachingTip: scoreResult.coachingTip,
-        lastClarityScore: scoreResult.score,
-        lastSentiment: scoreResult.sentiment,
         answeredCount: state.answeredCount + 1,
         isLoading: false,
       );

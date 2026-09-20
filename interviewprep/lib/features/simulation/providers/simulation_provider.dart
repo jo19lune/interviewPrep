@@ -183,17 +183,10 @@ class SimulationNotifier extends Notifier<SimulationState> {
     try {
       final response = await _service.submitAnswer(state.sessionId!, answerText);
       
-      final clarity = (response['clarity_score'] as num?)?.toDouble() ?? 80.0;
-      final sentiment = response['sentiment'] as String? ?? 'Confident';
-      final tip = response['coaching_tip'] as String? ?? '';
       final answerCount = (response['answer_count'] as num?)?.toInt() ?? state.answerCount + 1;
-      final analysis = response['analysis'] as Map<String, dynamic>?;
       final nextQ = response['next_question'] as String? ?? 'Félicitations, simulation terminée !';
 
       state = state.copyWith(
-        lastClarityScore: clarity,
-        lastSentiment: sentiment,
-        lastLiveCoachingTip: tip,
         answerCount: answerCount,
       );
 
@@ -203,26 +196,14 @@ class SimulationNotifier extends Notifier<SimulationState> {
         await for (final token in _service.streamAIResponse(state.sessionId!)) {
           streamedText += token;
           hasRecruiterMessage = true;
-          _upsertRecruiterMessage(
-            streamedText,
-            clarity: clarity,
-            sentiment: sentiment,
-            tip: tip,
-            analysis: analysis,
-          );
+          _upsertRecruiterMessage(streamedText);
         }
       } catch (_) {
         streamedText = '';
       }
 
       if (!hasRecruiterMessage || streamedText.trim().isEmpty) {
-        _upsertRecruiterMessage(
-          nextQ,
-          clarity: clarity,
-          sentiment: sentiment,
-          tip: tip,
-          analysis: analysis,
-        );
+        _upsertRecruiterMessage(nextQ);
       }
 
       state = state.copyWith(isLoading: false);
@@ -261,17 +242,10 @@ class SimulationNotifier extends Notifier<SimulationState> {
       }
       final response = await _service.submitAudioAnswer(state.sessionId!, path);
 
-      final clarity = (response['clarity_score'] as num?)?.toDouble() ?? 80.0;
-      final sentiment = response['sentiment'] as String? ?? 'Confident';
-      final tip = response['coaching_tip'] as String? ?? '';
       final answerCount = (response['answer_count'] as num?)?.toInt() ?? state.answerCount + 1;
-      final analysis = response['analysis'] as Map<String, dynamic>?;
       final nextQ = response['next_question'] as String? ?? 'Félicitations, simulation terminée !';
 
       state = state.copyWith(
-        lastClarityScore: clarity,
-        lastSentiment: sentiment,
-        lastLiveCoachingTip: tip,
         answerCount: answerCount,
       );
 
@@ -291,26 +265,14 @@ class SimulationNotifier extends Notifier<SimulationState> {
         await for (final token in _service.streamAIResponse(state.sessionId!)) {
           streamedText += token;
           hasRecruiterMessage = true;
-          _upsertRecruiterMessage(
-            streamedText,
-            clarity: clarity,
-            sentiment: sentiment,
-            tip: tip,
-            analysis: analysis,
-          );
+          _upsertRecruiterMessage(streamedText);
         }
       } catch (_) {
         streamedText = '';
       }
 
       if (!hasRecruiterMessage || streamedText.trim().isEmpty) {
-        _upsertRecruiterMessage(
-          nextQ,
-          clarity: clarity,
-          sentiment: sentiment,
-          tip: tip,
-          analysis: analysis,
-        );
+        _upsertRecruiterMessage(nextQ);
       }
 
       state = state.copyWith(isLoading: false);
@@ -374,9 +336,9 @@ class SimulationNotifier extends Notifier<SimulationState> {
 
   void _upsertRecruiterMessage(
     String text, {
-    required double clarity,
-    required String sentiment,
-    required String tip,
+    double? clarity,
+    String? sentiment,
+    String? tip,
     Map<String, dynamic>? analysis,
   }) {
     final messages = [...state.messages];
