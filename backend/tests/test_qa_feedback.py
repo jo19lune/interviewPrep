@@ -1,6 +1,7 @@
 import os
 import sys
-from datetime import datetime
+from app.core.time import utc_now
+from uuid import UUID
 
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -112,7 +113,7 @@ async def test_qa_feedback_calculates_and_persists_score(qa_client):
     assert body["ameliorations"]
 
     async with session_factory() as session:
-        saved = await session.get(QAFeedback, body["id"])
+        saved = await session.get(QAFeedback, UUID(body["id"]))
         assert saved is not None
         assert saved.score_global == body["score_global"]
 
@@ -156,7 +157,7 @@ async def test_process_user_answer_does_not_expose_live_score(monkeypatch):
         session = Session(
             utilisateur_id=user.id,
             exercice_id=exercice.id,
-            commence_le=datetime.utcnow(),
+            commence_le=utc_now(),
             statut="EN_COURS",
             reponses=[{"type": "system", "simulation_config": {"nombre_questions": 1}}],
         )

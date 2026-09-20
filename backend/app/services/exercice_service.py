@@ -1,7 +1,6 @@
 """Service des exercices."""
 
 import random
-from datetime import datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -12,6 +11,7 @@ from app.config.settings import settings
 from app.core.enums import Domaine, Niveau
 from app.core.validators import normalize_enum_filter
 from app.models.exercice import Exercice
+from app.core.time import utc_now
 from app.schemas.exercice import ExerciceCreateRequest, ExerciceGenerateRequest, ExerciceResponse
 from app.services.ai_service import AIService
 
@@ -151,5 +151,5 @@ async def generate_exercise_via_ai(db: AsyncSession, request: ExerciceGenerateRe
         questions=exercise.questions,
         etiquettes=exercise.etiquettes,
         difficulte_estimee=exercise.difficulte_estimee or 0,
-        cree_le=datetime.utcnow(),
+        cree_le=utc_now(),
     )

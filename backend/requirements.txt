@@ -34,8 +34,8 @@ typing-inspection==0.4.2
 typing_extensions==4.15.0
 uvicorn==0.46.0
 openai
-pytest==7.4.3
-pytest-asyncio==0.23.3
+pytest==9.1.1
+pytest-asyncio==1.4.0
 pytest-cov==4.1.0
 httpx==0.25.2
 aiosmtplib

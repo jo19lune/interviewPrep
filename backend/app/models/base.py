@@ -7,10 +7,11 @@ identifiant unique (UUID) et des horodatages de création et de modification.
 """
 
 import uuid
-from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Uuid
 from sqlalchemy.orm import declarative_base
+
+from app.core.time import utc_now
 
 Base = declarative_base()
 
@@ -40,12 +41,12 @@ class BaseModel(Base):
     )
     cree_le = Column(
         DateTime, 
-        default=datetime.utcnow, 
+        default=utc_now,
         nullable=False
     )
     modifie_le = Column(
         DateTime, 
-        default=datetime.utcnow, 
-        onupdate=datetime.utcnow, 
+        default=utc_now,
+        onupdate=utc_now,
         nullable=False
     )
