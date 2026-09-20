@@ -67,6 +67,11 @@ class User(BaseModel):
         back_populates="utilisateur", 
         cascade="all, delete-orphan"
     )
+    activity_histories = relationship(
+        "ActivityHistory",
+        back_populates="utilisateur",
+        cascade="all, delete-orphan",
+    )
     progression = relationship(
         "Progression", 
         back_populates="utilisateur", 
