@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/session_detail.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../app/theme/app_theme.dart';
 
 class SessionHeaderCard extends StatelessWidget {
   const SessionHeaderCard({super.key, required this.conversation});

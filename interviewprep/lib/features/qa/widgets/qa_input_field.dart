@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/theme/app_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import '../providers/qa_module_provider.dart';
 
 class QaInputField extends ConsumerStatefulWidget {

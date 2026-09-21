@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import '../services/qa_service.dart';
 import 'standalone_qa_score.dart';
 

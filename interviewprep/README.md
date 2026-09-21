@@ -6,11 +6,12 @@ Ce répertoire contient le code source de l'application cliente **InterviewPrep*
 
 L'application est structurée par fonctionnalités (Feature-First Architecture) dans le dossier `lib/` :
 
-* **`features/`** : Contient les différentes sections de l'application (auth, dashboard, exercises, profile, simulation).
+* **`app/`** : Bootstrap de l'application, configuration du routeur et thème partagé.
+* **`features/`** : Contient les différentes sections de l'application (auth, dashboard, exercises, profile, simulation, qa).
   * Chaque feature possède ses propres dossiers : `screens/` (vues), `providers/` (gestion d'état), `services/` (logique et appels API), et `models/`.
-* **`qa_module/`** : Module autonome pour le système de questions/réponses.
+* **`features/qa/`** : Feature du système de questions/réponses.
 * **`assets/`** : Images, icônes et polices (ex: `mon_logo.png`).
-* **`main.dart`** : Point d'entrée de l'application Flutter.
+* **`main.dart`** : Point d'entrée minimal de l'application Flutter.
 
 ## 📋 Prérequis
 

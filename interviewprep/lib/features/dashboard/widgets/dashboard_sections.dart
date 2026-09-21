@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/models/progress.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../app/theme/app_theme.dart';
 
 class DashboardRecommendations extends StatelessWidget {
   const DashboardRecommendations({required this.progress, super.key});

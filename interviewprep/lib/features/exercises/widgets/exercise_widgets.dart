@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/exercise_models.dart';
-import '../../../core/theme/app_theme.dart';
-import '../providers/exercise_provider.dart';
+import '../../../app/theme/app_theme.dart';
+import '../providers/exercise_provider.dart' as exercise_provider;
 
 const _domains = [
   'Tous',
@@ -22,7 +22,7 @@ class ExerciseFilters extends StatelessWidget {
     required this.onDifficultyChanged,
   });
 
-  final ExerciseFilters filters;
+  final exercise_provider.ExerciseFilters filters;
   final ValueChanged<String?> onDomainChanged;
   final ValueChanged<String?> onDifficultyChanged;
 

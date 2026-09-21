@@ -4,10 +4,11 @@ import 'package:go_router/go_router.dart';
 import '../../../core/models/progress.dart';
 import '../../../core/models/session_models.dart';
 import '../../../core/models/user.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../app/theme/app_theme.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import 'dashboard_hero.dart';
-import 'dashboard_sections.dart';
+import 'dashboard_sections.dart' hide DashboardMotivation;
 import 'dashboard_sessions.dart';
 
 class DashboardContent extends ConsumerWidget {

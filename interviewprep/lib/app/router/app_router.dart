@@ -12,10 +12,10 @@ import '../../features/simulation/screens/simulation_screen.dart';
 import '../../features/simulation/screens/session_history_screen.dart';
 import '../../features/simulation/screens/session_conversation_screen.dart';
 import '../../features/exercises/screens/exercises_screen.dart';
-import '../../qa_module/screens/standalone_qa_screen.dart';
+import '../../features/qa/screens/standalone_qa_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/activity_history/screens/activity_history_screen.dart';
-import '../widgets/main_layout.dart';
+import '../../core/widgets/main_layout.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',

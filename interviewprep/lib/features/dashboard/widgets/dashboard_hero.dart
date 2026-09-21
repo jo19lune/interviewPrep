@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/models/progress.dart';
 import '../../../core/models/user.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../app/theme/app_theme.dart';
 
 class DashboardHero extends StatelessWidget {
   const DashboardHero({required this.user, required this.progress, super.key});

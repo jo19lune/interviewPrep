@@ -8,7 +8,7 @@ import 'dart:io';
 import 'dart:math';
 import '../services/simulation_service.dart';
 import '../../../core/models/exercise.dart';
-import '../../../qa_module/models/chat_message.dart';
+import '../../qa/models/chat_message.dart';
 
 part 'simulation_audio_operations.dart';
 part 'simulation_message_operations.dart';

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../core/models/exercise_models.dart';
 import '../providers/exercise_provider.dart';
-import '../widgets/exercise_widgets.dart';
+import '../widgets/exercise_widgets.dart' as exercise_widgets;
 
 class ExercisesScreen extends ConsumerStatefulWidget {
   const ExercisesScreen({super.key});
@@ -53,7 +53,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
               onChanged: (value) => setState(() => _query = value),
             ),
             const SizedBox(height: 16),
-            ExerciseFilters(
+            exercise_widgets.ExerciseFilters(
               filters: filters,
               onDomainChanged: (value) =>
                   ref.read(exerciseFiltersProvider.notifier).setDomaine(value),

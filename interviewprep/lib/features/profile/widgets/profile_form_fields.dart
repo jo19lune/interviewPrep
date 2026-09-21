@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/user_profile.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import 'profile_avatar_section.dart';
 import 'profile_field_widgets.dart';
 

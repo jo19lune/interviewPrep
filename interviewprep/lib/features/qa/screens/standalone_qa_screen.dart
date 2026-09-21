@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/theme/app_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import '../providers/qa_module_provider.dart';
 import '../widgets/standalone_qa_chat.dart';
 import '../widgets/standalone_qa_feedback.dart';

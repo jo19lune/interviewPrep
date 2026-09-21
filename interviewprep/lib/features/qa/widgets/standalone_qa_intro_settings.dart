@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
+import '../../../app/theme/app_theme.dart';
 
 class StandaloneQAIntroSettings extends StatelessWidget {
   const StandaloneQAIntroSettings({

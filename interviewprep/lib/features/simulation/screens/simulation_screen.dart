@@ -2,12 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../exercises/providers/exercise_provider.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
 import '../providers/simulation_provider.dart';
 import '../../../core/models/exercise_models.dart';
-import '../../../qa_module/models/chat_message.dart';
+import '../../qa/models/chat_message.dart';
 
 part 'simulation_screen_interactions.dart';
 part 'simulation_screen_intro_widget.dart';

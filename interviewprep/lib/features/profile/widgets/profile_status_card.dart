@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/user_profile.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../app/theme/app_theme.dart';
 
 class ProfileStatusCard extends StatelessWidget {
   const ProfileStatusCard({super.key, required this.profile});

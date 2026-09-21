@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import '../providers/qa_module_provider.dart';
 import '../widgets/qa_input_field.dart';
 import '../widgets/qa_message_list.dart';
