@@ -1,4 +1,9 @@
-mixin _SimulationInteractions on _SimulationScreenState {
+part of 'simulation_screen.dart';
+
+mixin _SimulationInteractions on ConsumerState<SimulationScreen> {
+  TextEditingController get _textController;
+  ScrollController get _scrollController;
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -11,7 +16,7 @@ mixin _SimulationInteractions on _SimulationScreenState {
     });
   }
 
-  void _sendAnswer(SimulationNotifier notifier) async {
+  void sendAnswerFromScreen(SimulationNotifier notifier) async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
     _textController.clear();
@@ -27,7 +32,7 @@ mixin _SimulationInteractions on _SimulationScreenState {
     }
   }
 
-  Future<void> _cancelSimulation(SimulationNotifier notifier) async {
+  Future<void> cancelSimulationFromScreen(SimulationNotifier notifier) async {
     final shouldCancel = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

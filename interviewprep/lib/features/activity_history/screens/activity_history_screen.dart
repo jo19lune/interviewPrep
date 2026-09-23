@@ -180,9 +180,12 @@ class ActivityHistoryScreen extends ConsumerWidget {
                     leading: const CircleAvatar(child: Icon(Icons.event_note)),
                     trailing: PopupMenuButton<String>(
                       onSelected: (action) {
-                        if (action == 'edit')
+                        if (action == 'edit') {
                           _openForm(context, ref, activity: activity);
-                        if (action == 'delete') _delete(context, ref, activity);
+                        }
+                        if (action == 'delete') {
+                          _delete(context, ref, activity);
+                        }
                       },
                       itemBuilder: (_) => const [
                         PopupMenuItem(value: 'edit', child: Text('Modifier')),

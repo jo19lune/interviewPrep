@@ -75,10 +75,20 @@ class SimulationState {
   }
 }
 
-class SimulationNotifier extends Notifier<SimulationState> {
+class SimulationNotifier extends Notifier<SimulationState>
+    with SimulationAudioOperations, SimulationMessageOperations {
   late final SimulationService _service;
   final AudioRecorder _audioRecorder = AudioRecorder();
   final FlutterTts _flutterTts = FlutterTts();
+
+  @override
+  SimulationService get service => _service;
+
+  @override
+  AudioRecorder get audioRecorder => _audioRecorder;
+
+  @override
+  FlutterTts get flutterTts => _flutterTts;
 
   @override
   SimulationState build() {
@@ -99,6 +109,7 @@ class SimulationNotifier extends Notifier<SimulationState> {
     _audioRecorder.dispose();
   }
 
+  @override
   void reset() {
     _flutterTts.stop();
     state = SimulationState();

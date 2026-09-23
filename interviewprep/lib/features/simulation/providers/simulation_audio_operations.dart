@@ -1,6 +1,12 @@
 part of 'simulation_provider.dart';
 
-extension SimulationAudioOperations on SimulationNotifier {
+mixin SimulationAudioOperations on Notifier<SimulationState> {
+  SimulationService get service;
+  AudioRecorder get audioRecorder;
+  FlutterTts get flutterTts;
+  void reset();
+  void _upsertRecruiterMessage(String text);
+
   Future<void> startRecording() async {
     final status = await Permission.microphone.request();
     if (!status.isGranted) {
@@ -11,12 +17,12 @@ extension SimulationAudioOperations on SimulationNotifier {
     final dir = await getTemporaryDirectory();
     final path =
         '${dir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
-    await _audioRecorder.start(const RecordConfig(), path: path);
+    await audioRecorder.start(const RecordConfig(), path: path);
     state = state.copyWith(isRecording: true);
   }
 
   Future<void> stopAndSendRecording() async {
-    final path = await _audioRecorder.stop();
+    final path = await audioRecorder.stop();
     if (path == null || path.isEmpty) {
       state = state.copyWith(isRecording: false);
       return;
@@ -26,7 +32,7 @@ extension SimulationAudioOperations on SimulationNotifier {
       if (state.sessionId == null) {
         throw Exception('Aucune session active pour envoyer la réponse audio.');
       }
-      final response = await _service.submitAudioAnswer(state.sessionId!, path);
+      final response = await service.submitAudioAnswer(state.sessionId!, path);
       final count =
           (response['answer_count'] as num?)?.toInt() ?? state.answerCount + 1;
       final next =
@@ -61,10 +67,10 @@ extension SimulationAudioOperations on SimulationNotifier {
 
   Future<void> finish() async {
     if (state.sessionId == null) return;
-    _flutterTts.stop();
+    flutterTts.stop();
     state = state.copyWith(isLoading: true);
     try {
-      final response = await _service.finishSimulation(state.sessionId!);
+      final response = await service.finishSimulation(state.sessionId!);
       state = state.copyWith(
         feedback: Feedback(
           id: response.id,
@@ -88,10 +94,10 @@ extension SimulationAudioOperations on SimulationNotifier {
       reset();
       return;
     }
-    _flutterTts.stop();
+    flutterTts.stop();
     state = state.copyWith(isLoading: true);
     try {
-      await _service.cancelSimulation(state.sessionId!);
+      await service.cancelSimulation(state.sessionId!);
       state = SimulationState();
     } catch (error) {
       state = state.copyWith(isLoading: false);
@@ -102,7 +108,7 @@ extension SimulationAudioOperations on SimulationNotifier {
   Future<void> _streamRecruiterResponse(String fallback) async {
     var text = '';
     try {
-      await for (final token in _service.streamAIResponse(state.sessionId!)) {
+      await for (final token in service.streamAIResponse(state.sessionId!)) {
         text += token;
         _upsertRecruiterMessage(text);
       }

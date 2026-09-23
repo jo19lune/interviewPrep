@@ -39,10 +39,11 @@ class DashboardScreen extends ConsumerWidget {
                   context.go('/login');
                 }
               } catch (e) {
-                if (context.mounted)
+                if (context.mounted) {
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                }
               }
             },
             child: const Text(

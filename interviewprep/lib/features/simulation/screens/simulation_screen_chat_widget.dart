@@ -1,6 +1,12 @@
 part of 'simulation_screen.dart';
 
-mixin _SimulationChat on _SimulationScreenState {
+mixin _SimulationChat on ConsumerState<SimulationScreen> {
+  TextEditingController get _textController;
+  ScrollController get _scrollController;
+  void _scrollToBottom();
+  void sendAnswerFromScreen(SimulationNotifier notifier);
+  Future<void> cancelSimulationFromScreen(SimulationNotifier notifier);
+
   Widget _buildChatScreen(
     BuildContext context,
     SimulationState state,
@@ -13,8 +19,8 @@ mixin _SimulationChat on _SimulationScreenState {
       exercise: exercise,
       textController: _textController,
       scrollController: _scrollController,
-      onCancel: () => _cancelSimulation(notifier),
-      onSend: () => _sendAnswer(notifier),
+      onCancel: () => cancelSimulationFromScreen(notifier),
+      onSend: () => sendAnswerFromScreen(notifier),
       onFinish: () => notifier.finish(),
     );
   }

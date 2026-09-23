@@ -143,7 +143,9 @@ class _ExerciseGenerationSheetState
 
   @override
   Widget build(BuildContext context) {
-    final loading = ref.watch(exerciseGenerationProvider).isLoading;
+    final loading = ref
+        .watch(exercise_provider.exerciseGenerationProvider)
+        .isLoading;
     return Padding(
       padding: EdgeInsets.only(
         left: 24,
@@ -155,7 +157,7 @@ class _ExerciseGenerationSheetState
         mainAxisSize: MainAxisSize.min,
         children: [
           DropdownButtonFormField<String>(
-            value: _domain,
+            initialValue: _domain,
             items: _domains
                 .skip(1)
                 .map((item) => DropdownMenuItem(value: item, child: Text(item)))
@@ -164,7 +166,7 @@ class _ExerciseGenerationSheetState
             decoration: const InputDecoration(labelText: 'Domaine'),
           ),
           DropdownButtonFormField<String>(
-            value: _difficulty,
+            initialValue: _difficulty,
             items: _difficulties
                 .skip(1)
                 .map((item) => DropdownMenuItem(value: item, child: Text(item)))
@@ -189,7 +191,7 @@ class _ExerciseGenerationSheetState
   Future<void> _generate() async {
     try {
       final result = await ref
-          .read(exerciseGenerationProvider.notifier)
+          .read(exercise_provider.exerciseGenerationProvider.notifier)
           .generate(
             domaine: _domain,
             difficulte: _difficulty,

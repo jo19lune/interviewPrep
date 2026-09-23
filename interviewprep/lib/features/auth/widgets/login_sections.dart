@@ -110,8 +110,10 @@ class LoginNavigationLink extends StatelessWidget {
   const LoginNavigationLink({super.key});
 
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisAlignment: MainAxisAlignment.center,
+  Widget build(BuildContext context) => Wrap(
+    alignment: WrapAlignment.center,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    spacing: 4,
     children: [
       Text(
         "Don't have an account?",

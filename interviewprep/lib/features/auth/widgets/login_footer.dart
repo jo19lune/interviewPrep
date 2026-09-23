@@ -26,8 +26,11 @@ class LoginFooter extends StatelessWidget {
         ],
       ),
       const SizedBox(height: 16),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      Wrap(
+        alignment: WrapAlignment.center,
+        runAlignment: WrapAlignment.center,
+        spacing: 8,
+        runSpacing: 4,
         children: [
           _LegalButton(
             title: 'Conditions Générales d\'Utilisation',
@@ -35,7 +38,6 @@ class LoginFooter extends StatelessWidget {
             label: 'Terms of Service',
             semantics: 'Lire les conditions générales d\'utilisation',
           ),
-          const SizedBox(width: 8),
           _LegalButton(
             title: 'Politique de confidentialité',
             content:

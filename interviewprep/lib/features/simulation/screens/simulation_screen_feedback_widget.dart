@@ -1,4 +1,6 @@
-mixin _SimulationFeedback on _SimulationScreenState {
+part of 'simulation_screen.dart';
+
+mixin _SimulationFeedback on ConsumerState<SimulationScreen> {
   Widget _buildFeedbackScreen(
     BuildContext context,
     SimulationState state,

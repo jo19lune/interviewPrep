@@ -47,8 +47,7 @@ class DashboardHero extends StatelessWidget {
       ],
     ),
     loading: () => const Center(child: CircularProgressIndicator()),
-    error: (_, __) =>
-        const Center(child: Text('Erreur chargement progression')),
+    error: (_, _) => const Center(child: Text('Erreur chargement progression')),
   );
 }
 

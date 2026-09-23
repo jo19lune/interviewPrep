@@ -1,73 +1,108 @@
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/models/auth_models.dart';
+import '../models/user_profile.dart';
 import 'dart:io';
 
 class ProfileService {
   final ApiClient _apiClient = ApiClient();
 
-  Future<UserResponse> getProfile() async {
+  Future<UserProfile> getProfile() async {
     try {
       final response = await _apiClient.dio.get('/profile/me');
-      return UserResponse.fromJson(response.data);
+      return UserProfile.fromJson(response.data);
     } catch (e) {
       if (e is DioException) {
-        throw Exception(ApiClient.errorMessage(e, 'Erreur lors du chargement du profil'));
+        throw Exception(
+          ApiClient.errorMessage(e, 'Erreur lors du chargement du profil'),
+        );
       }
       throw Exception('Erreur inattendue');
     }
   }
 
-  Future<UserResponse> updateProfile(UserProfileUpdate updateReq) async {
+  Future<UserProfile> updateProfile(UserProfileUpdate updateReq) async {
     try {
-      final response = await _apiClient.dio.put('/profile/update', data: updateReq.toJson());
-      return UserResponse.fromJson(response.data);
+      final response = await _apiClient.dio.put(
+        '/profile/update',
+        data: updateReq.toJson(),
+      );
+      return UserProfile.fromJson(response.data);
     } catch (e) {
       if (e is DioException) {
-        throw Exception(ApiClient.errorMessage(e, 'Erreur lors de la mise à jour'));
+        throw Exception(
+          ApiClient.errorMessage(e, 'Erreur lors de la mise à jour'),
+        );
       }
       throw Exception('Erreur inattendue');
     }
   }
 
-  Future<UserResponse> updateAvatar(File imageFile) async {
+  Future<UserProfile> updateAvatar(File imageFile) async {
     try {
       String fileName = imageFile.path.split('/').last;
       FormData formData = FormData.fromMap({
-        "file": await MultipartFile.fromFile(imageFile.path, filename: fileName),
+        "file": await MultipartFile.fromFile(
+          imageFile.path,
+          filename: fileName,
+        ),
       });
-      final response = await _apiClient.dio.put('/profile/avatar', data: formData);
-      return UserResponse.fromJson(response.data);
+      final response = await _apiClient.dio.put(
+        '/profile/avatar',
+        data: formData,
+      );
+      return UserProfile.fromJson(response.data);
     } catch (e) {
       if (e is DioException) {
-        throw Exception(ApiClient.errorMessage(e, 'Erreur lors de la mise à jour de l\'avatar'));
+        throw Exception(
+          ApiClient.errorMessage(
+            e,
+            'Erreur lors de la mise à jour de l\'avatar',
+          ),
+        );
       }
       throw Exception('Erreur inattendue');
     }
   }
 
-  Future<UserResponse> updateAvatarBytes(List<int> bytes, String filename) async {
+  Future<UserProfile> updateAvatarBytes(
+    List<int> bytes,
+    String filename,
+  ) async {
     try {
       FormData formData = FormData.fromMap({
         "file": MultipartFile.fromBytes(bytes, filename: filename),
       });
-      final response = await _apiClient.dio.put('/profile/avatar', data: formData);
-      return UserResponse.fromJson(response.data);
+      final response = await _apiClient.dio.put(
+        '/profile/avatar',
+        data: formData,
+      );
+      return UserProfile.fromJson(response.data);
     } catch (e) {
       if (e is DioException) {
-        throw Exception(ApiClient.errorMessage(e, 'Erreur lors de la mise à jour de l\'avatar'));
+        throw Exception(
+          ApiClient.errorMessage(
+            e,
+            'Erreur lors de la mise à jour de l\'avatar',
+          ),
+        );
       }
       throw Exception('Erreur inattendue');
     }
   }
 
-  Future<UserResponse> deleteAvatar() async {
+  Future<UserProfile> deleteAvatar() async {
     try {
       final response = await _apiClient.dio.delete('/profile/avatar');
-      return UserResponse.fromJson(response.data);
+      return UserProfile.fromJson(response.data);
     } catch (e) {
       if (e is DioException) {
-        throw Exception(ApiClient.errorMessage(e, 'Erreur lors de la suppression de l\'avatar'));
+        throw Exception(
+          ApiClient.errorMessage(
+            e,
+            'Erreur lors de la suppression de l\'avatar',
+          ),
+        );
       }
       throw Exception('Erreur inattendue');
     }
@@ -78,7 +113,12 @@ class ProfileService {
       await _apiClient.dio.put('/profile/change-password', data: req.toJson());
     } catch (e) {
       if (e is DioException) {
-        throw Exception(ApiClient.errorMessage(e, 'Erreur lors du changement de mot de passe'));
+        throw Exception(
+          ApiClient.errorMessage(
+            e,
+            'Erreur lors du changement de mot de passe',
+          ),
+        );
       }
       throw Exception('Erreur inattendue');
     }
