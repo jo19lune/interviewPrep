@@ -57,6 +57,7 @@ class User(BaseModel):
     
     # Avatar
     avatar_url = Column(String(512), nullable=True)
+    avatar_public_id = Column(String(255), nullable=True)
     
     # Reset mot de passe
     reset_code = Column(String(6), nullable=True)
