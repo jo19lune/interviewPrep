@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/models/progress.dart';
-import '../../../core/models/session_models.dart';
 import '../../../core/models/user.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -38,7 +36,7 @@ class DashboardContent extends ConsumerWidget {
               profile.when(
                 data: (user) => DashboardHero(user: user, progress: progress),
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, __) => DashboardHero(
+                error: (_, _) => DashboardHero(
                   user: User(
                     id: '',
                     courriel: '',
@@ -52,7 +50,7 @@ class DashboardContent extends ConsumerWidget {
               progress.when(
                 data: (value) => DashboardRecommendations(progress: value),
                 loading: () => const SizedBox(),
-                error: (_, __) => const SizedBox(),
+                error: (_, _) => const SizedBox(),
               ),
               const SizedBox(height: 32),
               history.when(

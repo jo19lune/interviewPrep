@@ -15,7 +15,6 @@ part 'simulation_screen_customization.dart';
 part 'simulation_screen_model_widget.dart';
 part 'simulation_screen_model_sheet.dart';
 part 'simulation_screen_chat_widget.dart';
-part 'simulation_screen_chat_bubble.dart';
 part 'simulation_screen_feedback_widget.dart';
 part 'simulation_screen_feedback_cards.dart';
 part 'simulation_screen_support_widgets.dart';
@@ -37,9 +36,13 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen>
         _SimulationModel,
         _SimulationChat,
         _SimulationFeedback {
+  @override
   final _textController = TextEditingController();
+  @override
   final _subjectController = TextEditingController();
+  @override
   final _scrollController = ScrollController();
+  @override
   int _questionCount = 10;
   late AnimationController _progressController;
 
@@ -61,6 +64,7 @@ class _SimulationScreenState extends ConsumerState<SimulationScreen>
     super.dispose();
   }
 
+  @override
   Widget build(BuildContext context) {
     final exercise = ref.watch(selectedExerciseProvider);
     final state = ref.watch(simulationProvider);

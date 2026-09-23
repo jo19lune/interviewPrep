@@ -9,7 +9,7 @@ class SkillProficiencySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (entries.isEmpty)
+    if (entries.isEmpty) {
       return Panel(
         child: Text(
           'Aucune donnée de compétence disponible',
@@ -18,6 +18,7 @@ class SkillProficiencySection extends StatelessWidget {
           ).textTheme.bodyMedium?.copyWith(color: AppTheme.onSurfaceVariant),
         ),
       );
+    }
     return Panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,13 +91,14 @@ class HistoryTrendSection extends StatelessWidget {
         .where((s) => s.statut == 'TERMINEE')
         .take(8)
         .toList();
-    if (completed.isEmpty)
+    if (completed.isEmpty) {
       return const EmptyPanel(
         icon: Icons.timeline,
         title: 'Pas encore de tendance',
         message:
             'Votre courbe apparaitra apres vos prochaines sessions terminees.',
       );
+    }
     return Panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,6 +1,8 @@
 part of 'simulation_provider.dart';
 
-extension SimulationMessageOperations on SimulationNotifier {
+mixin SimulationMessageOperations on Notifier<SimulationState> {
+  FlutterTts get flutterTts;
+
   void _upsertRecruiterMessage(
     String text, {
     double? clarity,
@@ -29,6 +31,6 @@ extension SimulationMessageOperations on SimulationNotifier {
       messages.add(message);
     }
     state = state.copyWith(messages: messages);
-    unawaited(_flutterTts.speak(text));
+    unawaited(flutterTts.speak(text));
   }
 }

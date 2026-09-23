@@ -16,7 +16,7 @@ mixin _SimulationInteractions on ConsumerState<SimulationScreen> {
     });
   }
 
-  void _sendAnswer(SimulationNotifier notifier) async {
+  void sendAnswerFromScreen(SimulationNotifier notifier) async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
     _textController.clear();
@@ -32,7 +32,7 @@ mixin _SimulationInteractions on ConsumerState<SimulationScreen> {
     }
   }
 
-  Future<void> _cancelSimulation(SimulationNotifier notifier) async {
+  Future<void> cancelSimulationFromScreen(SimulationNotifier notifier) async {
     final shouldCancel = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

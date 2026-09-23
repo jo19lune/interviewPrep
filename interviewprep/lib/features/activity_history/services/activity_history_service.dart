@@ -67,9 +67,9 @@ class ActivityHistoryService {
       final response = await _apiClient.dio.put(
         '/activities/$id',
         data: {
-          if (type != null) 'type': type,
-          if (message != null) 'message': message,
-          if (metadata != null) 'metadata': metadata,
+          ...?type != null ? {'type': type} : null,
+          ...?message != null ? {'message': message} : null,
+          ...?metadata != null ? {'metadata': metadata} : null,
         },
       );
       return ActivityHistory.fromJson(response.data as Map<String, dynamic>);

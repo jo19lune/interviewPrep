@@ -69,8 +69,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             niveau: _selectedNiveau,
           );
       ref.invalidate(userProfileProvider);
-      if (mounted)
+      if (mounted) {
         showProfileMessage(context, 'Profil mis à jour avec succès !');
+      }
     } catch (e) {
       if (mounted) showProfileMessage(context, 'Erreur: $e', error: true);
     } finally {
@@ -96,16 +97,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         }
         return;
       }
+      if (!mounted) return;
       if (!await showProfileConfirmation(
         context,
         'Confirmer l\'avatar',
         'Voulez-vous vraiment changer votre avatar ?',
-      ))
+      )) {
         return;
+      }
       setState(() => _isSaving = true);
       if (kIsWeb) {
-        if (file.bytes == null)
+        if (file.bytes == null) {
           throw Exception('Impossible de lire le fichier.');
+        }
         await ref
             .read(profileProvider.notifier)
             .uploadAvatar(bytes: file.bytes, filename: file.name);
@@ -118,8 +122,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             .uploadAvatar(path: file.path, filename: file.name);
       }
       ref.invalidate(userProfileProvider);
-      if (mounted)
+      if (mounted) {
         showProfileMessage(context, 'Avatar téléversé avec succès !');
+      }
     } catch (e) {
       if (mounted) {
         showProfileMessage(
@@ -138,13 +143,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       context,
       'Supprimer l\'avatar',
       'Voulez-vous vraiment supprimer votre avatar ?',
-    ))
+    )) {
       return;
+    }
     setState(() => _isSaving = true);
     try {
       await ref.read(profileProvider.notifier).deleteAvatar();
       ref.invalidate(userProfileProvider);
-      if (mounted) showProfileMessage(context, 'Avatar supprimé avec succès !');
+      if (mounted) {
+        showProfileMessage(context, 'Avatar supprimé avec succès !');
+      }
     } catch (e) {
       if (mounted) {
         showProfileMessage(

@@ -53,8 +53,9 @@ class ResetPasswordForm extends StatelessWidget {
             maxLength: 6,
             enabled: !isLoading,
             validator: (value) {
-              if (value == null || value.isEmpty)
+              if (value == null || value.isEmpty) {
                 return 'Veuillez entrer le code';
+              }
               if (value.length != 6) return 'Le code doit contenir 6 chiffres';
               return null;
             },

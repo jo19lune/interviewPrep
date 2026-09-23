@@ -4,7 +4,7 @@ mixin _SimulationIntro on ConsumerState<SimulationScreen> {
   TextEditingController get _subjectController;
   int get _questionCount;
   set _questionCount(int value);
-  Widget _buildModelSelector(BuildContext context, WidgetRef ref);
+  Widget buildModelSelector(BuildContext context, WidgetRef ref);
 
   Widget _buildIntroScreen(
     BuildContext context,
@@ -20,7 +20,7 @@ mixin _SimulationIntro on ConsumerState<SimulationScreen> {
       questionCount: _questionCount,
       bestScore: progress?.bestScore ?? 0,
       streak: progress?.streak ?? 0,
-      modelSelector: _buildModelSelector(context, ref),
+      modelSelector: buildModelSelector(context, ref),
       onQuestionCountChanged: (value) => setState(() => _questionCount = value),
       onStart: () => _startSimulation(exercise, notifier),
     );

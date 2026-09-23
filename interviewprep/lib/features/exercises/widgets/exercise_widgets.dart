@@ -157,7 +157,7 @@ class _ExerciseGenerationSheetState
         mainAxisSize: MainAxisSize.min,
         children: [
           DropdownButtonFormField<String>(
-            value: _domain,
+            initialValue: _domain,
             items: _domains
                 .skip(1)
                 .map((item) => DropdownMenuItem(value: item, child: Text(item)))
@@ -166,7 +166,7 @@ class _ExerciseGenerationSheetState
             decoration: const InputDecoration(labelText: 'Domaine'),
           ),
           DropdownButtonFormField<String>(
-            value: _difficulty,
+            initialValue: _difficulty,
             items: _difficulties
                 .skip(1)
                 .map((item) => DropdownMenuItem(value: item, child: Text(item)))

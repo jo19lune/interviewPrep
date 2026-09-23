@@ -1,7 +1,7 @@
 part of 'simulation_screen.dart';
 
 mixin _SimulationModel on ConsumerState<SimulationScreen> {
-  Widget _buildModelSelector(BuildContext context, WidgetRef ref) {
+  Widget buildModelSelector(BuildContext context, WidgetRef ref) {
     final modelsAsyncValue = ref.watch(availableModelsProvider);
 
     return modelsAsyncValue.when(
