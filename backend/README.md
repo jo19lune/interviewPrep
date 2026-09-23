@@ -111,6 +111,36 @@ Les OTP sont hachés en base, expirent, sont limités en tentatives et ne sont
 utilisables qu'une seule fois. Les emails sont envoyés via `BackgroundTasks`
 avec logs et trois tentatives SMTP par défaut.
 
+## PostgreSQL Neon et déploiement Render
+
+Le développement local continue d'utiliser PostgreSQL Docker. Pour Render,
+configurer les variables suivantes dans l'environnement du service :
+
+```env
+DATABASE_URL=postgresql+asyncpg://...-pooler.../interviewprep?ssl=require
+DATABASE_DIRECT_URL=postgresql://.../interviewprep?sslmode=require
+DATABASE_POOL_SIZE=5
+DATABASE_MAX_OVERFLOW=5
+```
+
+`DATABASE_URL` doit être l'URL pooled Neon pour les requêtes de l'API.
+`DATABASE_DIRECT_URL` doit être l'URL directe Neon et ne sert qu'aux
+migrations Alembic. Ne pas ajouter ces URLs ou leurs mots de passe au dépôt.
+
+Configuration Render recommandée :
+
+```text
+Build command: pip install -r requirements.txt
+Start command: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+Migration command: alembic upgrade head
+Health check path: /health
+```
+
+Créer d'abord la base Neon, renseigner les variables Render, exécuter
+`alembic upgrade head`, puis vérifier `/health` et `/docs`. Cette procédure
+crée le schéma depuis les migrations; elle ne transfère pas les données de
+l'ancienne base Railway.
+
 ## Stockage Cloudinary des avatars
 
 Pour activer Cloudinary, définir `STORAGE_PROVIDER=cloudinary` et renseigner
