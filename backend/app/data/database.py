@@ -8,6 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.config.settings import settings
 from app.models.base import Base
+from app.models.email_otp import EmailOTP  # noqa: F401
 
 logger = logging.getLogger(__name__)
 

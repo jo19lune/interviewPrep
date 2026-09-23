@@ -65,11 +65,16 @@ class Settings(BaseSettings):
     # Email
     email_host: str = Field(default="smtp.gmail.com", validation_alias="SMTP_HOST")
     email_port: int = Field(default=587, validation_alias="SMTP_PORT")
-    email_username: str = Field(default="", validation_alias=AliasChoices("SMTP_USER"))
-    email_password: str = Field(default="", validation_alias=AliasChoices("SMTP_PASSWORD"))
+    email_username: str = Field(default="", validation_alias=AliasChoices("SMTP_USER", "EMAIL_USERNAME"))
+    email_password: str = Field(default="", validation_alias=AliasChoices("SMTP_PASSWORD", "EMAIL_PASSWORD"))
     email_use_tls: bool = Field(default=True, validation_alias="EMAIL_USE_TLS")
     email_use_ssl: bool = Field(default=False, validation_alias="EMAIL_USE_SSL")
     default_from_email: str = Field(default="", validation_alias="DEFAULT_FROM_EMAIL")
+    google_client_id: str = Field(default="", validation_alias="GOOGLE_CLIENT_ID")
+    email_otp_ttl_minutes: int = Field(default=10, validation_alias="EMAIL_OTP_TTL_MINUTES")
+    email_otp_max_attempts: int = Field(default=5, validation_alias="EMAIL_OTP_MAX_ATTEMPTS")
+    email_2fa_enabled: bool = Field(default=False, validation_alias="EMAIL_2FA_ENABLED")
+    email_2fa_otp_ttl_minutes: int = Field(default=10, validation_alias="EMAIL_2FA_OTP_TTL_MINUTES")
 
     # Application
     app_name: str = Field(default="InterviewPrep API", validation_alias="APP_NAME")
