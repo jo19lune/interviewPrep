@@ -8,7 +8,7 @@ from app.services.storage_service import StorageService
 
 
 @pytest.mark.asyncio
-async def test_cloudinary_upload_uses_automatic_format_transformation(monkeypatch):
+async def test_cloudinary_upload_uses_explicit_webp_transformation(monkeypatch):
     calls = {}
 
     def config(**kwargs):
@@ -27,7 +27,7 @@ async def test_cloudinary_upload_uses_automatic_format_transformation(monkeypatc
     cloudinary_module.CloudinaryImage = lambda public_id: types.SimpleNamespace(
         build_url=lambda **kwargs: (
             "https://res.cloudinary.com/demo/image/upload/"
-            "c_fill,g_auto,h_512,w_512,q_auto,f_auto/avatar.webp"
+            "c_fill,g_auto,h_512,w_512,q_auto,f_webp/avatar.webp"
         )
     )
     uploader_module = types.ModuleType("cloudinary.uploader")
@@ -45,13 +45,13 @@ async def test_cloudinary_upload_uses_automatic_format_transformation(monkeypatc
         b"image-content", "avatar.png"
     )
 
-    assert result.url.endswith("q_auto,f_auto/avatar.webp")
+    assert result.url.endswith("q_auto,f_webp/avatar.webp")
     assert result.public_id == "interviewprep/avatars/avatar-id"
     assert calls["config"]["secure"] is True
     assert calls["upload"]["folder"] == "interviewprep/avatars"
     assert calls["upload"]["transformation"][1] == {
         "quality": "auto",
-        "fetch_format": "auto",
+        "fetch_format": "webp",
     }
 
 

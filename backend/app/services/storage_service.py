@@ -20,7 +20,7 @@ class StorageService:
     def _cloudinary_transformations() -> list[dict[str, str | int]]:
         return [
             {"width": 512, "height": 512, "crop": "fill", "gravity": "auto"},
-            {"quality": "auto", "fetch_format": "auto"},
+            {"quality": "auto", "fetch_format": "webp"},
         ]
 
     @staticmethod

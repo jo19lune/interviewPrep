@@ -126,5 +126,5 @@ CLOUDINARY_FOLDER=interviewprep/avatars
 Après ajout de ces variables, appliquer `alembic upgrade head`. L'endpoint
 `PUT /api/v1/profile/avatar` conserve son contrat multipart : le backend
 envoie l'image à Cloudinary, la redimensionne pour un avatar et utilise le
-format automatique (`f_auto`), ce qui permet la livraison WebP lorsque le
-client le supporte. L'ancien avatar est supprimé avec son `public_id`.
+format WebP explicite (`f_webp`). L'ancien avatar est supprimé avec son
+`public_id`.
