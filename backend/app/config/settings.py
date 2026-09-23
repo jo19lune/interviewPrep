@@ -36,6 +36,13 @@ class Settings(BaseSettings):
         validation_alias="DATABASE_URL",
         description="L'URL de connexion à la base de données principale (Postgres)."
     )
+    database_direct_url: str = Field(
+        default="",
+        validation_alias="DATABASE_DIRECT_URL",
+        description="URL PostgreSQL directe utilisée par Alembic.",
+    )
+    database_pool_size: int = Field(default=5, validation_alias="DATABASE_POOL_SIZE")
+    database_max_overflow: int = Field(default=5, validation_alias="DATABASE_MAX_OVERFLOW")
     redis_url: str = Field(
         default="redis://localhost:6379/0",
         validation_alias="REDIS_URL",
