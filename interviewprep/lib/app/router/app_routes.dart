@@ -3,6 +3,7 @@ abstract final class AppRoutes {
   static const register = '/register';
   static const forgotPassword = '/forgot-password';
   static const resetPassword = '/reset-password';
+  static const verifyOtp = '/verify-otp';
   static const dashboard = '/dashboard';
   static const statistics = '/dashboard/statistics';
   static const about = '/dashboard/about';

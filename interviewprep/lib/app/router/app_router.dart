@@ -5,6 +5,7 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/auth/screens/reset_password_screen.dart';
+import '../../features/auth/screens/otp_verification_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/dashboard/screens/statistics_screen.dart';
 import '../../features/dashboard/screens/about_screen.dart';
@@ -54,6 +55,18 @@ class AppRouter {
               (state.extra as String?) ??
               '';
           return ResetPasswordScreen(email: email);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.verifyOtp,
+        builder: (context, state) {
+          final extra = state.extra is Map
+              ? Map<String, dynamic>.from(state.extra! as Map)
+              : <String, dynamic>{};
+          return OtpVerificationScreen(
+            email: extra['email'] as String? ?? '',
+            expiresInSeconds: extra['expiresInSeconds'] as int?,
+          );
         },
       ),
       StatefulShellRoute.indexedStack(

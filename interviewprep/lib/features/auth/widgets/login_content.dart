@@ -18,6 +18,7 @@ class LoginContent extends ConsumerWidget {
     required this.onTogglePassword,
     required this.onRememberChanged,
     required this.onLogin,
+    required this.onGoogleLogin,
     required this.onForgetAccount,
     super.key,
   });
@@ -30,6 +31,7 @@ class LoginContent extends ConsumerWidget {
   final VoidCallback onTogglePassword;
   final ValueChanged<bool> onRememberChanged;
   final VoidCallback onLogin;
+  final VoidCallback onGoogleLogin;
   final VoidCallback onForgetAccount;
 
   @override
@@ -133,6 +135,12 @@ class LoginContent extends ConsumerWidget {
                         loading: loading,
                         onPressed: onLogin,
                         label: 'Log In',
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: loading ? null : onGoogleLogin,
+                        icon: const Icon(Icons.login),
+                        label: const Text('Continuer avec Google'),
                       ),
                     ],
                   ),
