@@ -90,3 +90,23 @@ Pour lancer la suite de tests automatisés (basée sur `pytest`) :
 ```bash
 pytest
 ```
+
+## 🔐 Contrats d'authentification Flutter
+
+Tous les endpoints sont préfixés par `/api/v1`.
+
+* `POST /auth/google` — body `{ "id_token": "..." }`. Le serveur vérifie la
+  signature, l'émetteur, l'expiration, l'audience (`GOOGLE_CLIENT_ID`) et
+  `email_verified`, puis crée ou lie le compte par email.
+* `POST /auth/login` — body `{ "courriel", "mot_de_passe" }`. Avec
+  `EMAIL_2FA_ENABLED=true`, la réponse est `{ "requires_2fa": true,
+  "challenge_expires_in_seconds", "user" }`; aucun token n'est délivré.
+* `POST /auth/login/verify-otp` — body `{ "courriel", "code" }`; consomme le
+  code et retourne `access_token`, `refresh_token` et `user`.
+* `POST /auth/forgot-password` — réponse volontairement non révélatrice;
+  `POST /auth/verify-reset-code` vérifie sans consommer, puis
+  `POST /auth/reset-password` consomme le code et change le mot de passe.
+
+Les OTP sont hachés en base, expirent, sont limités en tentatives et ne sont
+utilisables qu'une seule fois. Les emails sont envoyés via `BackgroundTasks`
+avec logs et trois tentatives SMTP par défaut.

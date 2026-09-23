@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 import bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -115,7 +115,7 @@ async def authenticate_user(
     if not user.est_actif:
         raise AuthenticationError("User account is inactive")
 
-    if not verify_password(password, user.mot_de_passe_hash):
+    if not user.mot_de_passe_hash or not verify_password(password, user.mot_de_passe_hash):
         raise AuthenticationError("Email or password is incorrect")
 
     access_token = create_access_token(str(user.id))
@@ -125,6 +125,23 @@ async def authenticate_user(
         access_token=access_token,
         refresh_token=refresh_token,
     )
+
+
+async def authenticate_google_user(session: AsyncSession, claims: dict) -> Tuple[User, TokenResponse]:
+    email = str(claims["email"]).strip().lower()
+    subject = claims["sub"]
+    user = await get_user_by_email(session, email)
+    if not user:
+        user = User(courriel=email, mot_de_passe_hash=None, google_subject=subject,
+                    prenom=claims.get("given_name"), nom=claims.get("family_name"), est_actif=True)
+        session.add(user)
+    elif user.google_subject and user.google_subject != subject:
+        raise AuthenticationError("Google account is linked to another identity")
+    else:
+        user.google_subject = subject
+    await session.commit()
+    await session.refresh(user)
+    return user, TokenResponse(access_token=create_access_token(str(user.id)), refresh_token=create_refresh_token(str(user.id)))
 
 
 async def refresh_access_token(token: str) -> TokenResponse:

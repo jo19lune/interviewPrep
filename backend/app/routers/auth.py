@@ -7,9 +7,11 @@ inscription (register), connexion (login), rafraîchissement de jetons
 """
 
 import asyncio
+import logging
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     HTTPException,
     Request,
@@ -19,6 +21,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AuthenticationError
+from app.config.settings import settings
 from app.core.rate_limit import check_rate_limit, clear_attempts, record_failed_attempt
 from app.core.security import get_current_user, security
 from app.data.database import get_db
@@ -29,15 +32,21 @@ from app.schemas.user import (
     UserLoginRequest,
     UserRegisterRequest,
     UserResponse,
+    LoginResponse,
 )
+from app.schemas.auth import GoogleLoginRequest, LoginOTPRequest
 from app.services.auth_service import (
     authenticate_user,
+    authenticate_google_user,
+    get_user_by_email,
     refresh_user_tokens,
     register_new_user,
     revoke_token,
 )
+from app.services.otp_service import consume_otp, issue_otp
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -64,10 +73,11 @@ async def register(
     )
 
 
-@router.post("/login", response_model=AuthResponse)
+@router.post("/login", response_model=LoginResponse)
 async def login(
     request: UserLoginRequest, 
     request_info: Request, 
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -90,10 +100,42 @@ async def login(
             detail=e.message,
         )
 
-    return AuthResponse(
-        **tokens.model_dump(),
-        user=UserResponse.model_validate(user),
-    )
+    if settings.email_2fa_enabled:
+        await issue_otp(db, user.courriel, "login_2fa", background_tasks=background_tasks, user_id=user.id,
+                        ttl_minutes=settings.email_2fa_otp_ttl_minutes)
+        return LoginResponse(requires_2fa=True, challenge_expires_in_seconds=settings.email_2fa_otp_ttl_minutes * 60,
+                             user=UserResponse.model_validate(user))
+    return LoginResponse(**tokens.model_dump(), user=UserResponse.model_validate(user))
+
+
+@router.post("/login/verify-otp", response_model=AuthResponse)
+async def verify_login_otp(request: LoginOTPRequest, db: AsyncSession = Depends(get_db)):
+    user = await get_user_by_email(db, request.courriel)
+    if not user or not await consume_otp(db, request.courriel, "login_2fa", request.code):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired verification code")
+    from app.services.auth_tokens import create_access_token, create_refresh_token
+    return AuthResponse(access_token=create_access_token(str(user.id)),
+                        refresh_token=create_refresh_token(str(user.id)),
+                        user=UserResponse.model_validate(user))
+
+
+@router.post("/google", response_model=AuthResponse)
+async def google_login(request: GoogleLoginRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        if not settings.google_client_id:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Google login is not configured")
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token
+        claims = id_token.verify_oauth2_token(request.id_token, google_requests.Request(), settings.google_client_id or None)
+        if claims.get("iss") not in {"accounts.google.com", "https://accounts.google.com"} or not claims.get("email_verified"):
+            raise ValueError("Unverified Google identity")
+        user, tokens = await authenticate_google_user(db, claims)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Google token verification failed")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google identity token") from exc
+    return AuthResponse(**tokens.model_dump(), user=UserResponse.model_validate(user))
 
 
 @router.post("/refresh", response_model=AuthResponse)

@@ -12,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.services.auth_service import get_user_by_email, hash_password
-from app.services.email_service import send_reset_email
+from app.services.otp_service import consume_otp, issue_otp, validate_otp
+from app.services.email_service import send_otp_email
 
 FORGOT_CODE_TTL_MINUTES = 30
 FORGOT_CODE_LENGTH = 6
@@ -45,13 +46,7 @@ async def create_password_reset_code(db: AsyncSession, email: str) -> tuple[User
     if not user:
         return None, None
 
-    user.reset_code = generate_reset_code()
-    user.reset_code_expires_at = (datetime.now(timezone.utc) + timedelta(minutes=FORGOT_CODE_TTL_MINUTES)).isoformat()
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-
-    return user, user.reset_code
+    return user, await issue_otp(db, email, "password_reset", ttl_minutes=FORGOT_CODE_TTL_MINUTES, user_id=user.id)
 
 
 async def send_password_reset_code_if_user_exists(
@@ -65,24 +60,20 @@ async def send_password_reset_code_if_user_exists(
         # On ne révèle pas l'existence du compte
         return {"sent": False}
 
-    background_tasks.add_task(send_reset_email, email, code)
+    background_tasks.add_task(send_otp_email, email, code, "password_reset")
     return {"sent": True, "expires_in_minutes": FORGOT_CODE_TTL_MINUTES}
 
 
 async def verify_password_reset_code(db: AsyncSession, email: str, code: str) -> bool:
-    user = await get_user_by_email(db, email.lower())
-    return bool(user and user.reset_code == code and not code_is_expired(user.reset_code_expires_at))
+    return await validate_otp(db, email, "password_reset", code)
 
 
 async def reset_user_password(db: AsyncSession, email: str, code: str, new_password: str) -> bool:
     user = await get_user_by_email(db, email.lower())
-    if not user or user.reset_code != code or code_is_expired(user.reset_code_expires_at):
+    if not user or not await consume_otp(db, email, "password_reset", code):
         return False
 
     user.mot_de_passe_hash = hash_password(new_password)
-    user.reset_code = None
-    user.reset_code_expires_at = None
     db.add(user)
     await db.commit()
     return True
-

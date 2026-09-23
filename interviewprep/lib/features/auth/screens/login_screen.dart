@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../app/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../providers/auth_additional_providers.dart';
 import '../widgets/login_content.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -73,10 +74,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     try {
       await _saveRememberMe();
-      await ref
+      final result = await ref
           .read(authStateProvider.notifier)
           .login(_emailController.text, _passwordController.text);
       if (!mounted) return;
+      if (result.requiresTwoFactor) {
+        context.go(
+          '/verify-otp',
+          extra: <String, dynamic>{
+            'email': _emailController.text.trim(),
+            'expiresInSeconds': result.challengeExpiresInSeconds,
+          },
+        );
+        return;
+      }
       setState(() => _isSuccessOverlayVisible = true);
       await Future<void>.delayed(const Duration(milliseconds: 800));
       if (mounted) context.go('/dashboard');
@@ -85,6 +96,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         final msg = e.toString().replaceAll('Exception: ', '').trim();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg.isNotEmpty ? msg : 'Erreur de connexion')),
+        );
+      }
+    }
+  }
+
+  Future<void> _googleLogin() async {
+    try {
+      await ref.read(googleAuthProvider.notifier).login();
+      if (mounted) context.go('/dashboard');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
         );
       }
     }
@@ -176,6 +200,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             setState(() => _obscurePassword = !_obscurePassword),
         onRememberChanged: (value) => setState(() => _rememberMe = value),
         onLogin: _login,
+        onGoogleLogin: _googleLogin,
         onForgetAccount: _showForgetDialog,
       ),
     );

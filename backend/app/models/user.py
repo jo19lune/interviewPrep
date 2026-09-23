@@ -41,7 +41,8 @@ class User(BaseModel):
     
     # Informations de compte
     courriel = Column(String(255), unique=True, index=True, nullable=False)
-    mot_de_passe_hash = Column(String(255), nullable=False)
+    mot_de_passe_hash = Column(String(255), nullable=True)
+    google_subject = Column(String(255), unique=True, nullable=True, index=True)
     
     # Informations personnelles
     prenom = Column(String(100), nullable=True)

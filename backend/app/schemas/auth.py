@@ -42,3 +42,17 @@ class ResetPasswordRequest(BaseModel):
         if not any(char in "!@#$%^&*()_+-=[]{}|;:,.<>?/" for char in v):
             raise ValueError('Le mot de passe doit contenir au moins un caractère spécial.')
         return v
+
+
+class GoogleLoginRequest(BaseModel):
+    id_token: str = Field(..., min_length=20)
+
+
+class LoginOTPRequest(BaseModel):
+    courriel: EmailStr
+    code: str = Field(..., min_length=6, max_length=6)
+
+    @field_validator("courriel")
+    @classmethod
+    def sanitize_email(cls, v: str) -> str:
+        return v.strip().lower()
