@@ -1,4 +1,9 @@
-mixin _SimulationInteractions on _SimulationScreenState {
+part of 'simulation_screen.dart';
+
+mixin _SimulationInteractions on ConsumerState<SimulationScreen> {
+  TextEditingController get _textController;
+  ScrollController get _scrollController;
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {

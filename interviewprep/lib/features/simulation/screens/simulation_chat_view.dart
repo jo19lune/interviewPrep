@@ -42,7 +42,7 @@ class SimulationChatView extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               itemCount: state.messages.length,
               itemBuilder: (context, index) =>
-                  _ChatBubble(message: state.messages[index]),
+                  _SimulationChatBubble(message: state.messages[index]),
             ),
           ),
           _ChatComposer(
@@ -128,8 +128,8 @@ class _ChatComposer extends StatelessWidget {
   }
 }
 
-class _ChatBubble extends StatelessWidget {
-  const _ChatBubble({required this.message});
+class _SimulationChatBubble extends StatelessWidget {
+  const _SimulationChatBubble({required this.message});
 
   final ChatMessage message;
 

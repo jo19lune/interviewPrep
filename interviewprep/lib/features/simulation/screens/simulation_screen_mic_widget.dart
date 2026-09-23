@@ -1,3 +1,5 @@
+part of 'simulation_screen.dart';
+
 /// Bouton microphone interactif avec animation de pulse.
 /// Utilise l'enregistrement audio rÃ©el et l'envoie au backend pour transcription.
 class _MicButton extends ConsumerStatefulWidget {

@@ -1,3 +1,5 @@
+part of 'simulation_screen.dart';
+
 class _MiniBadge extends StatelessWidget {
   final String label;
   final String value;

@@ -1,6 +1,11 @@
 part of 'simulation_screen.dart';
 
-mixin _SimulationIntro on _SimulationScreenState {
+mixin _SimulationIntro on ConsumerState<SimulationScreen> {
+  TextEditingController get _subjectController;
+  int get _questionCount;
+  set _questionCount(int value);
+  Widget _buildModelSelector(BuildContext context, WidgetRef ref);
+
   Widget _buildIntroScreen(
     BuildContext context,
     ExerciceResponse exercise,

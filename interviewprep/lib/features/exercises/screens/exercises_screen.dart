@@ -68,12 +68,12 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
               data: (items) {
                 final filtered = items.where(_matches).toList();
                 if (filtered.isEmpty) {
-                  return const EmptyExercises();
+                  return const exercise_widgets.EmptyExercises();
                 }
                 return Column(
                   children: filtered
                       .map(
-                        (exercise) => ExerciseCard(
+                        (exercise) => exercise_widgets.ExerciseCard(
                           exercise: exercise,
                           onTap: () => _showModes(context, exercise),
                         ),
@@ -100,7 +100,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
     final generated = await showModalBottomSheet<ExerciceResponse>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => const ExerciseGenerationSheet(),
+      builder: (_) => const exercise_widgets.ExerciseGenerationSheet(),
     );
     if (generated != null && context.mounted) _showModes(context, generated);
   }
@@ -108,7 +108,7 @@ class _ExercisesScreenState extends ConsumerState<ExercisesScreen> {
   void _showModes(BuildContext context, ExerciceResponse exercise) {
     showModalBottomSheet(
       context: context,
-      builder: (_) => ExerciseModeSheet(
+      builder: (_) => exercise_widgets.ExerciseModeSheet(
         exercise: exercise,
         onSimulation: () {
           ref.read(selectedExerciseProvider.notifier).select(exercise);

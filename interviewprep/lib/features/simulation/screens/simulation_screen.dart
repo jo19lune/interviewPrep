@@ -20,6 +20,7 @@ part 'simulation_screen_feedback_widget.dart';
 part 'simulation_screen_feedback_cards.dart';
 part 'simulation_screen_support_widgets.dart';
 part 'simulation_screen_mic_widget.dart';
+part 'simulation_chat_view.dart';
 
 class SimulationScreen extends ConsumerStatefulWidget {
   const SimulationScreen({super.key});

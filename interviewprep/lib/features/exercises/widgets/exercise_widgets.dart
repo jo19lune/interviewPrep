@@ -143,7 +143,9 @@ class _ExerciseGenerationSheetState
 
   @override
   Widget build(BuildContext context) {
-    final loading = ref.watch(exerciseGenerationProvider).isLoading;
+    final loading = ref
+        .watch(exercise_provider.exerciseGenerationProvider)
+        .isLoading;
     return Padding(
       padding: EdgeInsets.only(
         left: 24,
@@ -189,7 +191,7 @@ class _ExerciseGenerationSheetState
   Future<void> _generate() async {
     try {
       final result = await ref
-          .read(exerciseGenerationProvider.notifier)
+          .read(exercise_provider.exerciseGenerationProvider.notifier)
           .generate(
             domaine: _domain,
             difficulte: _difficulty,
