@@ -26,7 +26,11 @@ class AboutScreen extends StatelessWidget {
               child: Center(
                 child: Text(
                   'InterviewPrep',
-                  style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -80,7 +84,9 @@ class AboutScreen extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               'InterviewPrep',
-              style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 28),
+              style: Theme.of(
+                context,
+              ).textTheme.displayLarge?.copyWith(fontSize: 28),
             ),
             const SizedBox(height: 8),
             const Text('Version 1.1.0'),

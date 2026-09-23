@@ -8,6 +8,7 @@ class ApiClient {
   static const String _configuredBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
   );
+  static const String apiKey = String.fromEnvironment('BACKEND_API_KEY');
   static String get baseUrl =>
       '${_configuredBaseUrl.isNotEmpty ? _configuredBaseUrl : defaultApiBaseUrl()}/api/v1';
 
@@ -57,9 +58,22 @@ class ApiClient {
 
   ApiClient() : dio = Dio(BaseOptions(baseUrl: baseUrl)) {
     _refreshDio = Dio(BaseOptions(baseUrl: baseUrl));
+    _refreshDio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (apiKey.isNotEmpty) {
+            options.headers['X-API-Key'] = apiKey;
+          }
+          return handler.next(options);
+        },
+      ),
+    );
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          if (apiKey.isNotEmpty) {
+            options.headers['X-API-Key'] = apiKey;
+          }
           final token = await _storage.read(key: 'access_token');
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';

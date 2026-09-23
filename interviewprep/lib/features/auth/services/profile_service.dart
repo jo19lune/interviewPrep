@@ -51,7 +51,8 @@ class ProfileService {
         return AvatarUploadResponse.fromJson(response.data);
       }
       return AvatarUploadResponse(
-        avatarUrl: response.data['avatar_url'] ?? response.data['avatarUrl'] ?? '',
+        avatarUrl:
+            response.data['avatar_url'] ?? response.data['avatarUrl'] ?? '',
         message: response.data['message'] ?? 'Avatar mis à jour',
       );
     } on DioException catch (e) {

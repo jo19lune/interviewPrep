@@ -115,7 +115,10 @@ class QAModuleNotifier extends Notifier<QAModuleState> {
       answeredCount: 0,
       clearFeedback: true,
       messages: const [],
-      sessionConfig: QASessionConfig(subject: subject, totalQuestions: totalQuestions),
+      sessionConfig: QASessionConfig(
+        subject: subject,
+        totalQuestions: totalQuestions,
+      ),
     );
   }
 
@@ -139,10 +142,7 @@ class QAModuleNotifier extends Notifier<QAModuleState> {
         timestamp: DateTime.now(),
       );
 
-      state = state.copyWith(
-        messages: [botMessage],
-        isLoading: false,
-      );
+      state = state.copyWith(messages: [botMessage], isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false);
       rethrow;

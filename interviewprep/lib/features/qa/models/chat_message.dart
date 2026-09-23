@@ -38,7 +38,9 @@ class ChatMessage {
       text: text ?? this.text,
       isUser: isUser ?? this.isUser,
       timestamp: timestamp ?? this.timestamp,
-      scorePartiel: clearScorePartiel ? null : (scorePartiel ?? this.scorePartiel),
+      scorePartiel: clearScorePartiel
+          ? null
+          : (scorePartiel ?? this.scorePartiel),
       sentiment: clearSentiment ? null : (sentiment ?? this.sentiment),
       coachingTip: clearCoachingTip ? null : (coachingTip ?? this.coachingTip),
       analysis: clearAnalysis ? null : (analysis ?? this.analysis),

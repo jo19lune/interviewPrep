@@ -25,9 +25,12 @@ class QAService {
           'total_questions': totalQuestions,
         },
       );
-      return response.data['question'] as String? ?? 'Pouvez-vous développer votre réponse ?';
+      return response.data['question'] as String? ??
+          'Pouvez-vous développer votre réponse ?';
     } on DioException catch (e) {
-      throw Exception('Erreur lors de la génération de la question: ${e.message}');
+      throw Exception(
+        'Erreur lors de la génération de la question: ${e.message}',
+      );
     }
   }
 
@@ -35,10 +38,7 @@ class QAService {
     try {
       final response = await _apiClient.dio.post(
         '/qa/score-answer',
-        data: {
-          'question': questionText,
-          'answer': answer,
-        },
+        data: {'question': questionText, 'answer': answer},
       );
       return QAScoreResult.fromJson(response.data);
     } on DioException catch (e) {
@@ -55,12 +55,16 @@ class QAService {
       final response = await _apiClient.dio.post(
         '/qa/feedback',
         data: {
-          'reponses': responses.map((m) => {
-            'id': m.id,
-            'text': m.text,
-            'is_user': m.isUser,
-            'timestamp': m.timestamp.toIso8601String(),
-          }).toList(),
+          'reponses': responses
+              .map(
+                (m) => {
+                  'id': m.id,
+                  'text': m.text,
+                  'is_user': m.isUser,
+                  'timestamp': m.timestamp.toIso8601String(),
+                },
+              )
+              .toList(),
           'contexte': contexte,
           'sujet': sujet,
         },
@@ -89,7 +93,9 @@ class QAScoreResult {
     score: (json['score'] as num).toDouble(),
     sentiment: json['sentiment'] as String? ?? 'Neutral',
     coachingTip: json['coaching_tip'] as String? ?? '',
-    analysis: json['analysis'] != null ? Map<String, double>.from(json['analysis'] as Map) : const {},
+    analysis: json['analysis'] != null
+        ? Map<String, double>.from(json['analysis'] as Map)
+        : const {},
   );
 
   Map<String, dynamic> toJson() => {
@@ -117,14 +123,21 @@ class QAFeedback {
 
   factory QAFeedback.fromJson(Map<String, dynamic> json) => QAFeedback(
     scoreGlobal: (json['score_global'] as num).toDouble(),
-    pointsForts: (json['points_forts'] as List<dynamic>?)
-        ?.map((e) => QADomainFeedback.fromJson(e as Map<String, dynamic>))
-        .toList() ?? [],
-    ameliorations: (json['ameliorations'] as List<dynamic>?)
-        ?.map((e) => QADomainFeedback.fromJson(e as Map<String, dynamic>))
-        .toList() ?? [],
-    recommandations: (json['recommandations'] as List<dynamic>?)
-        ?.map((e) => e.toString()).toList() ?? [],
+    pointsForts:
+        (json['points_forts'] as List<dynamic>?)
+            ?.map((e) => QADomainFeedback.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+    ameliorations:
+        (json['ameliorations'] as List<dynamic>?)
+            ?.map((e) => QADomainFeedback.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+    recommandations:
+        (json['recommandations'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        [],
     genereLe: DateTime.parse((json['genere_le'] ?? json['genereLe']) as String),
   );
 
@@ -148,11 +161,12 @@ class QADomainFeedback {
     required this.score,
   });
 
-  factory QADomainFeedback.fromJson(Map<String, dynamic> json) => QADomainFeedback(
-    domaine: json['domaine'] as String? ?? 'Compétence',
-    note: json['note'] as String? ?? '',
-    score: (json['score'] as num?)?.toDouble() ?? 0.0,
-  );
+  factory QADomainFeedback.fromJson(Map<String, dynamic> json) =>
+      QADomainFeedback(
+        domaine: json['domaine'] as String? ?? 'Compétence',
+        note: json['note'] as String? ?? '',
+        score: (json['score'] as num?)?.toDouble() ?? 0.0,
+      );
 
   Map<String, dynamic> toJson() => {
     'domaine': domaine,

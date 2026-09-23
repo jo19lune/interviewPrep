@@ -27,9 +27,9 @@ class _QaInputFieldState extends ConsumerState<QaInputField> {
       await ref.read(qaModuleProvider.notifier).sendAnswer(text);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erreur: $e')));
       }
     }
   }
@@ -54,7 +54,10 @@ class _QaInputFieldState extends ConsumerState<QaInputField> {
               decoration: const InputDecoration(
                 hintText: 'Tapez votre réponse...',
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
               onSubmitted: (_) => _handleSend(),
             ),

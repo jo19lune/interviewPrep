@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config.settings import settings
 from app.core.exceptions import AppException
+from app.core.app_key import verify_backend_api_key, validate_production_application_key
 from app.data.database import close_db, init_db
 from app.routers import activity_history, auth, dashboard, exercices, password_reset, profile, simulation, simulation_audio, qa
 
@@ -46,6 +47,7 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     try:
+        validate_production_application_key()
         await init_db()
         logger.info("Database initialized")
         
@@ -80,6 +82,8 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
+app.middleware("http")(verify_backend_api_key)
+
 # Montage du répertoire d'upload pour servir les avatars
 upload_dir = os.path.abspath(settings.upload_dir)
 os.makedirs(upload_dir, exist_ok=True)
@@ -88,7 +92,7 @@ app.mount("/media", StaticFiles(directory=upload_dir), name="uploads-media")
 # Configuration CORS (Accepte tous les frontends et appareils)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[str(origin) for origin in settings.frontend_url],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
