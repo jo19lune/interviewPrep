@@ -110,3 +110,21 @@ Tous les endpoints sont préfixés par `/api/v1`.
 Les OTP sont hachés en base, expirent, sont limités en tentatives et ne sont
 utilisables qu'une seule fois. Les emails sont envoyés via `BackgroundTasks`
 avec logs et trois tentatives SMTP par défaut.
+
+## Stockage Cloudinary des avatars
+
+Pour activer Cloudinary, définir `STORAGE_PROVIDER=cloudinary` et renseigner
+les variables suivantes dans l'environnement du backend :
+
+```env
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+CLOUDINARY_FOLDER=interviewprep/avatars
+```
+
+Après ajout de ces variables, appliquer `alembic upgrade head`. L'endpoint
+`PUT /api/v1/profile/avatar` conserve son contrat multipart : le backend
+envoie l'image à Cloudinary, la redimensionne pour un avatar et utilise le
+format WebP explicite (`f_webp`). L'ancien avatar est supprimé avec son
+`public_id`.

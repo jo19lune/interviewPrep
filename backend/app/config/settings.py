@@ -107,6 +107,12 @@ class Settings(BaseSettings):
     azure_connection_string: str = Field(default="", validation_alias="AZURE_CONNECTION_STRING")
     azure_container: str = Field(default="", validation_alias="AZURE_CONTAINER")
 
+    # Stockage Cloudinary
+    cloudinary_cloud_name: str = Field(default="", validation_alias="CLOUDINARY_CLOUD_NAME")
+    cloudinary_api_key: str = Field(default="", validation_alias="CLOUDINARY_API_KEY")
+    cloudinary_api_secret: str = Field(default="", validation_alias="CLOUDINARY_API_SECRET")
+    cloudinary_folder: str = Field(default="interviewprep/avatars", validation_alias="CLOUDINARY_FOLDER")
+
     @property
     def openai_models(self) -> List[str]:
         models = []
