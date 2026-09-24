@@ -89,7 +89,7 @@ class AboutScreen extends StatelessWidget {
               ).textTheme.displayLarge?.copyWith(fontSize: 28),
             ),
             const SizedBox(height: 8),
-            const Text('Version 2.0.0'),
+            const Text('Version 2.0.1'),
             const SizedBox(height: 32),
             const Text(
               'Application développée pour vous aider à réussir vos entretiens d\'embauche avec l\'aide de l\'IA et d\'exercices pratiques ciblés.',

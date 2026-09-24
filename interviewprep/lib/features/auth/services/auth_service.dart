@@ -85,6 +85,14 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    try {
+      // Révocation distante best-effort : le backend ajoute le token à la
+      // blocklist. On supprime toujours les jetons locaux, même si le
+      // backend est injoignable ou si le token est déjà expiré.
+      await _apiClient.dio.post('/auth/logout');
+    } catch (_) {
+      // Ignoré : la déconnexion locale doit toujours aboutir.
+    }
     await _apiClient.removeToken();
   }
 

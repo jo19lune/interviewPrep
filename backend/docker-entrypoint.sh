@@ -1,6 +1,6 @@
 #!/bin/sh
 # ============================================================
-# InterviewPrep API — Entrypoint de production 2.0.0
+# InterviewPrep API — Entrypoint de production 2.0.1
 # 1) Applique les migrations Alembic (avec retry : Neon peut
 #    être temporairement indisponible au boot du conteneur)
 # 2) Démarre uvicorn sur le port injecté par Render ($PORT)

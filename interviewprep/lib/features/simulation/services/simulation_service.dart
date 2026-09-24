@@ -57,11 +57,13 @@ class SimulationService {
   ) async {
     try {
       final formData = FormData.fromMap({
-        'session_id': sessionId,
         'audio': await MultipartFile.fromFile(filePath),
       });
+      // Le backend attend `session_id` en query parameter (?session_id=...),
+      // pas comme champ du formulaire multipart.
       final response = await _apiClient.dio.post(
         '/simulation/answer/audio',
+        queryParameters: {'session_id': sessionId},
         data: formData,
       );
       return response.data as Map<String, dynamic>;
