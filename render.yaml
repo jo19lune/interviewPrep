@@ -87,10 +87,6 @@ services:
         value: gpt-4o-mini
       - key: AI_FEATURE_GENERATE_EXERCISES
         value: "true"
-      - key: AI_FEATURE_GENERATE_QUESTIONS
-        value: "true"
-      - key: AI_FEATURE_GENERATE_FEEDBACK
-        value: "true"
       - key: AI_FEATURE_TRANSCRIBE_AUDIO
         value: "true"
       # Modèles proposés au sélecteur (GET /api/v1/simulation/models)

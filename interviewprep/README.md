@@ -52,7 +52,7 @@ utilisateur. Les routes privées continuent d'exiger le JWT.
 Pour utiliser le backend local :
 
 ```bash
-flutter run --dart-define=API_BASE_URL=http://10.0.2.2:9000 --dart-define=BACKEND_API_KEY=...
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000 --dart-define=BACKEND_API_KEY=...
 ```
 
 Sous PowerShell, utilisez les scripts fournis :
