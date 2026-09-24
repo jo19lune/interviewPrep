@@ -1,5 +1,5 @@
 # ============================================================
-# InterviewPrep — Compose PRODUCTION 2.0.0
+# InterviewPrep — Compose PRODUCTION 2.0.1
 # ------------------------------------------------------------
 # Topologie prod :
 #   • Base de données : Neon (externe)   — variable DATABASE_URL
@@ -7,7 +7,7 @@
 #   • Images          : Cloudinary (externe)
 # Ce compose ne fait donc tourner QUE l'API en conteneur.
 #
-# Usage local (validation de l'image 2.0.0 contre la prod) :
+# Usage local (validation de l'image 2.0.1 contre la prod) :
 #   docker compose -f docker-compose.prod.yml up --build -d
 # Exige un fichier .env.production complet (gitignoré).
 #

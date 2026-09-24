@@ -41,17 +41,35 @@ L'application est structurée par fonctionnalités (Feature-First Architecture) 
 
 ## Configuration production
 
-Copiez `interviewprep/.env.example` comme référence et utilisez les mêmes
-valeurs `API_BASE_URL` et `BACKEND_API_KEY` pour Android et iOS. Flutter ne
-charge pas automatiquement ce fichier : injectez les valeurs avec
-`--dart-define`.
+Copiez `interviewprep/.env.example` comme référence. Flutter ne charge pas
+automatiquement les fichiers `.env` : `API_BASE_URL` et `BACKEND_API_KEY`
+doivent être injectées avec `--dart-define`. `API_BASE_URL` est obligatoire et
+les routes sont automatiquement préfixées par `/api/v1`.
 
 La clé `BACKEND_API_KEY` est une clé d'application commune, pas un secret
 utilisateur. Les routes privées continuent d'exiger le JWT.
 
+Pour utiliser le backend local :
+
+```bash
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000 --dart-define=BACKEND_API_KEY=...
+```
+
+Sous PowerShell, utilisez les scripts fournis :
+
+```powershell
+$env:BACKEND_API_KEY = "votre-cle"
+.\tool\run_dev.ps1
+.\tool\build_prod.ps1
+```
+
+Ne commitez jamais cette valeur dans un script ou un fichier de configuration.
+Si une clé a déjà été exposée dans l'historique ou dans un terminal partagé,
+révoquez-la et générez-en une nouvelle côté backend.
+
 ## 🚀 Lancer l'Application
 
-Assurez-vous que le **Backend FastAPI** est en cours d'exécution si l'application doit communiquer avec l'API.
+L'application exige une URL API injectée au lancement ou au build.
 
 Pour lancer l'application sur un appareil connecté ou un émulateur :
 
@@ -59,8 +77,8 @@ Pour lancer l'application sur un appareil connecté ou un émulateur :
 # Pour voir les appareils disponibles
 flutter devices
 
-# Pour lancer sur l'appareil par défaut
-flutter run
+# Pour lancer avec l'API Render
+flutter run --dart-define=API_BASE_URL=https://interviewprep-api-7lnr.onrender.com --dart-define=BACKEND_API_KEY=...
 
 # Pour spécifier un appareil (ex: Chrome pour le web)
 flutter run -d chrome

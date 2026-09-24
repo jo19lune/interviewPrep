@@ -1,5 +1,5 @@
 # ============================================================
-# InterviewPrep API — Image de production 2.0.0 (Render)
+# InterviewPrep API — Image de production 2.0.1 (Render)
 # Multi-stage : builder (dépendances) -> runtime (minimal)
 # ============================================================
 
