@@ -1,16 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'api_base_url_stub.dart'
-    if (dart.library.io) 'api_base_url_io.dart'
-    if (dart.library.html) 'api_base_url_web.dart';
+import '../env.dart';
 
 class ApiClient {
-  static const String _configuredBaseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-  );
-  static const String apiKey = String.fromEnvironment('BACKEND_API_KEY');
+  static String get apiKey => Env.backendApiKey;
   static String get baseUrl =>
-      '${_configuredBaseUrl.isNotEmpty ? _configuredBaseUrl : defaultApiBaseUrl()}/api/v1';
+      '${Env.apiBaseUrl}/api/v1';
 
   static String errorMessage(DioException error, String fallback) {
     final statusCode = error.response?.statusCode;
