@@ -92,7 +92,7 @@ app.mount("/media", StaticFiles(directory=upload_dir), name="uploads-media")
 # Configuration CORS (Accepte tous les frontends et appareils)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[str(origin) for origin in settings.frontend_url],
+    allow_origins=settings.frontend_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

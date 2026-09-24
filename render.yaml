@@ -74,7 +74,7 @@ services:
 
       # --- Frontend (URL web future ; l'app Flutter mobile n'a pas besoin de CORS) ---
       - key: FRONTEND_URL
-        value: '["https://your-frontend.example.com"]'
+        value: https://your-frontend.example.com
 
       # --- IA (OpenAI) ---
       - key: OPENAI_API_KEY
@@ -156,8 +156,6 @@ services:
         value: cloudinary
       - key: UPLOAD_DIR
         value: /app/media
-      - key: UPLOAD_BASE_URL
-        value: https://interviewprep-api.onrender.com/media   # adapter à l'URL finale
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY

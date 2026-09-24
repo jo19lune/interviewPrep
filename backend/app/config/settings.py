@@ -5,7 +5,7 @@ Module de configuration de l'application.
 import json
 from typing import List
 
-from pydantic import AnyHttpUrl, Field, field_validator, AliasChoices
+from pydantic import Field, field_validator, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -85,16 +85,31 @@ class Settings(BaseSettings):
 
     # Application
     app_name: str = Field(default="InterviewPrep API", validation_alias="APP_NAME")
-    app_version: str = Field(default="1.0.0", validation_alias="APP_VERSION")
+    app_version: str = Field(default="2.0.0", validation_alias="APP_VERSION")
     debug: bool = Field(default=False, validation_alias="DEBUG")
     app_environment: str = Field(default="development", validation_alias="APP_ENVIRONMENT")
     backend_api_key: str = Field(default="", validation_alias="BACKEND_API_KEY")
 
     # Frontend
-    frontend_url: List[AnyHttpUrl] = Field(
-        default_factory=lambda: parse_frontend_urls("http://localhost:3000"),
-        validation_alias="FRONTEND_URL"
+    frontend_url: str = Field(
+        default="http://localhost:3000",
+        validation_alias="FRONTEND_URL",
+        description="Origines CORS du frontend : URL unique, liste JSON ou liste séparée par des virgules.",
     )
+
+    @field_validator("frontend_url", mode="before")
+    @classmethod
+    def _normalize_frontend_url(cls, value: object) -> str:
+        if value is None:
+            return "http://localhost:3000"
+        if isinstance(value, list):
+            return ", ".join(str(v).strip() for v in value if str(v).strip())
+        return str(value).strip() or "http://localhost:3000"
+
+    @property
+    def frontend_origins(self) -> List[str]:
+        """Origines CORS normalisées (URL unique, JSON ou CSV)."""
+        return parse_frontend_urls(self.frontend_url)
 
     # Serveur
     port: int = Field(default=8000, validation_alias="PORT")
@@ -102,7 +117,11 @@ class Settings(BaseSettings):
 
     # Stockage
     upload_dir: str = Field(default="/app/media", validation_alias="UPLOAD_DIR")
-    upload_base_url: str = Field(validation_alias="UPLOAD_BASE_URL")
+    upload_base_url: str = Field(
+        default="",
+        validation_alias="UPLOAD_BASE_URL",
+        description="URL de base du stockage local (uniquement utilisé avec STORAGE_PROVIDER=local).",
+    )
     storage_provider: str = Field(default="local", validation_alias="STORAGE_PROVIDER")
 
     # Stockage S3
