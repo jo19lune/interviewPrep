@@ -27,10 +27,14 @@ def normalize_async_database_url(database_url: str) -> str:
         raise ValueError(
             "DATABASE_URL must use PostgreSQL asyncpg or SQLite aiosqlite"
         )
-    if url.drivername.endswith("+asyncpg") and url.query.get("sslmode") == "require":
+    if url.drivername.endswith("+asyncpg"):
         query = dict(url.query)
-        query["ssl"] = "require"
-        query.pop("sslmode", None)
+        if query.get("sslmode") == "require":
+            query["ssl"] = "require"
+            query.pop("sslmode", None)
+        # asyncpg (≤ 0.31) n'accepte pas channel_binding ; Neon l'ajoute parfois
+        # dans l'URL copiée → SQLAlchemy le forward en kwarg → TypeError.
+        query.pop("channel_binding", None)
         url = url.set(query=query)
     return url.render_as_string(hide_password=False)
 
