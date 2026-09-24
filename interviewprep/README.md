@@ -63,6 +63,10 @@ $env:BACKEND_API_KEY = "votre-cle"
 .\tool\build_prod.ps1
 ```
 
+Ne commitez jamais cette valeur dans un script ou un fichier de configuration.
+Si une clé a déjà été exposée dans l'historique ou dans un terminal partagé,
+révoquez-la et générez-en une nouvelle côté backend.
+
 ## 🚀 Lancer l'Application
 
 L'application exige une URL API injectée au lancement ou au build.
