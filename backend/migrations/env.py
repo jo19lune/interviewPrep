@@ -3,6 +3,7 @@ from logging.config import fileConfig
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
+from sqlalchemy.engine import make_url
 from alembic import context
 
 # Charger .env
@@ -16,9 +17,17 @@ if database_url:
     database_url = database_url.replace("+asyncpg", "")
     if database_url.startswith("postgres://"):
         database_url = "postgresql://" + database_url[len("postgres://"):]
-    if "ssl=require" in database_url and "sslmode=" not in database_url:
-        database_url = database_url.replace("ssl=require", "sslmode=require")
-    config.set_main_option("sqlalchemy.url", database_url)
+
+    url = make_url(database_url)
+    query = dict(url.query)
+    # psycopg2 (sync) attend sslmode, pas ssl ni channel_binding.
+    if "sslmode" not in query and query.get("ssl") == "require":
+        query["sslmode"] = "require"
+    query.pop("ssl", None)
+    query.pop("channel_binding", None)
+    config.set_main_option(
+        "sqlalchemy.url", url.set(query=query).render_as_string(hide_password=False)
+    )
 
 # Logging
 if config.config_file_name is not None:
