@@ -2,7 +2,7 @@
 Service pour le calcul des statistiques de progression.
 """
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import desc
@@ -11,6 +11,7 @@ from sqlalchemy.future import select
 
 from app.models.exercice import Exercice
 from app.models.session import Session
+from app.core.time import utc_now
 
 
 async def get_user_progress_stats(db: AsyncSession, user_id: str) -> dict[str, Any]:
@@ -41,7 +42,7 @@ async def get_user_progress_stats(db: AsyncSession, user_id: str) -> dict[str, A
         if s.termine_le is not None
     }
     streak = 0
-    cursor = datetime.utcnow().date()
+    cursor = utc_now().date()
     
     if cursor not in completed_dates:
         cursor = cursor - timedelta(days=1)

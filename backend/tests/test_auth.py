@@ -55,8 +55,7 @@ def client():
     return TestClient(app)
 
 
-@pytest.mark.asyncio
-async def test_register_new_user(client, test_db):
+def test_register_new_user(client, test_db):
     """Tester la création d'un nouveau compte"""
     response = client.post(
         "/api/v1/auth/register",
@@ -176,4 +175,4 @@ def test_get_profile_without_token(client):
     """Tester la récupération du profil sans token"""
     response = client.get("/api/v1/auth/me")
     
-    assert response.status_code == 403  # Forbidden ou 401
+    assert response.status_code == 401  # L'authentification échoue avec 401 Unauthorized

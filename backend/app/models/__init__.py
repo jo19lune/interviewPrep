@@ -8,17 +8,21 @@ garantit qu'ils sont tous enregistrés dans l'objet `Base.metadata` pour
 les migrations Alembic.
 """
 
+from app.models.activity_history import ActivityHistory
 from app.models.ai_simulation import SimulationIA
 from app.models.exercice import Exercice
 from app.models.feedback import Retour
 from app.models.progression import Progression
+from app.models.qa_feedback import QAFeedback
 from app.models.session import Session
 from app.models.token_blocklist import TokenBlocklist
 from app.models.user import User
 
 __all__ = [
+    "ActivityHistory",
     "Exercice",
     "Progression",
+    "QAFeedback",
     "Retour",
     "Session",
     "SimulationIA",

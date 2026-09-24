@@ -10,10 +10,14 @@ load_dotenv()
 
 config = context.config
 
-# Convertir DATABASE_URL pour Alembic (enlever +asyncpg)
-database_url = os.getenv("DATABASE_URL")
+# Utiliser l'URL directe pour Neon, puis la convertir en URL sync.
+database_url = os.getenv("DATABASE_DIRECT_URL") or os.getenv("DATABASE_URL")
 if database_url:
     database_url = database_url.replace("+asyncpg", "")
+    if database_url.startswith("postgres://"):
+        database_url = "postgresql://" + database_url[len("postgres://"):]
+    if "ssl=require" in database_url and "sslmode=" not in database_url:
+        database_url = database_url.replace("ssl=require", "sslmode=require")
     config.set_main_option("sqlalchemy.url", database_url)
 
 # Logging

@@ -1,14 +1,11 @@
-from pathlib import Path
 from fastapi import HTTPException, status, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.concurrency import run_in_threadpool
 
 from app.config.settings import settings
 from app.core.enums import Domaine, Niveau
 from app.models.user import User
 from app.schemas.user import ChangePasswordRequest, UserProfileUpdate
 from app.services.auth_service import hash_password, verify_password
-from app.utils.file_utils import save_upload_file
 
 
 async def update_user_profile(db: AsyncSession, current_user: User, request: UserProfileUpdate) -> User:
@@ -83,32 +80,38 @@ async def upload_user_avatar(db: AsyncSession, current_user: User, file: UploadF
     
     await file.seek(0)
     
-    # Suppression de l'ancien avatar si présent
-    if current_user.avatar_url:
-        try:
-            from app.services.storage_service import StorageService
-            await StorageService.delete_file(current_user.avatar_url)
-        except Exception as e:
-            import logging
-            logging.getLogger(__name__).error(f"Failed to delete old avatar: {e}")
-            
     from app.services.storage_service import StorageService
+
     upload_dir = settings.upload_dir
-    avatar_url = await StorageService.upload_file(file, upload_dir)
-    
-    current_user.avatar_url = avatar_url
+    upload_result = await StorageService.upload_file_with_metadata(file, upload_dir)
+    old_avatar_url = current_user.avatar_url
+    old_avatar_public_id = current_user.avatar_public_id
+
+    current_user.avatar_url = upload_result.url
+    current_user.avatar_public_id = upload_result.public_id
     db.add(current_user)
-    await db.commit()
-    await db.refresh(current_user)
+    try:
+        await db.commit()
+        await db.refresh(current_user)
+    except Exception:
+        await StorageService.delete_file(upload_result.url, upload_result.public_id)
+        raise
+
+    if old_avatar_url:
+        await StorageService.delete_file(old_avatar_url, old_avatar_public_id)
     
-    return avatar_url
+    return upload_result.url
 
 
 async def delete_user_avatar(db: AsyncSession, current_user: User) -> None:
     if current_user.avatar_url:
         from app.services.storage_service import StorageService
-        await StorageService.delete_file(current_user.avatar_url)
+        await StorageService.delete_file(
+            current_user.avatar_url,
+            current_user.avatar_public_id,
+        )
         current_user.avatar_url = None
+        current_user.avatar_public_id = None
         db.add(current_user)
         await db.commit()
         await db.refresh(current_user)

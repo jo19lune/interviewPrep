@@ -1,0 +1,49 @@
+# ============================================================
+# .dockerignore — InterviewPrep API (contexte = backend/)
+# Garde l'image de production minimale et sans secrets.
+# ============================================================
+
+# Git & IDE
+.git
+.gitignore
+.vscode/
+.idea/
+
+# Environnements (secrets) — les variables viennent de Render / .env.production
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Python / tests
+venv/
+env/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+tests/
+test_*.py
+pytest.ini
+
+# Logs & artefacts
+*.log
+logs/
+*.sqlite
+*.sqlite3
+*.db
+
+# Docker local
+docker-compose.yml
+docker-compose.prod.yml
+docker-compose.override.yml
+
+# Docs
+README.md
+
+# Uploads locaux (les images de prod sont sur Cloudinary)
+uploads/
+images/
+media/

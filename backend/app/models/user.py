@@ -6,7 +6,7 @@ d'authentification, le profil professionnel et les préférences
 de l'utilisateur, ainsi que ses relations avec d'autres entités.
 """
 
-from sqlalchemy import Boolean, Column, Enum, Index, String
+from sqlalchemy import Boolean, Column, DateTime, Enum, Index, String
 from sqlalchemy.orm import relationship
 
 from app.core.enums import Domaine, Niveau
@@ -41,7 +41,8 @@ class User(BaseModel):
     
     # Informations de compte
     courriel = Column(String(255), unique=True, index=True, nullable=False)
-    mot_de_passe_hash = Column(String(255), nullable=False)
+    mot_de_passe_hash = Column(String(255), nullable=True)
+    google_subject = Column(String(255), unique=True, nullable=True, index=True)
     
     # Informations personnelles
     prenom = Column(String(100), nullable=True)
@@ -56,16 +57,22 @@ class User(BaseModel):
     
     # Avatar
     avatar_url = Column(String(512), nullable=True)
+    avatar_public_id = Column(String(255), nullable=True)
     
     # Reset mot de passe
     reset_code = Column(String(6), nullable=True)
-    reset_code_expires_at = Column(String(64), nullable=True)
+    reset_code_expires_at = Column(DateTime, nullable=True)
     
     # Relations
     sessions = relationship(
         "Session", 
         back_populates="utilisateur", 
         cascade="all, delete-orphan"
+    )
+    activity_histories = relationship(
+        "ActivityHistory",
+        back_populates="utilisateur",
+        cascade="all, delete-orphan",
     )
     progression = relationship(
         "Progression", 

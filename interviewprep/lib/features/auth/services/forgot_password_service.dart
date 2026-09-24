@@ -12,10 +12,15 @@ class ForgotPasswordService {
       );
     } on DioException catch (e) {
       if (e.response?.statusCode == 429) {
-        throw Exception('Trop de tentatives. Veuillez réessayer dans quelques minutes.');
+        throw Exception(
+          'Trop de tentatives. Veuillez réessayer dans quelques minutes.',
+        );
       }
       throw Exception(
-        ApiClient.errorMessage(e, 'Erreur lors de la demande de réinitialisation'),
+        ApiClient.errorMessage(
+          e,
+          'Erreur lors de la demande de réinitialisation',
+        ),
       );
     }
   }
@@ -28,13 +33,15 @@ class ForgotPasswordService {
       );
       return response.data['valid'] == true;
     } on DioException catch (e) {
-      throw Exception(
-        ApiClient.errorMessage(e, 'Code invalide ou expiré'),
-      );
+      throw Exception(ApiClient.errorMessage(e, 'Code invalide ou expiré'));
     }
   }
 
-  Future<void> resetPassword(String email, String code, String newPassword) async {
+  Future<void> resetPassword(
+    String email,
+    String code,
+    String newPassword,
+  ) async {
     try {
       await _apiClient.dio.post(
         '/auth/reset-password',
@@ -46,7 +53,10 @@ class ForgotPasswordService {
       );
     } on DioException catch (e) {
       throw Exception(
-        ApiClient.errorMessage(e, 'Erreur lors de la réinitialisation du mot de passe'),
+        ApiClient.errorMessage(
+          e,
+          'Erreur lors de la réinitialisation du mot de passe',
+        ),
       );
     }
   }

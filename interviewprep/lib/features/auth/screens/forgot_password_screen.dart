@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../app/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  ConsumerState<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() =>
+      _ForgotPasswordScreenState();
 }
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
@@ -26,23 +27,31 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitted = true);
     try {
-      await ref.read(forgotPasswordProvider.notifier).requestCode(
-        _emailController.text.trim(),
-      );
+      await ref
+          .read(forgotPasswordProvider.notifier)
+          .requestCode(_emailController.text.trim());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Code envoyé à votre adresse email (valable 30 minutes)')),
+          const SnackBar(
+            content: Text(
+              'Code envoyé à votre adresse email (valable 30 minutes)',
+            ),
+          ),
         );
         if (_emailController.text.trim().isNotEmpty) {
           final email = _emailController.text.trim();
-          context.go('/reset-password?email=${Uri.encodeComponent(email)}');
+          context.go(
+            '/reset-password?email=${Uri.encodeQueryComponent(email)}',
+          );
         }
       }
     } catch (e) {
       if (mounted) {
         final msg = e.toString().replaceAll('Exception: ', '').trim();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg.isNotEmpty ? msg : 'Erreur lors de la demande')),
+          SnackBar(
+            content: Text(msg.isNotEmpty ? msg : 'Erreur lors de la demande'),
+          ),
         );
       }
     } finally {
@@ -52,7 +61,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = _submitted || ref.watch(forgotPasswordProvider) is AsyncLoading;
+    final isLoading =
+        _submitted || ref.watch(forgotPasswordProvider) is AsyncLoading;
 
     return Scaffold(
       appBar: AppBar(
@@ -63,7 +73,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 16.0,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
               child: Form(
@@ -71,22 +84,26 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(Icons.lock_reset, size: 48, color: AppTheme.primaryContainer),
+                    const Icon(
+                      Icons.lock_reset,
+                      size: 48,
+                      color: AppTheme.primaryContainer,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       'Réinitialiser votre mot de passe',
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                            color: AppTheme.primaryContainer,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        color: AppTheme.primaryContainer,
+                        fontWeight: FontWeight.bold,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Entrez votre adresse email pour recevoir un code de vérification à 6 chiffres (valable 30 minutes).',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.onSurfaceVariant,
-                          ),
+                        color: AppTheme.onSurfaceVariant,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 32),
@@ -99,7 +116,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                       ),
                       keyboardType: TextInputType.emailAddress,
                       enabled: !isLoading,
-                      validator: (v) => v == null || v.isEmpty ? 'Veuillez entrer votre email' : null,
+                      validator: (v) => v == null || v.isEmpty
+                          ? 'Veuillez entrer votre email'
+                          : null,
                     ),
                     const SizedBox(height: 24),
                     SizedBox(
@@ -110,7 +129,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
                               )
                             : const Text('Envoyer le code'),
                       ),

@@ -2,39 +2,21 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 
 import bcrypt
-from jose import JWTError, jwt
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
 import uuid
 
-from app.config.settings import settings
 from app.core.exceptions import AuthenticationError
 from app.models.user import User
 from app.models.token_blocklist import TokenBlocklist
 
 
-class TokenResponse(BaseModel):
-    """Réponse de token."""
-
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-
-
-class TokenData(BaseModel):
-    """Données contenues dans le token JWT."""
-
-    user_id: str
-    exp: datetime
-    token_type: str  # "access" ou "refresh"
-
+from .auth_tokens import TokenResponse, create_access_token, create_refresh_token, decode_token
 
 def hash_password(password: str) -> str:
     """Hasher un mot de passe avec bcrypt.
@@ -60,66 +42,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         raw = raw[:72]
 
     return bcrypt.checkpw(raw, hashed_password.encode("utf-8"))
-
-
-def create_access_token(
-    user_id: str, expires_delta: Optional[timedelta] = None
-) -> str:
-    """Créer un access token JWT."""
-
-    if expires_delta is None:
-        expires_delta = timedelta(
-            minutes=settings.access_token_expire_minutes
-        )
-    expire = datetime.now(timezone.utc) + expires_delta
-    payload = {
-        "user_id": str(user_id),
-        "exp": expire,
-        "token_type": "access",
-    }
-
-    return jwt.encode(
-        payload,
-        settings.secret_key,
-        algorithm=settings.algorithm,
-    )
-
-
-def create_refresh_token(
-    user_id: str, expires_delta: Optional[timedelta] = None
-) -> str:
-    """Créer un refresh token JWT."""
-
-    if expires_delta is None:
-        expires_delta = timedelta(
-            minutes=settings.refresh_token_expire_minutes
-        )
-
-    expire = datetime.now(timezone.utc) + expires_delta
-    payload = {
-        "user_id": str(user_id),
-        "exp": expire,
-        "token_type": "refresh",
-    }
-
-    return jwt.encode(
-        payload,
-        settings.secret_key,
-        algorithm=settings.algorithm,
-    )
-
-
-def decode_token(token: str) -> dict:
-    """Décoder et valider un token JWT."""
-
-    try:
-        return jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=[settings.algorithm],
-        )
-    except JWTError as e:
-        raise AuthenticationError(f"Invalid token: {e}") from e
 
 
 async def get_user_by_id(
@@ -193,7 +115,7 @@ async def authenticate_user(
     if not user.est_actif:
         raise AuthenticationError("User account is inactive")
 
-    if not verify_password(password, user.mot_de_passe_hash):
+    if not user.mot_de_passe_hash or not verify_password(password, user.mot_de_passe_hash):
         raise AuthenticationError("Email or password is incorrect")
 
     access_token = create_access_token(str(user.id))
@@ -203,6 +125,23 @@ async def authenticate_user(
         access_token=access_token,
         refresh_token=refresh_token,
     )
+
+
+async def authenticate_google_user(session: AsyncSession, claims: dict) -> Tuple[User, TokenResponse]:
+    email = str(claims["email"]).strip().lower()
+    subject = claims["sub"]
+    user = await get_user_by_email(session, email)
+    if not user:
+        user = User(courriel=email, mot_de_passe_hash=None, google_subject=subject,
+                    prenom=claims.get("given_name"), nom=claims.get("family_name"), est_actif=True)
+        session.add(user)
+    elif user.google_subject and user.google_subject != subject:
+        raise AuthenticationError("Google account is linked to another identity")
+    else:
+        user.google_subject = subject
+    await session.commit()
+    await session.refresh(user)
+    return user, TokenResponse(access_token=create_access_token(str(user.id)), refresh_token=create_refresh_token(str(user.id)))
 
 
 async def refresh_access_token(token: str) -> TokenResponse:

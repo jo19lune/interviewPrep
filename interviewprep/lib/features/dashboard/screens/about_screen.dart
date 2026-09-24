@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../app/theme/app_theme.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -26,7 +26,11 @@ class AboutScreen extends StatelessWidget {
               child: Center(
                 child: Text(
                   'InterviewPrep',
-                  style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -80,10 +84,12 @@ class AboutScreen extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               'InterviewPrep',
-              style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 28),
+              style: Theme.of(
+                context,
+              ).textTheme.displayLarge?.copyWith(fontSize: 28),
             ),
             const SizedBox(height: 8),
-            const Text('Version 1.1.0'),
+            const Text('Version 2.0.0'),
             const SizedBox(height: 32),
             const Text(
               'Application développée pour vous aider à réussir vos entretiens d\'embauche avec l\'aide de l\'IA et d\'exercices pratiques ciblés.',

@@ -18,6 +18,7 @@ class ExerciceResponse(BaseModel):
     duree_sec: int
     questions: List[Any]  # JSONB - structure flexible
     etiquettes: Optional[List[str]] = None
+    difficulte_estimee: Optional[int] = None
     cree_le: datetime
 
     model_config = ConfigDict(from_attributes=True)

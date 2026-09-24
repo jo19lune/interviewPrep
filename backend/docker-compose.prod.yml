@@ -1,0 +1,34 @@
+# ============================================================
+# InterviewPrep — Compose PRODUCTION 2.0.0
+# ------------------------------------------------------------
+# Topologie prod :
+#   • Base de données : Neon (externe)   — variable DATABASE_URL
+#   • Redis           : Render Redis (externe, même projet)
+#   • Images          : Cloudinary (externe)
+# Ce compose ne fait donc tourner QUE l'API en conteneur.
+#
+# Usage local (validation de l'image 2.0.0 contre la prod) :
+#   docker compose -f docker-compose.prod.yml up --build -d
+# Exige un fichier .env.production complet (gitignoré).
+#
+# ⚠️ Render n'exécute pas docker-compose : sur la plateforme, la
+#    configuration se fait via Dockerfile + render.yaml (racine du repo).
+# ============================================================
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: interviewprep-api-prod
+    env_file:
+      - .env.production
+    ports:
+      - "10000:10000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:10000/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3

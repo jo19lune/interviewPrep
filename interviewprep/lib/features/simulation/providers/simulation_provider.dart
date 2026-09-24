@@ -1,44 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 import '../services/simulation_service.dart';
 import '../../../core/models/exercise.dart';
+import '../../qa/models/chat_message.dart';
 
-final simulationServiceProvider = Provider<SimulationService>((ref) {
-  return SimulationService();
-});
-
-final availableModelsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
-  final service = ref.watch(simulationServiceProvider);
-  return service.getAvailableModels();
-});
-
-final selectedModelProvider = StateProvider<String?>((ref) => null);
-
-class ChatMessage {
-  final String text;
-  final bool isUser;
-  final DateTime timestamp;
-  final double? scorePartiel;
-  final String? sentiment;
-  final String? coachingTip;
-  final Map<String, dynamic>? analysis;
-
-  ChatMessage({
-    required this.text,
-    required this.isUser,
-    required this.timestamp,
-    this.scorePartiel,
-    this.sentiment,
-    this.coachingTip,
-    this.analysis,
-  });
-}
+part 'simulation_audio_operations.dart';
+part 'simulation_message_operations.dart';
+part 'simulation_provider_definitions.dart';
 
 class SimulationState {
   final String? sessionId;
@@ -101,13 +75,26 @@ class SimulationState {
   }
 }
 
-class SimulationNotifier extends StateNotifier<SimulationState> {
-  final SimulationService _service;
+class SimulationNotifier extends Notifier<SimulationState>
+    with SimulationAudioOperations, SimulationMessageOperations {
+  late final SimulationService _service;
   final AudioRecorder _audioRecorder = AudioRecorder();
   final FlutterTts _flutterTts = FlutterTts();
 
-  SimulationNotifier(this._service) : super(SimulationState()) {
+  @override
+  SimulationService get service => _service;
+
+  @override
+  AudioRecorder get audioRecorder => _audioRecorder;
+
+  @override
+  FlutterTts get flutterTts => _flutterTts;
+
+  @override
+  SimulationState build() {
+    _service = ref.watch(simulationServiceProvider);
     _initTts();
+    return SimulationState();
   }
 
   Future<void> _initTts() async {
@@ -117,13 +104,12 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     await _flutterTts.setPitch(1.0);
   }
 
-  @override
   void dispose() {
     _flutterTts.stop();
     _audioRecorder.dispose();
-    super.dispose();
   }
 
+  @override
   void reset() {
     _flutterTts.stop();
     state = SimulationState();
@@ -143,9 +129,12 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
         questionCount: questionCount,
         model: model,
       );
-      
+
       final firstMsg = ChatMessage(
-        text: response['first_question'] ?? "Bienvenue dans cette simulation d'entretien. Commençons par votre parcours. Pouvez-vous vous présenter ?",
+        id: _generateId(),
+        text:
+            response['first_question'] ??
+            "Bienvenue dans cette simulation d'entretien. Commençons par votre parcours. Pouvez-vous vous présenter ?",
         isUser: false,
         timestamp: DateTime.now(),
       );
@@ -170,11 +159,12 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
 
   Future<void> sendAnswer(String answerText) async {
     if (answerText.trim().isEmpty || state.sessionId == null) return;
-    
+
     // Interrompre la synthèse vocale en cours
     await _flutterTts.stop();
-    
+
     final userMsg = ChatMessage(
+      id: _generateId(),
       text: answerText,
       isUser: true,
       timestamp: DateTime.now(),
@@ -186,21 +176,18 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
     );
 
     try {
-      final response = await _service.submitAnswer(state.sessionId!, answerText);
-      
-      final clarity = (response['clarity_score'] as num?)?.toDouble() ?? 80.0;
-      final sentiment = response['sentiment'] as String? ?? 'Confident';
-      final tip = response['coaching_tip'] as String? ?? '';
-      final answerCount = (response['answer_count'] as num?)?.toInt() ?? state.answerCount + 1;
-      final analysis = response['analysis'] as Map<String, dynamic>?;
-      final nextQ = response['next_question'] as String? ?? 'Félicitations, simulation terminée !';
-
-      state = state.copyWith(
-        lastClarityScore: clarity,
-        lastSentiment: sentiment,
-        lastLiveCoachingTip: tip,
-        answerCount: answerCount,
+      final response = await _service.submitAnswer(
+        state.sessionId!,
+        answerText,
       );
+
+      final answerCount =
+          (response['answer_count'] as num?)?.toInt() ?? state.answerCount + 1;
+      final nextQ =
+          response['next_question'] as String? ??
+          'Félicitations, simulation terminée !';
+
+      state = state.copyWith(answerCount: answerCount);
 
       var streamedText = '';
       var hasRecruiterMessage = false;
@@ -208,26 +195,14 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
         await for (final token in _service.streamAIResponse(state.sessionId!)) {
           streamedText += token;
           hasRecruiterMessage = true;
-          _upsertRecruiterMessage(
-            streamedText,
-            clarity: clarity,
-            sentiment: sentiment,
-            tip: tip,
-            analysis: analysis,
-          );
+          _upsertRecruiterMessage(streamedText);
         }
       } catch (_) {
         streamedText = '';
       }
 
       if (!hasRecruiterMessage || streamedText.trim().isEmpty) {
-        _upsertRecruiterMessage(
-          nextQ,
-          clarity: clarity,
-          sentiment: sentiment,
-          tip: tip,
-          analysis: analysis,
-        );
+        _upsertRecruiterMessage(nextQ);
       }
 
       state = state.copyWith(isLoading: false);
@@ -235,186 +210,5 @@ class SimulationNotifier extends StateNotifier<SimulationState> {
       state = state.copyWith(isLoading: false);
       rethrow;
     }
-  }
-
-  /// Démarre l'enregistrement audio après avoir vérifié la permission microphone.
-  Future<void> startRecording() async {
-    final status = await Permission.microphone.request();
-    if (status.isGranted) {
-      final dir = await getTemporaryDirectory();
-      final path = '${dir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
-      await _audioRecorder.start(const RecordConfig(), path: path);
-      state = state.copyWith(isRecording: true);
-    } else {
-      throw Exception("Permission microphone refusée. Veuillez l'accorder dans les paramètres.");
-    }
-  }
-
-  /// Arrête l'enregistrement, envoie le fichier audio au backend, puis supprime le fichier local.
-  Future<void> stopAndSendRecording() async {
-    final path = await _audioRecorder.stop();
-    if (path == null || path.isEmpty) {
-      state = state.copyWith(isRecording: false);
-      return;
-    }
-
-    state = state.copyWith(isRecording: false, isLoading: true);
-
-    try {
-      if (state.sessionId == null) {
-        throw Exception("Aucune session active pour envoyer la réponse audio.");
-      }
-      final response = await _service.submitAudioAnswer(state.sessionId!, path);
-
-      final clarity = (response['clarity_score'] as num?)?.toDouble() ?? 80.0;
-      final sentiment = response['sentiment'] as String? ?? 'Confident';
-      final tip = response['coaching_tip'] as String? ?? '';
-      final answerCount = (response['answer_count'] as num?)?.toInt() ?? state.answerCount + 1;
-      final analysis = response['analysis'] as Map<String, dynamic>?;
-      final nextQ = response['next_question'] as String? ?? 'Félicitations, simulation terminée !';
-
-      state = state.copyWith(
-        lastClarityScore: clarity,
-        lastSentiment: sentiment,
-        lastLiveCoachingTip: tip,
-        answerCount: answerCount,
-      );
-
-      // Ajouter le message utilisateur avec indication "audio"
-      final userMsg = ChatMessage(
-        text: "🎤 Réponse vocale transmise",
-        isUser: true,
-        timestamp: DateTime.now(),
-      );
-      state = state.copyWith(messages: [...state.messages, userMsg]);
-
-      // Streamer la réponse du recruteur
-      var streamedText = '';
-      var hasRecruiterMessage = false;
-      try {
-        await for (final token in _service.streamAIResponse(state.sessionId!)) {
-          streamedText += token;
-          hasRecruiterMessage = true;
-          _upsertRecruiterMessage(
-            streamedText,
-            clarity: clarity,
-            sentiment: sentiment,
-            tip: tip,
-            analysis: analysis,
-          );
-        }
-      } catch (_) {
-        streamedText = '';
-      }
-
-      if (!hasRecruiterMessage || streamedText.trim().isEmpty) {
-        _upsertRecruiterMessage(
-          nextQ,
-          clarity: clarity,
-          sentiment: sentiment,
-          tip: tip,
-          analysis: analysis,
-        );
-      }
-
-      state = state.copyWith(isLoading: false);
-    } catch (e) {
-      state = state.copyWith(isLoading: false);
-      rethrow;
-    } finally {
-      // Suppression systématique du fichier audio temporaire
-      if (File(path).existsSync()) {
-        try {
-          File(path).deleteSync();
-        } catch (_) {
-          // Le fichier a déjà été nettoyé ou est inaccessible
-        }
-      }
-    }
-  }
-
-  Future<void> finish() async {
-    if (state.sessionId == null) return;
-    _flutterTts.stop();
-    state = state.copyWith(isLoading: true);
-    try {
-      final response = await _service.finishSimulation(state.sessionId!);
-      
-      final feedback = Feedback(
-        id: response.id,
-        sessionId: response.sessionId,
-        scoreGlobal: response.scoreGlobal,
-        pointsForts: response.pointsForts,
-        ameliorations: response.ameliorations,
-        recommandations: response.recommandations,
-        genereLe: response.genereLe ?? DateTime.now(),
-      );
-
-      state = state.copyWith(
-        feedback: feedback,
-        isLoading: false,
-      );
-    } catch (e) {
-      state = state.copyWith(isLoading: false);
-      rethrow;
-    }
-  }
-
-  Future<void> cancel() async {
-    if (state.sessionId == null) {
-      reset();
-      return;
-    }
-    _flutterTts.stop();
-    state = state.copyWith(isLoading: true);
-    try {
-      await _service.cancelSimulation(state.sessionId!);
-      state = SimulationState();
-    } catch (e) {
-      state = state.copyWith(isLoading: false);
-      rethrow;
-    }
-  }
-
-  void _upsertRecruiterMessage(
-    String text, {
-    required double clarity,
-    required String sentiment,
-    required String tip,
-    Map<String, dynamic>? analysis,
-  }) {
-    final messages = [...state.messages];
-    if (messages.isNotEmpty && !messages.last.isUser) {
-      messages[messages.length - 1] = ChatMessage(
-        text: text,
-        isUser: false,
-        timestamp: messages.last.timestamp,
-        scorePartiel: clarity,
-        sentiment: sentiment,
-        coachingTip: tip,
-        analysis: analysis,
-      );
-    } else {
-      messages.add(
-        ChatMessage(
-          text: text,
-          isUser: false,
-          timestamp: DateTime.now(),
-          scorePartiel: clarity,
-          sentiment: sentiment,
-          coachingTip: tip,
-          analysis: analysis,
-        ),
-      );
-    }
-    state = state.copyWith(messages: messages);
-
-    // Lecture vocale automatique pour les messages du recruteur
-    unawaited(_flutterTts.speak(text));
   }
 }
-
-final simulationProvider = StateNotifierProvider<SimulationNotifier, SimulationState>((ref) {
-  final service = ref.watch(simulationServiceProvider);
-  return SimulationNotifier(service);
-});

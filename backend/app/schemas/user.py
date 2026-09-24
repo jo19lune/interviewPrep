@@ -98,3 +98,12 @@ class AuthResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class LoginResponse(BaseModel):
+    requires_2fa: bool = False
+    challenge_expires_in_seconds: Optional[int] = None
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
+    token_type: str = "bearer"
+    user: Optional[UserResponse] = None

@@ -10,9 +10,12 @@ class UserProfile {
   final String? nom;
   final String? domaine;
   final String? niveau;
-  @JsonKey(name: 'est_actif') final bool estActif;
-  @JsonKey(name: 'avatar_url') final String? avatarUrl;
-  @JsonKey(name: 'cree_le') final DateTime creeLe;
+  @JsonKey(name: 'est_actif')
+  final bool estActif;
+  @JsonKey(name: 'avatar_url')
+  final String? avatarUrl;
+  @JsonKey(name: 'cree_le')
+  final DateTime creeLe;
 
   const UserProfile({
     required this.id,
@@ -72,8 +75,16 @@ class UserProfile {
 
   @override
   int get hashCode => Object.hash(
-        id, courriel, prenom, nom, domaine, niveau, estActif, avatarUrl, creeLe,
-      );
+    id,
+    courriel,
+    prenom,
+    nom,
+    domaine,
+    niveau,
+    estActif,
+    avatarUrl,
+    creeLe,
+  );
 
   @override
   String toString() =>

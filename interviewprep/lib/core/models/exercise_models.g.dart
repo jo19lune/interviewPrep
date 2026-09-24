@@ -36,7 +36,7 @@ ExerciceResponse _$ExerciceResponseFromJson(Map<String, dynamic> json) =>
     ExerciceResponse(
       id: json['id'] as String,
       titre: json['titre'] as String,
-      description: json['description'] as String,
+      description: json['description'] as String?,
       domaine: json['domaine'] as String,
       difficulte: json['difficulte'] as String,
       dureeSec: (json['duree_sec'] as num).toInt(),
@@ -44,6 +44,7 @@ ExerciceResponse _$ExerciceResponseFromJson(Map<String, dynamic> json) =>
       etiquettes: (json['etiquettes'] as List<dynamic>?)
           ?.map((e) => e as String)
           .toList(),
+      difficulteEstimee: (json['difficulte_estimee'] as num?)?.toInt(),
       creeLe: json['cree_le'] == null
           ? null
           : DateTime.parse(json['cree_le'] as String),
@@ -59,5 +60,6 @@ Map<String, dynamic> _$ExerciceResponseToJson(ExerciceResponse instance) =>
       'duree_sec': instance.dureeSec,
       'questions': instance.questions,
       'etiquettes': instance.etiquettes,
+      'difficulte_estimee': instance.difficulteEstimee,
       'cree_le': instance.creeLe?.toIso8601String(),
     };
