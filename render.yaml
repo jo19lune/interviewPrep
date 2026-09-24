@@ -1,5 +1,5 @@
 # ============================================================
-# Render Blueprint — InterviewPrep · PROD 2.0.0
+# Render Blueprint — InterviewPrep · PROD 2.0.1
 # ------------------------------------------------------------
 # Déploie, dans le MÊME projet Render :
 #   • interviewprep-api   : API FastAPI (image Docker : backend/Dockerfile)
@@ -29,7 +29,7 @@ services:
       - key: APP_NAME
         value: InterviewPrep API
       - key: APP_VERSION
-        value: 2.0.0
+        value: 2.0.1
       - key: HOST
         value: 0.0.0.0
       - key: PORT
