@@ -13,7 +13,12 @@ class ExerciseFilters {
 
   const ExerciseFilters({this.domaine, this.difficulte});
 
-  ExerciseFilters copyWith({String? domaine, String? difficulte, bool clearDomaine = false, bool clearDifficulte = false}) {
+  ExerciseFilters copyWith({
+    String? domaine,
+    String? difficulte,
+    bool clearDomaine = false,
+    bool clearDifficulte = false,
+  }) {
     return ExerciseFilters(
       domaine: clearDomaine ? null : (domaine ?? this.domaine),
       difficulte: clearDifficulte ? null : (difficulte ?? this.difficulte),
@@ -46,14 +51,17 @@ class ExerciseFiltersNotifier extends Notifier<ExerciseFilters> {
   }
 }
 
-final exerciseFiltersProvider = NotifierProvider<ExerciseFiltersNotifier, ExerciseFilters>(() {
-  return ExerciseFiltersNotifier();
-});
+final exerciseFiltersProvider =
+    NotifierProvider<ExerciseFiltersNotifier, ExerciseFilters>(() {
+      return ExerciseFiltersNotifier();
+    });
 
-final exercisesListProvider = FutureProvider<List<ExerciceResponse>>((ref) async {
+final exercisesListProvider = FutureProvider<List<ExerciceResponse>>((
+  ref,
+) async {
   final service = ref.watch(exerciseServiceProvider);
   final filters = ref.watch(exerciseFiltersProvider);
-  
+
   return await service.getExercises(
     domaine: filters.domaine,
     difficulte: filters.difficulte,
@@ -67,13 +75,15 @@ class SelectedExerciseNotifier extends Notifier<ExerciceResponse?> {
   void select(ExerciceResponse? exercise) => state = exercise;
 }
 
-final selectedExerciseProvider = NotifierProvider<SelectedExerciseNotifier, ExerciceResponse?>(() {
-  return SelectedExerciseNotifier();
-});
+final selectedExerciseProvider =
+    NotifierProvider<SelectedExerciseNotifier, ExerciceResponse?>(() {
+      return SelectedExerciseNotifier();
+    });
 
-final exerciseGenerationProvider = AsyncNotifierProvider<ExerciseGenerationNotifier, ExerciceResponse?>(() {
-  return ExerciseGenerationNotifier();
-});
+final exerciseGenerationProvider =
+    AsyncNotifierProvider<ExerciseGenerationNotifier, ExerciceResponse?>(() {
+      return ExerciseGenerationNotifier();
+    });
 
 class ExerciseGenerationNotifier extends AsyncNotifier<ExerciceResponse?> {
   @override
@@ -87,7 +97,7 @@ class ExerciseGenerationNotifier extends AsyncNotifier<ExerciceResponse?> {
   }) async {
     state = const AsyncValue.loading();
     final service = ref.read(exerciseServiceProvider);
-    
+
     final value = await AsyncValue.guard(() async {
       return await service.generateExercise({
         'domaine': domaine,

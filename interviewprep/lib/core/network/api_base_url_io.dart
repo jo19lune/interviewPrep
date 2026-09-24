@@ -1,3 +1,1 @@
-String defaultApiBaseUrl() {
-  return 'https://interviewprep-backend-production.up.railway.app';
-}
+String defaultApiBaseUrl() => 'http://10.0.2.2:9000';

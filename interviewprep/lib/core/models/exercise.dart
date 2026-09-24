@@ -25,7 +25,8 @@ class Exercise {
     required this.creeLe,
   });
 
-  factory Exercise.fromJson(Map<String, dynamic> json) => _$ExerciseFromJson(json);
+  factory Exercise.fromJson(Map<String, dynamic> json) =>
+      _$ExerciseFromJson(json);
   Map<String, dynamic> toJson() => _$ExerciseToJson(this);
 }
 
@@ -45,7 +46,8 @@ class UserProgress {
     this.lastSessionDate,
   });
 
-  factory UserProgress.fromJson(Map<String, dynamic> json) => _$UserProgressFromJson(json);
+  factory UserProgress.fromJson(Map<String, dynamic> json) =>
+      _$UserProgressFromJson(json);
   Map<String, dynamic> toJson() => _$UserProgressToJson(this);
 }
 
@@ -71,7 +73,8 @@ class Session {
     this.reponses,
   });
 
-  factory Session.fromJson(Map<String, dynamic> json) => _$SessionFromJson(json);
+  factory Session.fromJson(Map<String, dynamic> json) =>
+      _$SessionFromJson(json);
   Map<String, dynamic> toJson() => _$SessionToJson(this);
 }
 
@@ -93,7 +96,8 @@ class StartSimulationResponse {
     this.questionCount,
   });
 
-  factory StartSimulationResponse.fromJson(Map<String, dynamic> json) => _$StartSimulationResponseFromJson(json);
+  factory StartSimulationResponse.fromJson(Map<String, dynamic> json) =>
+      _$StartSimulationResponseFromJson(json);
   Map<String, dynamic> toJson() => _$StartSimulationResponseToJson(this);
 }
 
@@ -117,6 +121,7 @@ class Feedback {
     required this.genereLe,
   });
 
-  factory Feedback.fromJson(Map<String, dynamic> json) => _$FeedbackFromJson(json);
+  factory Feedback.fromJson(Map<String, dynamic> json) =>
+      _$FeedbackFromJson(json);
   Map<String, dynamic> toJson() => _$FeedbackToJson(this);
 }

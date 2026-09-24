@@ -87,6 +87,8 @@ class Settings(BaseSettings):
     app_name: str = Field(default="InterviewPrep API", validation_alias="APP_NAME")
     app_version: str = Field(default="1.0.0", validation_alias="APP_VERSION")
     debug: bool = Field(default=False, validation_alias="DEBUG")
+    app_environment: str = Field(default="development", validation_alias="APP_ENVIRONMENT")
+    backend_api_key: str = Field(default="", validation_alias="BACKEND_API_KEY")
 
     # Frontend
     frontend_url: List[AnyHttpUrl] = Field(

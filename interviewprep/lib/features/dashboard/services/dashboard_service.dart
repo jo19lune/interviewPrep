@@ -18,7 +18,9 @@ class DashboardService {
       final response = await _apiClient.dio.get('/progress/me');
       return ProgressMeResponse.fromJson(response.data);
     } catch (e) {
-      throw Exception('Erreur lors de la récupération de la progression de l\'utilisateur');
+      throw Exception(
+        'Erreur lors de la récupération de la progression de l\'utilisateur',
+      );
     }
   }
 
@@ -31,13 +33,18 @@ class DashboardService {
     }
   }
 
-  Future<List<SessionResponse>> getSessionHistory({int skip = 0, int limit = 50}) async {
+  Future<List<SessionResponse>> getSessionHistory({
+    int skip = 0,
+    int limit = 50,
+  }) async {
     try {
-      final response = await _apiClient.dio.get('/progress/history', queryParameters: {
-        'skip': skip,
-        'limit': limit,
-      });
-      return (response.data as List).map((e) => SessionResponse.fromJson(e)).toList();
+      final response = await _apiClient.dio.get(
+        '/progress/history',
+        queryParameters: {'skip': skip, 'limit': limit},
+      );
+      return (response.data as List)
+          .map((e) => SessionResponse.fromJson(e))
+          .toList();
     } catch (e) {
       throw Exception('Erreur lors de la récupération de l\'historique');
     }
@@ -52,24 +59,35 @@ class DashboardService {
     }
   }
 
-  Future<List<SessionResponse>> getAllSessions({int skip = 0, int limit = 50}) async {
+  Future<List<SessionResponse>> getAllSessions({
+    int skip = 0,
+    int limit = 50,
+  }) async {
     try {
-      final response = await _apiClient.dio.get('/simulation/sessions', queryParameters: {
-        'skip': skip,
-        'limit': limit,
-      });
-      return (response.data as List).map((e) => SessionResponse.fromJson(e)).toList();
+      final response = await _apiClient.dio.get(
+        '/simulation/sessions',
+        queryParameters: {'skip': skip, 'limit': limit},
+      );
+      return (response.data as List)
+          .map((e) => SessionResponse.fromJson(e))
+          .toList();
     } catch (e) {
-      throw Exception(_formatError(e, 'Erreur lors de la récupération des sessions'));
+      throw Exception(
+        _formatError(e, 'Erreur lors de la récupération des sessions'),
+      );
     }
   }
 
   Future<SessionConversation> getSessionConversation(String sessionId) async {
     try {
-      final response = await _apiClient.dio.get('/simulation/sessions/$sessionId');
+      final response = await _apiClient.dio.get(
+        '/simulation/sessions/$sessionId',
+      );
       return SessionConversation.fromJson(response.data);
     } catch (e) {
-      throw Exception(_formatError(e, 'Erreur lors de la récupération de la conversation'));
+      throw Exception(
+        _formatError(e, 'Erreur lors de la récupération de la conversation'),
+      );
     }
   }
 }

@@ -4,9 +4,5 @@ import 'package:flutter/material.dart';
 import 'app.dart';
 
 void bootstrap() {
-  runApp(
-    const ProviderScope(
-      child: InterviewPrepApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: InterviewPrepApp()));
 }

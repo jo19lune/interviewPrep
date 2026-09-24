@@ -1,0 +1,175 @@
+# ============================================================
+# Render Blueprint — InterviewPrep · PROD 2.0.0
+# ------------------------------------------------------------
+# Déploie, dans le MÊME projet Render :
+#   • interviewprep-api   : API FastAPI (image Docker : backend/Dockerfile)
+#   • interviewprep-redis : Redis managé (keyvalue) — même région,
+#                           accès interne uniquement (REDIS_URL auto-injecté)
+# Base de données : Neon (externe)  ·  Images : Cloudinary (externe)
+# Frontend : application Flutter (build séparé, hors Render)
+#
+# Après import du blueprint, renseigner dans le Dashboard les variables
+# marquées "sync: false" (OpenAI, Cloudinary, Neon, SMTP, Google, BACKEND_API_KEY…).
+# SECRET_KEY est générée automatiquement (generateValue) et reste stable.
+# ============================================================
+
+services:
+  # ---------------- API FastAPI ----------------
+  - type: web
+    runtime: docker
+    name: interviewprep-api
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      # --- Application ---
+      - key: APP_ENVIRONMENT
+        value: production
+      - key: APP_NAME
+        value: InterviewPrep API
+      - key: APP_VERSION
+        value: 2.0.0
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: "10000"
+      - key: DEBUG
+        value: "false"
+
+      # --- Sécurité & JWT ---
+      - key: SECRET_KEY
+        generateValue: true
+      - key: BACKEND_API_KEY
+        sync: false            # = valeur embarquée dans le build Flutter
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "15"
+      - key: REFRESH_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+      - key: ALGORITHM
+        value: HS256
+
+      # --- Anti brute-force (login / OTP) ---
+      - key: MAX_ATTEMPTS
+        value: "5"
+      - key: LOCKOUT_TIME
+        value: "300"
+
+      # --- Base de données (Neon) ---
+      - key: DATABASE_URL
+        sync: false            # pooled API : postgresql+asyncpg://…?ssl=require
+      - key: DATABASE_DIRECT_URL
+        sync: false            # directe Alembic : postgresql://…?sslmode=require
+      - key: DATABASE_POOL_SIZE
+        value: "5"
+      - key: DATABASE_MAX_OVERFLOW
+        value: "5"
+
+      # --- Redis managé (même projet, même région) ---
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: interviewprep-redis
+          property: connectionString
+
+      # --- Frontend (URL web future ; l'app Flutter mobile n'a pas besoin de CORS) ---
+      - key: FRONTEND_URL
+        value: '["https://your-frontend.example.com"]'
+
+      # --- IA (OpenAI) ---
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: AI_PROVIDER
+        value: openai
+      - key: AI_PRIMARY_MODEL
+        value: gpt-4o
+      - key: AI_FALLBACK_MODEL
+        value: gpt-4o-mini
+      - key: AI_FEATURE_GENERATE_EXERCISES
+        value: "true"
+      - key: AI_FEATURE_GENERATE_QUESTIONS
+        value: "true"
+      - key: AI_FEATURE_GENERATE_FEEDBACK
+        value: "true"
+      - key: AI_FEATURE_TRANSCRIBE_AUDIO
+        value: "true"
+      # Modèles proposés au sélecteur (GET /api/v1/simulation/models)
+      - key: OPENAI_MODEL_ID_1
+        value: gpt-4o
+      - key: OPENAI_MODEL_ID_2
+        value: gpt-4o-mini
+      - key: OPENAI_MODEL_ID_3
+        value: gpt-4.1
+      - key: OPENAI_MODEL_ID_4
+        value: gpt-4.1-mini
+      - key: OPENAI_MODEL_ID_5
+        value: gpt-4-turbo
+      - key: OPENAI_MODEL_ID_6
+        value: gpt-4
+      - key: OPENAI_MODEL_ID_7
+        value: gpt-3.5-turbo
+      - key: OPENAI_MODEL_ID_8
+        value: gpt-4.1-nano
+      - key: OPENAI_MODEL_ID_9
+        value: gpt-5
+      - key: OPENAI_MODEL_ID_10
+        value: gpt-5-mini
+      - key: OPENAI_MODEL_ID_11
+        value: gpt-5-nano
+
+      # --- Email (SMTP — Brevo recommandé) ---
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: EMAIL_USE_TLS
+        value: "true"
+      - key: EMAIL_USE_SSL
+        value: "false"
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+
+      # --- OAuth Google (GOOGLE_REDIRECT_URI = URL du service + /auth/google/callback) ---
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+
+      # --- 2FA par email (OTP) ---
+      - key: EMAIL_2FA_ENABLED
+        value: "false"
+      - key: EMAIL_OTP_TTL_MINUTES
+        value: "10"
+      - key: EMAIL_OTP_MAX_ATTEMPTS
+        value: "5"
+      - key: EMAIL_2FA_OTP_TTL_MINUTES
+        value: "10"
+
+      # --- Stockage images (Cloudinary) ---
+      - key: STORAGE_PROVIDER
+        value: cloudinary
+      - key: UPLOAD_DIR
+        value: /app/media
+      - key: UPLOAD_BASE_URL
+        value: https://interviewprep-api.onrender.com/media   # adapter à l'URL finale
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_FOLDER
+        value: interviewprep/avatars
+
+  # ---------------- Redis managé (même projet) ----------------
+  - type: keyvalue
+    name: interviewprep-redis
+    plan: free
+    maxmemoryPolicy: noeviction
+    ipAllowList: []            # accès interne uniquement (depuis l'API du même projet)

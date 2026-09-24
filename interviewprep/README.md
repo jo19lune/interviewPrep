@@ -39,6 +39,16 @@ L'application est structurée par fonctionnalités (Feature-First Architecture) 
    flutter pub run build_runner build --delete-conflicting-outputs
    ```
 
+## Configuration production
+
+Copiez `interviewprep/.env.example` comme référence et utilisez les mêmes
+valeurs `API_BASE_URL` et `BACKEND_API_KEY` pour Android et iOS. Flutter ne
+charge pas automatiquement ce fichier : injectez les valeurs avec
+`--dart-define`.
+
+La clé `BACKEND_API_KEY` est une clé d'application commune, pas un secret
+utilisateur. Les routes privées continuent d'exiger le JWT.
+
 ## 🚀 Lancer l'Application
 
 Assurez-vous que le **Backend FastAPI** est en cours d'exécution si l'application doit communiquer avec l'API.

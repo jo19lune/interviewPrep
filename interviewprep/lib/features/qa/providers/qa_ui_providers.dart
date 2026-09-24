@@ -9,9 +9,11 @@ class QAModuleAnswerNotifier extends Notifier<String> {
   void clear() => state = '';
 }
 
-final qaModuleAnswerProvider = NotifierProvider<QAModuleAnswerNotifier, String>(() {
-  return QAModuleAnswerNotifier();
-});
+final qaModuleAnswerProvider = NotifierProvider<QAModuleAnswerNotifier, String>(
+  () {
+    return QAModuleAnswerNotifier();
+  },
+);
 
 final qaModuleCanSendProvider = Provider<bool>((ref) {
   final answer = ref.watch(qaModuleAnswerProvider);

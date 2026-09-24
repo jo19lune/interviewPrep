@@ -37,7 +37,9 @@ class QaChatBubble extends StatelessWidget {
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         decoration: BoxDecoration(
-          color: isUserMsg ? const Color(0xFF1E293B) : AppTheme.surfaceContainerLowest,
+          color: isUserMsg
+              ? const Color(0xFF1E293B)
+              : AppTheme.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(16).copyWith(
             topRight: isUserMsg ? const Radius.circular(4) : null,
             topLeft: !isUserMsg ? const Radius.circular(4) : null,

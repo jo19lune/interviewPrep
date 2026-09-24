@@ -76,7 +76,11 @@ class StorageService:
         elif provider == "azure":
             await cls._delete_from_azure(file_url)
         elif provider == "cloudinary":
-            await cls._delete_from_cloudinary(public_id)
+            # public_id prioritaire ; sinon extraction best-effort depuis l'URL
+            # (avatars créés avant l'ajout de la colonne avatar_public_id).
+            await cls._delete_from_cloudinary(
+                public_id or cls._extract_public_id_from_url(file_url)
+            )
         else:
             # Local delete
             filename = file_url.split("/")[-1]
@@ -139,11 +143,47 @@ class StorageService:
         if not secure_url or not public_id:
             raise RuntimeError("Cloudinary returned an incomplete upload response")
 
-        delivery_url = cloudinary.CloudinaryImage(public_id).build_url(
-            secure=True,
-            transformation=cls._cloudinary_transformations(),
-        )
-        return StorageUploadResult(url=delivery_url or secure_url, public_id=public_id)
+        # Le secure_url renvoyé par l'upload inclut déjà la transformation
+        # entrante (512x512, q_auto, f_webp) : pas de reconstruction via
+        # CloudinaryImage.build_url qui appliquerait la transformation deux fois.
+        return StorageUploadResult(url=secure_url, public_id=public_id)
+
+    @staticmethod
+    def _extract_public_id_from_url(file_url: str | None) -> str | None:
+        """Extrait le public_id Cloudinary d'une URL de livraison (best-effort).
+
+        Format attendu :
+        https://res.cloudinary.com/<cloud>/image/upload/<transf>/v<version>/<folder>/<id>.<ext>
+        La transformation et la version sont ignorées ; le public_id conservé
+        inclut le dossier (ex: interviewprep/avatars/avatar-id).
+        """
+        if not file_url:
+            return None
+        marker = "/image/upload/"
+        idx = file_url.find(marker)
+        if idx == -1:
+            return None
+        segments = [seg for seg in file_url[idx + len(marker):].split("/") if seg]
+        if not segments:
+            return None
+        # Chaîne(s) de transformation (ex: c_fill,g_auto,h_512,w_512,q_auto,f_webp)
+        while segments and (
+            "," in segments[0]
+            or segments[0].startswith(
+                ("c_", "q_", "f_", "h_", "w_", "e_", "r_", "g_", "o_", "a_", "x_", "y_", "d_", "l_")
+            )
+        ):
+            segments = segments[1:]
+        # Segment de version (ex: v1699999999)
+        if segments and segments[0].startswith("v") and segments[0][1:].isdigit():
+            segments = segments[1:]
+        if not segments:
+            return None
+        public_id = "/".join(segments)
+        last = public_id.rsplit("/", 1)[-1]
+        if "." in last:
+            public_id = public_id.rsplit(".", 1)[0]
+        return public_id or None
 
     @classmethod
     async def _delete_from_cloudinary(cls, public_id: str | None) -> None:

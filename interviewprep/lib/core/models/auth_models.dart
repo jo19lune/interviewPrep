@@ -10,9 +10,15 @@ class UserRegisterRequest {
   final String? prenom;
   final String? nom;
 
-  UserRegisterRequest({required this.courriel, required this.motDePasse, this.prenom, this.nom});
+  UserRegisterRequest({
+    required this.courriel,
+    required this.motDePasse,
+    this.prenom,
+    this.nom,
+  });
 
-  factory UserRegisterRequest.fromJson(Map<String, dynamic> json) => _$UserRegisterRequestFromJson(json);
+  factory UserRegisterRequest.fromJson(Map<String, dynamic> json) =>
+      _$UserRegisterRequestFromJson(json);
   Map<String, dynamic> toJson() => _$UserRegisterRequestToJson(this);
 }
 
@@ -24,7 +30,8 @@ class UserLoginRequest {
 
   UserLoginRequest({required this.courriel, required this.motDePasse});
 
-  factory UserLoginRequest.fromJson(Map<String, dynamic> json) => _$UserLoginRequestFromJson(json);
+  factory UserLoginRequest.fromJson(Map<String, dynamic> json) =>
+      _$UserLoginRequestFromJson(json);
   Map<String, dynamic> toJson() => _$UserLoginRequestToJson(this);
 }
 
@@ -38,9 +45,15 @@ class AuthResponse {
   final String tokenType;
   final UserResponse user;
 
-  AuthResponse({required this.accessToken, required this.refreshToken, required this.tokenType, required this.user});
+  AuthResponse({
+    required this.accessToken,
+    required this.refreshToken,
+    required this.tokenType,
+    required this.user,
+  });
 
-  factory AuthResponse.fromJson(Map<String, dynamic> json) => _$AuthResponseFromJson(json);
+  factory AuthResponse.fromJson(Map<String, dynamic> json) =>
+      _$AuthResponseFromJson(json);
   Map<String, dynamic> toJson() => _$AuthResponseToJson(this);
 }
 
@@ -71,7 +84,8 @@ class UserResponse {
     this.creeLe,
   });
 
-  factory UserResponse.fromJson(Map<String, dynamic> json) => _$UserResponseFromJson(json);
+  factory UserResponse.fromJson(Map<String, dynamic> json) =>
+      _$UserResponseFromJson(json);
   Map<String, dynamic> toJson() => _$UserResponseToJson(this);
 }
 
@@ -84,7 +98,8 @@ class UserProfileUpdate {
 
   UserProfileUpdate({this.prenom, this.nom, this.domaine, this.niveau});
 
-  factory UserProfileUpdate.fromJson(Map<String, dynamic> json) => _$UserProfileUpdateFromJson(json);
+  factory UserProfileUpdate.fromJson(Map<String, dynamic> json) =>
+      _$UserProfileUpdateFromJson(json);
   Map<String, dynamic> toJson() => _$UserProfileUpdateToJson(this);
 }
 
@@ -95,9 +110,13 @@ class ChangePasswordRequest {
   @JsonKey(name: 'nouveau_mot_de_passe')
   final String nouveauMotDePasse;
 
-  ChangePasswordRequest({required this.motDePasseActuel, required this.nouveauMotDePasse});
+  ChangePasswordRequest({
+    required this.motDePasseActuel,
+    required this.nouveauMotDePasse,
+  });
 
-  factory ChangePasswordRequest.fromJson(Map<String, dynamic> json) => _$ChangePasswordRequestFromJson(json);
+  factory ChangePasswordRequest.fromJson(Map<String, dynamic> json) =>
+      _$ChangePasswordRequestFromJson(json);
   Map<String, dynamic> toJson() => _$ChangePasswordRequestToJson(this);
 }
 
@@ -107,7 +126,8 @@ class ForgotPasswordRequest {
 
   ForgotPasswordRequest({required this.courriel});
 
-  factory ForgotPasswordRequest.fromJson(Map<String, dynamic> json) => _$ForgotPasswordRequestFromJson(json);
+  factory ForgotPasswordRequest.fromJson(Map<String, dynamic> json) =>
+      _$ForgotPasswordRequestFromJson(json);
   Map<String, dynamic> toJson() => _$ForgotPasswordRequestToJson(this);
 }
 
@@ -118,7 +138,8 @@ class VerifyResetCodeRequest {
 
   VerifyResetCodeRequest({required this.courriel, required this.code});
 
-  factory VerifyResetCodeRequest.fromJson(Map<String, dynamic> json) => _$VerifyResetCodeRequestFromJson(json);
+  factory VerifyResetCodeRequest.fromJson(Map<String, dynamic> json) =>
+      _$VerifyResetCodeRequestFromJson(json);
   Map<String, dynamic> toJson() => _$VerifyResetCodeRequestToJson(this);
 }
 
@@ -129,8 +150,13 @@ class ResetPasswordRequest {
   @JsonKey(name: 'nouveau_mot_de_passe')
   final String nouveauMotDePasse;
 
-  ResetPasswordRequest({required this.courriel, required this.code, required this.nouveauMotDePasse});
+  ResetPasswordRequest({
+    required this.courriel,
+    required this.code,
+    required this.nouveauMotDePasse,
+  });
 
-  factory ResetPasswordRequest.fromJson(Map<String, dynamic> json) => _$ResetPasswordRequestFromJson(json);
+  factory ResetPasswordRequest.fromJson(Map<String, dynamic> json) =>
+      _$ResetPasswordRequestFromJson(json);
   Map<String, dynamic> toJson() => _$ResetPasswordRequestToJson(this);
 }

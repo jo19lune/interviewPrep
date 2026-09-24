@@ -141,6 +141,21 @@ Créer d'abord la base Neon, renseigner les variables Render, exécuter
 crée le schéma depuis les migrations; elle ne transfère pas les données de
 l'ancienne base Railway.
 
+## Clé d'application Flutter
+
+Le backend accepte une clé commune Android/iOS dans `X-API-Key`. En production,
+définir `BACKEND_API_KEY` dans Render et utiliser la même valeur au build Flutter :
+
+```bash
+flutter build apk --release --dart-define=API_BASE_URL=https://your-api.onrender.com --dart-define=BACKEND_API_KEY=...
+flutter build ios --release --dart-define=API_BASE_URL=https://your-api.onrender.com --dart-define=BACKEND_API_KEY=...
+```
+
+La clé est vérifiée sur les routes `/api/v1`; les routes privées exigent
+toujours un JWT utilisateur. Comme elle est embarquée dans l'application, elle
+doit être considérée comme un identifiant d'application et être renouvelée
+avec une nouvelle version Android/iOS.
+
 ## Stockage Cloudinary des avatars
 
 Pour activer Cloudinary, définir `STORAGE_PROVIDER=cloudinary` et renseigner

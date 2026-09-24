@@ -13,7 +13,9 @@ final userProgressProvider = FutureProvider<ProgressMeResponse>((ref) async {
   return await dashboardService.getUserProgress();
 });
 
-final sessionHistoryProvider = FutureProvider<List<SessionResponse>>((ref) async {
+final sessionHistoryProvider = FutureProvider<List<SessionResponse>>((
+  ref,
+) async {
   final dashboardService = ref.watch(dashboardServiceProvider);
   return await dashboardService.getSessionHistory();
 });
@@ -28,7 +30,8 @@ final allSessionsProvider = FutureProvider<List<SessionResponse>>((ref) async {
   return await dashboardService.getAllSessions();
 });
 
-final sessionConversationProvider = FutureProvider.family<SessionConversation, String>((ref, sessionId) async {
-  final dashboardService = ref.watch(dashboardServiceProvider);
-  return await dashboardService.getSessionConversation(sessionId);
-});
+final sessionConversationProvider =
+    FutureProvider.family<SessionConversation, String>((ref, sessionId) async {
+      final dashboardService = ref.watch(dashboardServiceProvider);
+      return await dashboardService.getSessionConversation(sessionId);
+    });

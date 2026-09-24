@@ -32,5 +32,3 @@ class ProgressMeResponse {
     'last_session_date': lastSessionDate?.toIso8601String(),
   };
 }
-
-
