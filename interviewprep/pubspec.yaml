@@ -45,7 +45,7 @@ dependencies:
   record: ^7.1.1
   path_provider: ^2.1.6
   permission_handler: ^12.0.3
-  google_login: ^1.0.3
+  google_sign_in: ^6.3.0
   flutter_animated_login: ^1.0.1
   multi_dropdown: ^3.2.2
   mirror_skeleton: ^0.3.1

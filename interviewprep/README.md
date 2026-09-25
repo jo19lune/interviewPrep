@@ -42,12 +42,17 @@ L'application est structurée par fonctionnalités (Feature-First Architecture) 
 ## Configuration production
 
 Copiez `interviewprep/.env.example` comme référence. Flutter ne charge pas
-automatiquement les fichiers `.env` : `API_BASE_URL` et `BACKEND_API_KEY`
-doivent être injectées avec `--dart-define`. `API_BASE_URL` est obligatoire et
-les routes sont automatiquement préfixées par `/api/v1`.
+automatiquement les fichiers `.env` : `API_BASE_URL`, `BACKEND_API_KEY` et
+`GOOGLE_CLIENT_ID` (connexion Google) doivent être injectées avec
+`--dart-define`. `API_BASE_URL` est obligatoire et les routes sont
+automatiquement préfixées par `/api/v1`.
 
 La clé `BACKEND_API_KEY` est une clé d'application commune, pas un secret
 utilisateur. Les routes privées continuent d'exiger le JWT.
+
+Pour la connexion Google, `GOOGLE_CLIENT_ID` doit être le **Web client ID**
+OAuth de l'application (celui que le backend vérifie via son propre
+`GOOGLE_CLIENT_ID`). Le client ID Android n'est pas utilisé par le flux.
 
 Pour utiliser le backend local :
 

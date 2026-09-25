@@ -3,6 +3,9 @@ class Env {
   static const String backendApiKey = String.fromEnvironment(
     'BACKEND_API_KEY',
   );
+  static const String googleClientId = String.fromEnvironment(
+    'GOOGLE_CLIENT_ID',
+  );
 
   static String get apiBaseUrl {
     return requireApiBaseUrl(_rawApiBaseUrl);
