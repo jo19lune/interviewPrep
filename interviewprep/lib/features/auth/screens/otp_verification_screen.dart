@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pinput/pinput.dart';
+import '../../../core/utils/app_dialog.dart';
 import '../providers/auth_additional_providers.dart';
 
 class OtpVerificationScreen extends ConsumerStatefulWidget {
@@ -38,8 +39,10 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
       if (mounted) context.go('/dashboard');
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString().replaceAll('Exception: ', ''))),
+      await AppDialog.showException(
+        context,
+        error,
+        fallback: 'Le code de vérification est invalide ou expiré',
       );
     }
   }
