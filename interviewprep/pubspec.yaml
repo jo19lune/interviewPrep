@@ -55,6 +55,8 @@ dependencies:
   curved_navigation_bar_pro: 2.1.1
   kf_drawer: 2.1.0
   flame_splash_screen: ^0.3.1+3
+  awesome_dialog: ^3.3.0
+  flutter_svg: ^2.2.0
 
 dev_dependencies:
   flutter_test:
@@ -89,6 +91,7 @@ flutter:
 
   assets:
     - assets/icon/logo.png
+    - assets/icons/google_logo.svg
     - lib/assets/mon_logo.png
 
   # An image asset can refer to one or more resolution-specific "variants", see

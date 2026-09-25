@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../core/utils/app_dialog.dart';
 import '../providers/auth_provider.dart';
 import '../providers/auth_additional_providers.dart';
 import '../widgets/login_content.dart';
@@ -93,9 +94,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) context.go('/dashboard');
     } catch (e) {
       if (mounted) {
-        final msg = e.toString().replaceAll('Exception: ', '').trim();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(msg.isNotEmpty ? msg : 'Erreur de connexion')),
+        await AppDialog.showException(
+          context,
+          e,
+          fallback: 'Erreur de connexion',
         );
       }
     }
@@ -107,71 +109,57 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (mounted) context.go('/dashboard');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        await AppDialog.showException(
+          context,
+          e,
+          fallback: 'Erreur de connexion avec Google',
         );
       }
     }
   }
 
-  void _showForgetDialog() {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Supprimer votre compte ?'),
-        content: const Text(
-          'Connectez-vous avec le compte a supprimer, puis confirmez l effacement definitif de vos donnees.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              if (_emailController.text.isEmpty ||
-                  _passwordController.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Renseignez email et mot de passe avant la suppression.',
-                    ),
-                  ),
-                );
-                return;
-              }
-              try {
-                await ref
-                    .read(authStateProvider.notifier)
-                    .login(_emailController.text, _passwordController.text);
-                await ref.read(authStateProvider.notifier).deleteAccount();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Compte et donnees supprimes.'),
-                    ),
-                  );
-                  context.go('/login');
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(e.toString().replaceAll('Exception: ', '')),
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text(
-              'Supprimer',
-              style: TextStyle(color: AppTheme.error),
-            ),
-          ),
-        ],
-      ),
+  Future<void> _showForgetDialog() async {
+    final confirmed = await AppDialog.confirm(
+      context,
+      title: 'Supprimer votre compte ?',
+      message:
+          'Cette action supprimera définitivement votre compte et vos données.',
+      confirmText: 'Supprimer',
+      confirmColor: AppTheme.error,
     );
+    if (!confirmed || !mounted) return;
+
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      await AppDialog.warning(
+        context,
+        title: 'Informations manquantes',
+        message:
+            'Renseignez votre email et votre mot de passe avant la suppression.',
+      );
+      return;
+    }
+    try {
+      await ref
+          .read(authStateProvider.notifier)
+          .login(_emailController.text, _passwordController.text);
+      await ref.read(authStateProvider.notifier).deleteAccount();
+      if (mounted) {
+        await AppDialog.success(
+          context,
+          title: 'Compte supprimé',
+          message: 'Votre compte et vos données ont été supprimés.',
+        );
+        if (mounted) context.go('/login');
+      }
+    } catch (e) {
+      if (mounted) {
+        await AppDialog.showException(
+          context,
+          e,
+          fallback: 'Impossible de supprimer le compte',
+        );
+      }
+    }
   }
 
   @override

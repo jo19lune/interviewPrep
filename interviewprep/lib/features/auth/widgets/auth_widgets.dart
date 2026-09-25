@@ -82,26 +82,29 @@ class AuthSubmitButton extends StatelessWidget {
     required this.loading,
     required this.onPressed,
     required this.label,
+    this.icon,
     super.key,
   });
   final bool loading;
   final VoidCallback? onPressed;
   final String label;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) => Column(
     children: [
       SizedBox(
         height: 48,
-        child: ElevatedButton(
+        child: ElevatedButton.icon(
           onPressed: loading ? null : onPressed,
-          child: loading
+          icon: loading
               ? const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(label),
+              : Icon(icon ?? Icons.arrow_forward),
+          label: Text(label),
         ),
       ),
       const SizedBox(height: 24),
