@@ -106,6 +106,7 @@ class RegisterContent extends ConsumerWidget {
                     loading: loading,
                     onPressed: onRegister,
                     label: 'Sign Up',
+                    icon: Icons.person_add_alt_1,
                   ),
                 ],
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
@@ -135,11 +136,17 @@ class LoginContent extends ConsumerWidget {
                         loading: loading,
                         onPressed: onLogin,
                         label: 'Log In',
+                        icon: Icons.login,
                       ),
                       const SizedBox(height: 12),
                       OutlinedButton.icon(
                         onPressed: loading ? null : onGoogleLogin,
-                        icon: const Icon(Icons.login),
+                        icon: SvgPicture.asset(
+                          'assets/icons/google_logo.svg',
+                          width: 18,
+                          height: 18,
+                          semanticsLabel: 'Logo Google',
+                        ),
                         label: const Text('Continuer avec Google'),
                       ),
                     ],
