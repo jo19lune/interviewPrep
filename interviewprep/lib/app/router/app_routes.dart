@@ -6,7 +6,7 @@ abstract final class AppRoutes {
   static const verifyOtp = '/verify-otp';
   static const dashboard = '/dashboard';
   static const statistics = '/dashboard/statistics';
-  static const about = '/dashboard/about';
+  static const about = '/about';
   static const simulation = '/simulation';
   static const exercises = '/exercises';
   static const profile = '/profile';

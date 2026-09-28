@@ -1,7 +1,8 @@
 import 'package:dio/dio.dart';
-import '../../../core/models/auth_models.dart';
+import '../../../app/router/app_auth_guard.dart';
 import '../../../core/network/api_client.dart';
 import '../models/google_auth_models.dart';
+import '../models/otp_models.dart';
 import 'google_login_client.dart';
 
 class GoogleAuthService {
@@ -22,12 +23,18 @@ class GoogleAuthService {
         '/auth/google',
         data: GoogleLoginRequest(idToken: idToken).toJson(),
       );
-      final auth = AuthResponse.fromJson(response.data);
-      await _apiClient.saveTokens(
-        accessToken: auth.accessToken,
-        refreshToken: auth.refreshToken,
+      final result = LoginResult.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
       );
-      return GoogleLoginResult(auth: auth);
+      final auth = result.auth;
+      if (auth != null) {
+        await _apiClient.saveTokens(
+          accessToken: auth.accessToken,
+          refreshToken: auth.refreshToken,
+        );
+        authStateNotifier.setSession(hasSession: true, startupSettled: true);
+      }
+      return GoogleLoginResult(result: result);
     } on DioException catch (error) {
       throw Exception(
         ApiClient.errorMessage(error, 'Erreur de connexion Google'),

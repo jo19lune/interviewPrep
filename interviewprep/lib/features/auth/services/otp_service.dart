@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../app/router/app_auth_guard.dart';
 import '../../../core/models/auth_models.dart';
 import '../../../core/network/api_client.dart';
 import '../models/otp_models.dart';
@@ -19,6 +20,7 @@ class OtpService {
         accessToken: auth.accessToken,
         refreshToken: auth.refreshToken,
       );
+      authStateNotifier.setSession(hasSession: true, startupSettled: true);
       return auth;
     } on DioException catch (error) {
       throw Exception(ApiClient.errorMessage(error, 'Code invalide ou expiré'));

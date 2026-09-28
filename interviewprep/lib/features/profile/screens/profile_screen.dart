@@ -1,7 +1,7 @@
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
@@ -10,6 +10,7 @@ import '../widgets/profile_app_bar.dart';
 import '../widgets/profile_confirmation.dart';
 import '../widgets/profile_feedback.dart';
 import '../widgets/profile_screen_body.dart';
+import 'profile_avatar_actions.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -79,92 +80,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  Future<void> _pickAndUploadAvatar() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.image,
-        allowMultiple: false,
-      );
-      if (result == null || result.files.isEmpty) return;
-      final file = result.files.first;
-      if (file.size > 5 * 1024 * 1024) {
-        if (mounted) {
-          showProfileMessage(
-            context,
-            'Le fichier dépasse la limite de 5 Mo.',
-            error: true,
-          );
-        }
-        return;
-      }
-      if (!mounted) return;
-      if (!await showProfileConfirmation(
-        context,
-        'Confirmer l\'avatar',
-        'Voulez-vous vraiment changer votre avatar ?',
-      )) {
-        return;
-      }
-      setState(() => _isSaving = true);
-      if (kIsWeb) {
-        if (file.bytes == null) {
-          throw Exception('Impossible de lire le fichier.');
-        }
-        await ref
-            .read(profileProvider.notifier)
-            .uploadAvatar(bytes: file.bytes, filename: file.name);
-      } else {
-        if (file.path == null) {
-          throw Exception('Impossible d\'accéder au chemin du fichier.');
-        }
-        await ref
-            .read(profileProvider.notifier)
-            .uploadAvatar(path: file.path, filename: file.name);
-      }
-      ref.invalidate(userProfileProvider);
-      if (mounted) {
-        showProfileMessage(context, 'Avatar téléversé avec succès !');
-      }
-    } catch (e) {
-      if (mounted) {
-        showProfileMessage(
-          context,
-          'Erreur lors de l\'envoi de l\'avatar: $e',
-          error: true,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
+  Future<void> _pickAndUploadAvatar() => pickAndUploadAvatar(
+    context,
+    ref,
+    onSavingChanged: (value) => setState(() => _isSaving = value),
+  );
 
-  Future<void> _deleteAvatar() async {
-    if (!await showProfileConfirmation(
-      context,
-      'Supprimer l\'avatar',
-      'Voulez-vous vraiment supprimer votre avatar ?',
-    )) {
-      return;
-    }
-    setState(() => _isSaving = true);
-    try {
-      await ref.read(profileProvider.notifier).deleteAvatar();
-      ref.invalidate(userProfileProvider);
-      if (mounted) {
-        showProfileMessage(context, 'Avatar supprimé avec succès !');
-      }
-    } catch (e) {
-      if (mounted) {
-        showProfileMessage(
-          context,
-          'Erreur lors de la suppression de l\'avatar: $e',
-          error: true,
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
+  Future<void> _deleteAvatar() => deleteAvatar(
+    context,
+    ref,
+    onSavingChanged: (value) => setState(() => _isSaving = value),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -205,6 +131,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onNiveauChanged: (value) => setState(() => _selectedNiveau = value),
             onSave: _saveProfile,
             onChangePassword: () => showChangePasswordDialog(context, ref),
+            onAbout: () => context.push(AppRoutes.about),
           );
         },
       ),

@@ -20,6 +20,7 @@ class ProfileScreenBody extends StatelessWidget {
     required this.onNiveauChanged,
     required this.onSave,
     required this.onChangePassword,
+    required this.onAbout,
   });
 
   final GlobalKey<FormState> formKey;
@@ -27,7 +28,8 @@ class ProfileScreenBody extends StatelessWidget {
   final String? avatarUrl, selectedDomaine, selectedNiveau;
   final bool isSaving;
   final TextEditingController prenomController, nomController;
-  final VoidCallback onPickAvatar, onDeleteAvatar, onSave, onChangePassword;
+  final VoidCallback onPickAvatar, onDeleteAvatar, onSave, onChangePassword,
+      onAbout;
   final ValueChanged<String?> onDomaineChanged, onNiveauChanged;
 
   @override
@@ -50,6 +52,7 @@ class ProfileScreenBody extends StatelessWidget {
           onNiveauChanged: onNiveauChanged,
           onSave: onSave,
           onChangePassword: onChangePassword,
+          onAbout: onAbout,
         ),
         const SizedBox(height: 32),
         ProfileStatusCard(profile: profile),

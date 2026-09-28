@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'app_auth_guard.dart';
 import 'app_routes.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -34,6 +35,9 @@ class AppRouter {
   static final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: AppRoutes.login,
+    refreshListenable: authStateNotifier,
+    redirect: (context, state) =>
+        resolveAuthRedirect(authStateNotifier, state.uri.path),
     routes: [
       GoRoute(
         path: AppRoutes.login,
@@ -84,10 +88,6 @@ class AppRouter {
                   GoRoute(
                     path: 'statistics',
                     builder: (context, state) => const StatisticsScreen(),
-                  ),
-                  GoRoute(
-                    path: 'about',
-                    builder: (context, state) => const AboutScreen(),
                   ),
                 ],
               ),
@@ -162,6 +162,11 @@ class AppRouter {
         path: AppRoutes.activityHistory,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ActivityHistoryScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.about,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AboutScreen(),
       ),
     ],
   );

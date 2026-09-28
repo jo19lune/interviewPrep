@@ -119,8 +119,12 @@ async def verify_login_otp(request: LoginOTPRequest, db: AsyncSession = Depends(
                         user=UserResponse.model_validate(user))
 
 
-@router.post("/google", response_model=AuthResponse)
-async def google_login(request: GoogleLoginRequest, db: AsyncSession = Depends(get_db)):
+@router.post("/google", response_model=LoginResponse)
+async def google_login(
+    request: GoogleLoginRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
     try:
         if not settings.google_client_id:
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Google login is not configured")
@@ -135,7 +139,22 @@ async def google_login(request: GoogleLoginRequest, db: AsyncSession = Depends(g
     except Exception as exc:
         logger.exception("Google token verification failed")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google identity token") from exc
-    return AuthResponse(**tokens.model_dump(), user=UserResponse.model_validate(user))
+
+    if settings.email_2fa_enabled:
+        await issue_otp(
+            db,
+            user.courriel,
+            "login_2fa",
+            background_tasks=background_tasks,
+            user_id=user.id,
+            ttl_minutes=settings.email_2fa_otp_ttl_minutes,
+        )
+        return LoginResponse(
+            requires_2fa=True,
+            challenge_expires_in_seconds=settings.email_2fa_otp_ttl_minutes * 60,
+            user=UserResponse.model_validate(user),
+        )
+    return LoginResponse(**tokens.model_dump(), user=UserResponse.model_validate(user))
 
 
 @router.post("/refresh", response_model=AuthResponse)

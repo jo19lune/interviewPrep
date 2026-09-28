@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../app/router/app_routes.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/utils/app_dialog.dart';
 import '../providers/auth_provider.dart';
@@ -105,8 +106,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _googleLogin() async {
     try {
-      await ref.read(googleAuthProvider.notifier).login();
-      if (mounted) context.go('/dashboard');
+      final result = await ref.read(googleAuthProvider.notifier).login();
+      if (!mounted) return;
+      if (result.requiresTwoFactor) {
+        context.go(
+          AppRoutes.verifyOtp,
+          extra: <String, dynamic>{
+            'email': result.result.user?.courriel ?? '',
+            'expiresInSeconds': result.challengeExpiresInSeconds,
+          },
+        );
+        return;
+      }
+      setState(() => _isSuccessOverlayVisible = true);
+      await Future<void>.delayed(const Duration(milliseconds: 800));
+      if (mounted) context.go(AppRoutes.dashboard);
     } catch (e) {
       if (mounted) {
         await AppDialog.showException(
