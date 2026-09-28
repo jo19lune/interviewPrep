@@ -1,30 +1,17 @@
-"""
-Modèle SQLAlchemy pour la Blocklist de tokens JWT.
+"""Modèle SQLAlchemy pour la blocklist des tokens JWT."""
 
-Ce module permet de stocker les tokens révoqués (ex: lors d'une déconnexion)
-afin d'empêcher leur réutilisation avant leur date d'expiration naturelle.
-"""
+from sqlalchemy import Column, DateTime, Index, String
 
-from datetime import datetime
-
-from sqlalchemy import Column, DateTime, String, Index
 from app.models.base import BaseModel
 
 
 class TokenBlocklist(BaseModel):
-    """
-    Modèle pour les tokens révoqués.
-    
-    Attributes:
-        token (str): Le JWT complet qui a été révoqué.
-        created_at (datetime): Date de révocation du token.
-    """
-    
     __tablename__ = "token_blocklist"
-    
-    token = Column(String, unique=True, index=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    
+
+    token_jti = Column(String(length=255), nullable=False)
+    type_token = Column(String(length=50), nullable=False)
+    revoked_at = Column(DateTime, nullable=True)
+
     __table_args__ = (
-        Index("idx_token_blocklist_token", "token"),
+        Index("ix_token_blocklist_jti", "token_jti", unique=True),
     )
