@@ -193,19 +193,33 @@ async def refresh_user_tokens(
 
 
 async def revoke_token(session: AsyncSession, token: str) -> None:
-    """Ajouter un token à la blocklist pour le révoquer (déconnexion)."""
+    """Ajouter un token à la blocklist pour le révoquer (déconnexion).
+
+    Opération idempotente : révoquer un token déjà présent dans la
+    blocklist ne provoque pas d'erreur (contrainte unique respectée).
+    """
     payload = decode_token(token)
     token_type = payload.get("token_type")
     if not isinstance(token_type, str) or not token_type:
         raise AuthenticationError("Invalid token type")
 
+    token_jti = hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    if await is_token_revoked(session, token):
+        return
+
     blocked_token = TokenBlocklist(
-        token_jti=hashlib.sha256(token.encode("utf-8")).hexdigest(),
+        token_jti=token_jti,
         type_token=token_type,
         revoked_at=utc_now(),
     )
     session.add(blocked_token)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        # Course entre deux révocations simultanées du même token :
+        # la ligne existe déjà, la blocklist a l'état attendu.
+        await session.rollback()
 
 
 async def is_token_revoked(session: AsyncSession, token: str) -> bool:

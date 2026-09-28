@@ -194,3 +194,24 @@ def test_logout_revokes_access_token(client):
     assert logout_response.status_code == 200
     profile_response = client.get("/api/v1/auth/me", headers=headers)
     assert profile_response.status_code == 401
+
+
+def test_double_logout_is_idempotent(client):
+    """Un second logout avec le même token ne doit pas échouer (500)."""
+    register_response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "courriel": "relogout@example.com",
+            "mot_de_passe": "SecurePassword123!",
+        },
+    )
+    token = register_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    first_logout = client.post("/api/v1/auth/logout", headers=headers)
+    second_logout = client.post("/api/v1/auth/logout", headers=headers)
+
+    assert first_logout.status_code == 200
+    assert second_logout.status_code == 200
+    profile_response = client.get("/api/v1/auth/me", headers=headers)
+    assert profile_response.status_code == 401
