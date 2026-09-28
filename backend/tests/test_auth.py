@@ -176,3 +176,21 @@ def test_get_profile_without_token(client):
     response = client.get("/api/v1/auth/me")
     
     assert response.status_code == 401  # L'authentification échoue avec 401 Unauthorized
+
+
+def test_logout_revokes_access_token(client):
+    register_response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "courriel": "logout@example.com",
+            "mot_de_passe": "SecurePassword123!",
+        },
+    )
+    token = register_response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    logout_response = client.post("/api/v1/auth/logout", headers=headers)
+
+    assert logout_response.status_code == 200
+    profile_response = client.get("/api/v1/auth/me", headers=headers)
+    assert profile_response.status_code == 401
