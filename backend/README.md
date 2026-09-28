@@ -97,7 +97,10 @@ Tous les endpoints sont préfixés par `/api/v1`.
 
 * `POST /auth/google` — body `{ "id_token": "..." }`. Le serveur vérifie la
   signature, l'émetteur, l'expiration, l'audience (`GOOGLE_CLIENT_ID`) et
-  `email_verified`, puis crée ou lie le compte par email.
+  `email_verified`, puis crée ou lie le compte par email. La réponse suit le
+  même schéma que `/auth/login` : avec `EMAIL_2FA_ENABLED=true`, elle renvoie
+  `{ "requires_2fa": true, "challenge_expires_in_seconds", "user" }` sans
+  token, et le client doit valider le code via `/auth/login/verify-otp`.
 * `POST /auth/login` — body `{ "courriel", "mot_de_passe" }`. Avec
   `EMAIL_2FA_ENABLED=true`, la réponse est `{ "requires_2fa": true,
   "challenge_expires_in_seconds", "user" }`; aucun token n'est délivré.

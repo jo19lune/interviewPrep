@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../app/router/app_auth_guard.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/models/auth_models.dart';
 import '../models/otp_models.dart';
@@ -14,12 +15,16 @@ class AuthService {
         data: req.toJson(),
       );
 
-      final result = LoginResult.fromJson(response.data);
-      if (result.auth != null) {
+      final result = LoginResult.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+      final auth = result.auth;
+      if (auth != null) {
         await _apiClient.saveTokens(
-          accessToken: result.auth!.accessToken,
-          refreshToken: result.auth!.refreshToken,
+          accessToken: auth.accessToken,
+          refreshToken: auth.refreshToken,
         );
+        authStateNotifier.setSession(hasSession: true, startupSettled: true);
       }
       return result;
     } catch (e) {
@@ -56,6 +61,7 @@ class AuthService {
         accessToken: authResponse.accessToken,
         refreshToken: authResponse.refreshToken,
       );
+      authStateNotifier.setSession(hasSession: true, startupSettled: true);
       return authResponse;
     } catch (e) {
       if (e is DioException) {
@@ -94,6 +100,7 @@ class AuthService {
       // Ignoré : la déconnexion locale doit toujours aboutir.
     }
     await _apiClient.removeToken();
+    authStateNotifier.setSession(hasSession: false, startupSettled: true);
   }
 
   Future<void> deleteAccount() async {

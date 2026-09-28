@@ -21,13 +21,15 @@ class ProfileFormCard extends StatelessWidget {
     required this.onNiveauChanged,
     required this.onSave,
     required this.onChangePassword,
+    required this.onAbout,
   });
   final GlobalKey<FormState> formKey;
   final UserProfile profile;
   final String? avatarUrl, selectedDomaine, selectedNiveau;
   final bool isSaving;
   final TextEditingController prenomController, nomController;
-  final VoidCallback onPickAvatar, onDeleteAvatar, onSave, onChangePassword;
+  final VoidCallback onPickAvatar, onDeleteAvatar, onSave, onChangePassword,
+      onAbout;
   final ValueChanged<String?> onDomaineChanged, onNiveauChanged;
 
   @override
@@ -164,6 +166,26 @@ class ProfileFormCard extends StatelessWidget {
                 icon: const Icon(Icons.lock_open, size: 18),
                 label: const Text(
                   'Modifier le mot de passe',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: OutlinedButton.icon(
+                onPressed: onAbout,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primaryContainer,
+                  side: const BorderSide(color: AppTheme.outline),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                icon: const Icon(Icons.info_outline, size: 18),
+                label: const Text(
+                  'À propos de l\'application',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),

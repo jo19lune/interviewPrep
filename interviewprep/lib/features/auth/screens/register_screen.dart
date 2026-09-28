@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../core/utils/app_dialog.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/register_content.dart';
 
@@ -33,12 +34,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_acceptCGU) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Veuillez accepter les CGU et la Politique de confidentialité',
-          ),
-        ),
+      await AppDialog.warning(
+        context,
+        title: 'Acceptation requise',
+        message:
+            'Veuillez accepter les CGU et la Politique de confidentialité.',
       );
       return;
     }
@@ -51,14 +51,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             _emailController.text,
             _passwordController.text,
           );
+      if (!mounted) return;
+      await AppDialog.success(
+        context,
+        title: 'Compte créé',
+        message: 'Votre compte a été créé avec succès.',
+      );
       if (mounted) context.go('/dashboard');
     } catch (e) {
       if (mounted) {
-        final msg = e.toString().replaceAll('Exception: ', '').trim();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg.isNotEmpty ? msg : 'Erreur d\'inscription'),
-          ),
+        await AppDialog.showException(
+          context,
+          e,
+          fallback: 'Erreur lors de la création du compte',
         );
       }
     }

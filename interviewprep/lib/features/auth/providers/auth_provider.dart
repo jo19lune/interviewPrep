@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/auth_service.dart';
 import '../services/forgot_password_service.dart';
+import '../../../app/router/app_auth_guard.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/models/user.dart';
 import '../models/otp_models.dart';
@@ -62,16 +63,24 @@ final authStateProvider = AsyncNotifierProvider<AuthNotifier, void>(() {
   return AuthNotifier();
 });
 
+/// Vérifie la session persistée au démarrage et publie le verdict dans
+/// [authStateNotifier] pour armer le guard de navigation. Les jetons invalides
+/// sont purgés.
 final startupLoadingProvider = FutureProvider<void>((ref) async {
   const storage = FlutterSecureStorage();
   final accessToken = await storage.read(key: 'access_token');
-  if (accessToken == null) return;
+  if (accessToken == null) {
+    authStateNotifier.setSession(hasSession: false, startupSettled: true);
+    return;
+  }
   try {
     final apiClient = ApiClient();
     await apiClient.dio.get('/auth/me');
+    authStateNotifier.setSession(hasSession: true, startupSettled: true);
   } catch (_) {
     await storage.delete(key: 'access_token');
     await storage.delete(key: 'refresh_token');
+    authStateNotifier.setSession(hasSession: false, startupSettled: true);
   }
 });
 

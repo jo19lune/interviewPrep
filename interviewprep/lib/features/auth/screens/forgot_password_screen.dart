@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../core/utils/app_dialog.dart';
 import '../providers/auth_provider.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
@@ -31,13 +32,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           .read(forgotPasswordProvider.notifier)
           .requestCode(_emailController.text.trim());
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Code envoyé à votre adresse email (valable 30 minutes)',
-            ),
-          ),
+        await AppDialog.success(
+          context,
+          title: 'Code envoyé',
+          message:
+              'Un code a été envoyé à votre adresse email. '
+              'Il est valable 30 minutes.',
         );
+        if (!mounted) return;
         if (_emailController.text.trim().isNotEmpty) {
           final email = _emailController.text.trim();
           context.go(
@@ -47,11 +49,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       }
     } catch (e) {
       if (mounted) {
-        final msg = e.toString().replaceAll('Exception: ', '').trim();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(msg.isNotEmpty ? msg : 'Erreur lors de la demande'),
-          ),
+        await AppDialog.showException(
+          context,
+          e,
+          fallback: 'Erreur lors de la demande de réinitialisation',
         );
       }
     } finally {

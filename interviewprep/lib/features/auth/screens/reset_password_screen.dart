@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../core/utils/app_dialog.dart';
 import '../providers/auth_provider.dart';
 import 'reset_password_form.dart';
 
@@ -44,10 +45,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     if (!_formKey.currentState!.validate()) return;
     final email = _email ?? '';
     if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Email manquant. Retournez à l\'étape précédente.'),
-        ),
+      await AppDialog.warning(
+        context,
+        title: 'Email manquant',
+        message: 'Retournez à l’étape précédente pour saisir votre email.',
       );
       return;
     }
@@ -60,10 +61,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       );
       if (!mounted) return;
       if (!valid) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Code invalide ou expiré. Demandez un nouveau code.'),
-          ),
+        await AppDialog.error(
+          context,
+          title: 'Code invalide',
+          message: 'Le code est invalide ou expiré. Demandez un nouveau code.',
         );
         return;
       }
@@ -73,22 +74,19 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         _passwordController.text,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Mot de passe réinitialisé. Connectez-vous.'),
-          ),
+        await AppDialog.success(
+          context,
+          title: 'Mot de passe réinitialisé',
+          message: 'Vous pouvez maintenant vous connecter.',
         );
         if (mounted) context.go('/login');
       }
     } catch (e) {
       if (mounted) {
-        final msg = e.toString().replaceAll('Exception: ', '').trim();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              msg.isNotEmpty ? msg : 'Erreur lors de la réinitialisation',
-            ),
-          ),
+        await AppDialog.showException(
+          context,
+          e,
+          fallback: 'Erreur lors de la réinitialisation',
         );
       }
     } finally {

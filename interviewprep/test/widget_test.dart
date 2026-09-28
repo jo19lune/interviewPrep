@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:interviewprep/app/app.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   testWidgets('App builds without errors', (WidgetTester tester) async {
@@ -24,5 +25,11 @@ void main() {
     await tester.pump();
 
     expect(find.byType(MaterialApp), findsOneWidget);
+  });
+
+  test('Google logo asset is bundled', () async {
+    final svg = await rootBundle.loadString('assets/icons/google_logo.svg');
+    expect(svg, contains('<svg'));
+    expect(svg, contains('#4285F4'));
   });
 }
