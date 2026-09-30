@@ -254,6 +254,14 @@ class Settings(BaseSettings):
         les configurations Groq) et `OPENAI_MODEL_ID_*`. Avant, seule la
         seconde forme était lue : une config Groq exposait les modèles OpenAI
         par défaut au frontend.
+
+        ⚠️ Les deux préfixes sont lus **ensemble et fusionnés**, dans l'ordre
+        alphabétique des noms de variable : `AI_MODEL_ID_*` passe avant
+        `OPENAI_MODEL_ID_*`, mais les entrées OpenAI restent dans la liste.
+
+        Conséquence pratique : laisser les deux formes définies revient à
+        exposer `gpt-4o` au sélecteur d'une API Groq, et chaque choix échoue
+        côté fournisseur. Il faut n'en définir qu'un.
         """
         models: list[str] = []
         prefixes = ("AI_MODEL_ID_", "OPENAI_MODEL_ID_")
