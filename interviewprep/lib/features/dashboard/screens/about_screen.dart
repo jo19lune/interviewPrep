@@ -5,7 +5,11 @@ import '../../../app/theme/app_theme.dart';
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
-  static const String appVersion = '2.0.1';
+  /// À synchroniser avec `version:` dans `pubspec.yaml` (2.1.3) et avec
+  /// `APP_VERSION` côté backend. Cette constante est la seule chose que
+  /// l'utilisateur voit du numéro de version : elle avait dérivé jusqu'à
+  /// 2.0.1 pendant que les tags atteignaient 2.1.2.
+  static const String appVersion = '2.1.3';
 
   @override
   Widget build(BuildContext context) {
