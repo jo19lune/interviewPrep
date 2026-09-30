@@ -83,11 +83,54 @@ mixin SimulationAudioOperations on Notifier<SimulationState> {
         ),
         isLoading: false,
       );
+    } on DioException catch (error) {
+      // 409 SESSION_CANCELLED / SESSION_NOT_ACTIVE : le bilan existe peut-être
+      // déjà (double appui, session close par un autre client). On relit la
+      // session au lieu d'afficher une erreur.
+      if (ApiClient.errorCode(error) != null &&
+          state.sessionId != null) {
+        final restored = await _reloadFeedback(state.sessionId!);
+        if (restored) return;
+      }
+      state = state.copyWith(isLoading: false);
+      rethrow;
     } catch (error) {
       state = state.copyWith(isLoading: false);
       rethrow;
     }
   }
+
+  /// Relit une session close pour récupérer son bilan. Retourne false si la
+  /// session n'a aucun bilan (annulée).
+  Future<bool> _reloadFeedback(String sessionId) async {
+    try {
+      final response = await service.getSessionConversation(sessionId);
+      final data = response.data as Map<String, dynamic>;
+      final feedback = data['feedback'];
+      if (feedback is! Map) return false;
+      state = state.copyWith(
+        feedback: Feedback(
+          id: feedback['id']?.toString() ?? '',
+          sessionId: sessionId,
+          scoreGlobal: (feedback['score_global'] as num?)?.toDouble() ?? 0,
+          pointsForts: _stringList(feedback['points_forts']),
+          ameliorations: _stringList(feedback['ameliorations']),
+          recommandations: _stringList(feedback['recommandations']),
+          genereLe: DateTime.tryParse(feedback['genere_le']?.toString() ?? '') ??
+              DateTime.now(),
+        ),
+        isLoading: false,
+      );
+      return true;
+    } catch (_) {
+      state = state.copyWith(isLoading: false);
+      return false;
+    }
+  }
+
+  List<String> _stringList(Object? value) => value is List
+      ? value.map((e) => e.toString()).toList()
+      : const [];
 
   Future<void> cancel() async {
     if (state.sessionId == null) {
@@ -99,6 +142,16 @@ mixin SimulationAudioOperations on Notifier<SimulationState> {
     try {
       await service.cancelSimulation(state.sessionId!);
       state = SimulationState();
+    } on DioException catch (error) {
+      // Le backend est idempotent : 409 signifie « déjà close ». Pour
+      // l'utilisateur, la session n'existe de toute façon plus.
+      if (ApiClient.errorCode(error) != null ||
+          error.response?.statusCode == 404) {
+        state = SimulationState();
+        return;
+      }
+      state = state.copyWith(isLoading: false);
+      rethrow;
     } catch (error) {
       state = state.copyWith(isLoading: false);
       rethrow;

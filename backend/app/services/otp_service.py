@@ -4,19 +4,28 @@ import hashlib
 import hmac
 import secrets
 from datetime import datetime, timedelta, timezone
-from fastapi import BackgroundTasks
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config.settings import settings
 from app.models.email_otp import EmailOTP
-from app.services.email_service import send_otp_email
+from app.services.email_service import EmailDeliveryError, send_otp_email
 
 
 def _hash(code: str) -> str:
     return hmac.new(settings.secret_key.encode(), code.encode(), hashlib.sha256).hexdigest()
 
 
-async def issue_otp(db: AsyncSession, email: str, purpose: str, background_tasks: BackgroundTasks | None = None, user_id=None, ttl_minutes: int | None = None) -> str:
+async def issue_otp(db: AsyncSession, email: str, purpose: str, user_id=None, ttl_minutes: int | None = None) -> str:
+    """Crée un OTP à usage unique et le délivre.
+
+    L'envoi est **awaité** : il n'existe plus de variante en tâche de fond,
+    parce qu'un ``BackgroundTasks`` qui échoue en silence produit exactement le
+    bug corrigé ici — un « Code envoyé » alors qu'aucun email n'est parti.
+
+    Si la livraison échoue, l'OTP fraîchement créé est immédiatement
+    invalidé avant que l'erreur ne remonte : pas de code valide que le client
+    n'a jamais reçu.
+    """
     email = email.strip().lower()
     await db.execute(update(EmailOTP).where(EmailOTP.email == email, EmailOTP.purpose == purpose, EmailOTP.consumed.is_(False)).values(consumed=True))
     code = f"{secrets.randbelow(1_000_000):06d}"
@@ -24,8 +33,19 @@ async def issue_otp(db: AsyncSession, email: str, purpose: str, background_tasks
                     expires_at=datetime.now(timezone.utc) + timedelta(minutes=ttl_minutes or settings.email_otp_ttl_minutes),
                     max_attempts=settings.email_otp_max_attempts))
     await db.commit()
-    if background_tasks:
-        background_tasks.add_task(send_otp_email, email, code, purpose)
+    try:
+        await send_otp_email(email, code, purpose)
+    except EmailDeliveryError:
+        # Le code existe en base mais aucun email n'est parti : on invalide
+        # l'OTP pour ne pas laisser un code valide et inconnu du client.
+        await db.execute(
+            update(EmailOTP)
+            .where(EmailOTP.email == email, EmailOTP.purpose == purpose,
+                   EmailOTP.consumed.is_(False))
+            .values(consumed=True)
+        )
+        await db.commit()
+        raise
     return code
 
 

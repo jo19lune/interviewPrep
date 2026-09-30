@@ -18,6 +18,7 @@ class AIService(AIClientMixin, AIPromptMixin, AIParsingMixin):
         self.primary_model = primary_model or self.settings.ai_primary_model or self._default_model()
         self.fallback_model = self.settings.ai_fallback_model or self._fallback_model()
         self.client = None
+        self.fallback_client = None
         self._init_clients()
 
     def _default_model(self):
@@ -36,10 +37,18 @@ class AIService(AIClientMixin, AIPromptMixin, AIParsingMixin):
     async def _with_fallback(self, prompt, parser, model):
         try:
             return parser(await self._complete(prompt, model))
+        except QuotaExceededError:
+            # Quota facturé épuisé : retenter avec le modèle de secours ne peut
+            # pas aboutir (même compte, même coupure du coupe-circuit). On
+            # remonte directement pour éviter ~7 s d'appels voués à l'échec.
+            logger.error("AI quota exceeded via %s; skipping fallback model", model)
+            raise
         except Exception as exc:
             logger.error("AI request failed via %s: %s", model, exc)
             if self.fallback_model and self.fallback_model != model:
-                return parser(await self._complete(prompt, self.fallback_model))
+                return parser(
+                    await self._complete(prompt, self.fallback_model, self.fallback_client)
+                )
             raise
 
     async def generate_exercise(self, domaine, difficulte, sujet=None, nombre_questions=10, temperature=0.7):

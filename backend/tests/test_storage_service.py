@@ -4,7 +4,21 @@ import types
 import pytest
 
 from app.config.settings import settings
-from app.services.storage_service import StorageService
+from app.services.storage_service import StorageService, StorageServiceError
+
+
+class _UploadFile:
+    """Double minimal d'`UploadFile` pour tester la garde de taille."""
+
+    def __init__(self, content: bytes, filename: str = "avatar.png"):
+        self._content = content
+        self.filename = filename
+
+    async def read(self) -> bytes:
+        return self._content
+
+    async def seek(self, offset: int) -> None:
+        return None
 
 
 @pytest.mark.asyncio
@@ -128,7 +142,96 @@ async def test_cloudinary_delete_falls_back_to_url_extraction(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_extract_public_id_from_url_returns_none_on_non_cloudinary_url():
+async def test_cloudinary_error_is_wrapped_in_storage_service_error(monkeypatch):
+    """Une exception Cloudinary brute remontait jusqu'à l'ASGI : le client
+    recevait un 500 avec une tracebox, sans message exploitable.
+
+    Cause réelle en production : `CLOUDINARY_CLOUD_NAME` valait
+    `interviewprep_storage`, un nom que Cloudinary n'attribue jamais (il ne
+    délivre que des noms alphanumériques du type `dab1234xy`).
+    """
+
+    def config(**kwargs):
+        pass
+
+    def upload(*args, **kwargs):
+        raise Exception("Invalid cloud_name 'interviewprep_storage' provided")
+
+    cloudinary_module = types.ModuleType("cloudinary")
+    cloudinary_module.config = config
+    uploader_module = types.ModuleType("cloudinary.uploader")
+    uploader_module.upload = upload
+    cloudinary_module.uploader = uploader_module
+    monkeypatch.setitem(sys.modules, "cloudinary", cloudinary_module)
+    monkeypatch.setitem(sys.modules, "cloudinary.uploader", uploader_module)
+
+    monkeypatch.setattr(settings, "cloudinary_cloud_name", "interviewprep_storage")
+    monkeypatch.setattr(settings, "cloudinary_api_key", "key")
+    monkeypatch.setattr(settings, "cloudinary_api_secret", "secret")
+
+    with pytest.raises(StorageServiceError) as excinfo:
+        await StorageService._upload_to_cloudinary(b"image-content", "avatar.png")
+
+    assert "interviewprep_storage" in str(excinfo.value)
+    assert excinfo.value.__cause__ is not None
+
+
+@pytest.mark.asyncio
+async def test_missing_cloudinary_credentials_raise_storage_service_error(monkeypatch):
+    cloudinary_module = types.ModuleType("cloudinary")
+    cloudinary_module.config = lambda **kwargs: None
+    uploader_module = types.ModuleType("cloudinary.uploader")
+    uploader_module.upload = lambda *a, **k: {"secure_url": "u", "public_id": "p"}
+    cloudinary_module.uploader = uploader_module
+    monkeypatch.setitem(sys.modules, "cloudinary", cloudinary_module)
+    monkeypatch.setitem(sys.modules, "cloudinary.uploader", uploader_module)
+
+    monkeypatch.setattr(settings, "cloudinary_cloud_name", "")
+    monkeypatch.setattr(settings, "cloudinary_api_key", "")
+    monkeypatch.setattr(settings, "cloudinary_api_secret", "")
+
+    with pytest.raises(StorageServiceError) as excinfo:
+        await StorageService._upload_to_cloudinary(b"image-content", "avatar.png")
+
+    assert "CLOUDINARY_CLOUD_NAME" in str(excinfo.value)
+
+
+@pytest.mark.asyncio
+async def test_incomplete_cloudinary_response_raises_storage_service_error(monkeypatch):
+    """`secure_url` présent mais `public_id` absent : l'upload est inexploitable
+    (l'avatar ne pourra jamais être supprimé)."""
+    cloudinary_module = types.ModuleType("cloudinary")
+    cloudinary_module.config = lambda **kwargs: None
+    uploader_module = types.ModuleType("cloudinary.uploader")
+    uploader_module.upload = lambda *a, **k: {"secure_url": "https://x/y.png"}
+    cloudinary_module.uploader = uploader_module
+    monkeypatch.setitem(sys.modules, "cloudinary", cloudinary_module)
+    monkeypatch.setitem(sys.modules, "cloudinary.uploader", uploader_module)
+
+    monkeypatch.setattr(settings, "cloudinary_cloud_name", "demo")
+    monkeypatch.setattr(settings, "cloudinary_api_key", "key")
+    monkeypatch.setattr(settings, "cloudinary_api_secret", "secret")
+
+    with pytest.raises(StorageServiceError):
+        await StorageService._upload_to_cloudinary(b"image-content", "avatar.png")
+
+
+@pytest.mark.asyncio
+async def test_oversized_upload_is_rejected_before_any_network_call(monkeypatch):
+    """Garde-fou de taille : le contenu est lu en mémoire avant l'envoi, un
+    téléversement non borné saturerait le service."""
+    monkeypatch.setattr(settings, "storage_provider", "cloudinary")
+    monkeypatch.setattr(settings, "max_upload_bytes", 1024)
+
+    file = _UploadFile(b"x" * 2048)
+
+    with pytest.raises(StorageServiceError) as excinfo:
+        await StorageService.upload_file_with_metadata(file, "/tmp/media")
+
+    assert "trop volumineux" in str(excinfo.value)
+
+
+def test_extract_public_id_from_url_returns_none_on_non_cloudinary_url():
     assert StorageService._extract_public_id_from_url(None) is None
     assert StorageService._extract_public_id_from_url("") is None
     assert (

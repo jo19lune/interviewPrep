@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/env.dart';
@@ -20,17 +21,36 @@ class GoogleLoginClient {
       // Web / iOS : OAuth client utilisé pour la connexion.
       clientId: clientId,
       // Android : le plugin interprète `serverClientId` comme l'audience du
-      // token d'identification (le client ID Android n'est pas utilisé).
+      // token d'identification. **Ce doit être le client OAuth Web**, jamais
+      // le client Android : le backend vérifie l'audience contre
+      // GOOGLE_CLIENT_ID et refuserait l'idToken.
       serverClientId: clientId,
     );
   }
 
   Future<String?> signInAndGetIdToken() async {
-    final account = await _signIn().signIn();
-    if (account == null) {
-      return null; // Connexion annulée par l'utilisateur.
+    try {
+      final account = await _signIn().signIn();
+      if (account == null) {
+        return null; // Connexion annulée par l'utilisateur.
+      }
+      final auth = await account.authentication;
+      return auth.idToken;
+    } on PlatformException catch (e) {
+      // `sign_in_failed` / code 10 = DEVELOPER_ERROR : le nom de package ou
+      // l'empreinte SHA-1 n'est pas enregistré dans le projet Google Cloud.
+      // Le message brut (`v0.d: 10`) n'est pas actionnable pour l'utilisateur.
+      throw Exception(_messageForPlatformException(e));
     }
-    final auth = await account.authentication;
-    return auth.idToken;
+  }
+
+  String _messageForPlatformException(PlatformException e) {
+    if (e.code == 'sign_in_failed' || e.code == 'ERROR_INVALID_CREDENTIAL') {
+      return 'Connexion Google refusee. Verifiez que le nom de package et '
+          "l'empreinte SHA-1 de l'application sont enregistres dans la "
+          'console Google Cloud, et que GOOGLE_CLIENT_ID correspond au client '
+          'OAuth Web.';
+    }
+    return 'Connexion Google impossible (${e.code}). Reessayez dans un instant.';
   }
 }
