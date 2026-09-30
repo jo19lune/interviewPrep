@@ -11,6 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config.settings import settings
 from app.core.security import get_current_user
 from app.data.database import get_db
 from app.models.user import User
@@ -89,7 +90,13 @@ async def generate_exercise(
     except QuotaExceededError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Le service d'IA est temporairement indisponible : quota OpenAI dépassé. Veuillez réessayer plus tard.",
+            detail=(
+                f"Le service d'IA est temporairement indisponible : quota "
+                f"{settings.resolved_ai_provider} épuisé. Rechargez le compte ou "
+                "configurez un fournisseur de secours "
+                "(AI_FALLBACK_BASE_URL / AI_FALLBACK_API_KEY)."
+            ),
+            headers={"Retry-After": "120", "X-Error-Code": "AI_QUOTA_EXCEEDED"},
         ) from exc
     except Exception as exc:
         raise HTTPException(

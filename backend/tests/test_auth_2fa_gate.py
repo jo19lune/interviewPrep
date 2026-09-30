@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
 import pytest
-from fastapi import BackgroundTasks
+from app.services.email_service import EmailDeliveryError
 
 from app.routers import auth as auth_router
 from app.services.auth_tokens import TokenResponse
@@ -96,7 +96,6 @@ async def test_google_login_requires_otp_when_2fa_enabled(stub_google_sdk):
     ):
         result = await auth_router.google_login(
             auth_router.GoogleLoginRequest(id_token="x" * 30),
-            BackgroundTasks(),
             AsyncMock(),
         )
 
@@ -123,7 +122,6 @@ async def test_google_login_delivers_tokens_when_2fa_disabled(stub_google_sdk):
     ):
         result = await auth_router.google_login(
             auth_router.GoogleLoginRequest(id_token="x" * 30),
-            BackgroundTasks(),
             AsyncMock(),
         )
 
@@ -132,6 +130,38 @@ async def test_google_login_delivers_tokens_when_2fa_disabled(stub_google_sdk):
     assert result.refresh_token == "rt"
     assert result.user.courriel == _USER_EMAIL
     issue_otp.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_google_login_reports_503_when_otp_email_fails(stub_google_sdk):
+    """Un challenge 2FA dont l'email n'est pas parti ne doit pas être annoncé.
+
+    L'utilisateur resterait bloqué sur un écran de saisie de code sans aucun
+    email reçu — le même défaut que le reset de mot de passe.
+    """
+    from fastapi import HTTPException
+
+    with (
+        patch.object(auth_router.settings, "email_2fa_enabled", True),
+        patch.object(auth_router.settings, "email_2fa_otp_ttl_minutes", 10),
+        patch.object(
+            auth_router,
+            "authenticate_google_user",
+            AsyncMock(return_value=(_user(), _tokens())),
+        ),
+        patch.object(
+            auth_router,
+            "issue_otp",
+            AsyncMock(side_effect=EmailDeliveryError("SMTP 535")),
+        ),
+    ):
+        with pytest.raises(HTTPException) as excinfo:
+            await auth_router.google_login(
+                auth_router.GoogleLoginRequest(id_token="x" * 30),
+                AsyncMock(),
+            )
+
+    assert excinfo.value.status_code == 503
 
 
 def test_login_response_schema_accepts_2fa_payload_without_tokens():

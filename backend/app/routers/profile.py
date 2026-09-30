@@ -6,7 +6,9 @@ professionnel : consultation, mise à jour des données, modification
 du mot de passe et téléchargement d'avatar.
 """
 
-from fastapi import APIRouter, Depends, File, UploadFile, status
+import logging
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,8 +21,10 @@ from app.schemas.user import (
     UserResponse,
 )
 from app.services import profile_service
+from app.services.storage_service import StorageServiceError
 
 router = APIRouter(prefix="/profile", tags=["profile"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/me", response_model=UserResponse)
@@ -52,8 +56,26 @@ async def upload_avatar(
 ):
     """
     Upload et mise à jour de l'image de profil (Avatar).
+
+    Les erreurs du fournisseur de stockage sont converties en 502/413 : sans
+    ce traitement, une exception Cloudinary remontait jusqu'à l'ASGI et
+    renvoyait un 500 avec une traceback complète, sans message exploitable.
     """
-    await profile_service.upload_user_avatar(db, current_user, file)
+    try:
+        await profile_service.upload_user_avatar(db, current_user, file)
+    except StorageServiceError as exc:
+        logger.exception("Avatar upload failed for user %s", current_user.id)
+        detail = str(exc)
+        if "trop volumineux" in detail:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=detail,
+            ) from exc
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Le service de stockage d'images est indisponible ou a refusé le fichier.",
+            headers={"X-Error-Code": "STORAGE_UNAVAILABLE"},
+        ) from exc
     return UserResponse.from_orm(current_user)
 
 

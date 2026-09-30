@@ -4,18 +4,17 @@ from __future__ import annotations
 
 import random
 import string
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config.settings import settings
 from app.models.user import User
 from app.services.auth_service import get_user_by_email, hash_password
 from app.services.otp_service import consume_otp, issue_otp, validate_otp
-from app.services.email_service import send_otp_email
+from app.services.email_service import EmailDeliveryError, send_otp_email
 
-FORGOT_CODE_TTL_MINUTES = 30
 FORGOT_CODE_LENGTH = 6
 
 
@@ -46,22 +45,35 @@ async def create_password_reset_code(db: AsyncSession, email: str) -> tuple[User
     if not user:
         return None, None
 
-    return user, await issue_otp(db, email, "password_reset", ttl_minutes=FORGOT_CODE_TTL_MINUTES, user_id=user.id)
+    return user, await issue_otp(
+        db,
+        email,
+        "password_reset",
+        ttl_minutes=settings.password_reset_code_ttl_minutes,
+        user_id=user.id,
+    )
 
 
 async def send_password_reset_code_if_user_exists(
     db: AsyncSession,
     email: str,
-    background_tasks: BackgroundTasks,
 ) -> dict[str, Optional[object]]:
-    """Convenience: crée le code puis planifie l'envoi de l'email."""
+    """Crée le code puis l'envoie **en ligne**.
+
+    L'envoi est volontairement synchrone (et non planifié en tâche de fond) :
+    c'est la seule façon pour l'API de distinguer « email parti » de « échec
+    d'envoi ». Une tâche de fond qui échoue en silence produit un message de
+    succès mensonger.
+
+    Lève ``EmailDeliveryError`` si le transport refuse l'envoi.
+    """
     user, code = await create_password_reset_code(db, email)
     if not user or not code:
-        # On ne révèle pas l'existence du compte
+        # On ne révèle pas l'existence du compte.
         return {"sent": False}
 
-    background_tasks.add_task(send_otp_email, email, code, "password_reset")
-    return {"sent": True, "expires_in_minutes": FORGOT_CODE_TTL_MINUTES}
+    await send_otp_email(email, code, "password_reset")
+    return {"sent": True, "expires_in_minutes": settings.password_reset_code_ttl_minutes}
 
 
 async def verify_password_reset_code(db: AsyncSession, email: str, code: str) -> bool:

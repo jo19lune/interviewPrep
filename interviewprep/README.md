@@ -54,6 +54,39 @@ Pour la connexion Google, `GOOGLE_CLIENT_ID` doit être le **Web client ID**
 OAuth de l'application (celui que le backend vérifie via son propre
 `GOOGLE_CLIENT_ID`). Le client ID Android n'est pas utilisé par le flux.
 
+### Connexion Google Android : les deux causes d'échec
+
+L'erreur caractéristique en développement est
+`PlatformException(sign_in_failed, v0.d: 10)`, qui correspond à un
+`DEVELOPER_ERROR` : l'application n'est pas enregistrée dans le projet Google
+Cloud. Deux éléments sont nécessaires côté console.
+
+1. **Le client OAuth Web.** Sous Android, `google_sign_in` reçoit
+   `clientId` et `serverClientId`. Le plugin utilise `serverClientId` comme
+   *audience* de l'`idToken`, et le backend vérifie cette audience. Il faut
+   donc le client de type **Web**, pas celui de type Android.
+
+2. **L'empreinte SHA-1 du keystore de signature.** Google Cloud Console →
+   *Credentials* → votre client Android → *SHA-1 certificate fingerprints*.
+   Comme `android/app/build.gradle.kts` signe la release avec la configuration
+   `debug`, les empreintes à enregistrer pour le package
+   `com.example.interviewprep` sont :
+
+   ```text
+   SHA-1:   82:06:01:BC:32:B7:68:18:71:66:61:C8:01:D7:6F:57:EF:F9:9E:1D
+   SHA-256: B7:5A:5E:37:6B:0A:4B:A3:E2:D4:1F:5A:8D:51:B1:9E:9A:13:31:11:54:2E:C8:CF:F9:37:3E:33:71:49:03:A0
+   ```
+
+   Pour les régénérer après un changement de keystore :
+
+   ```bash
+   keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey \
+     -storepass android -keypass android
+   ```
+
+Le message affiché par l'application est volontairement actionnable plutôt que
+le `v0.d: 10` brut, qui ne dit rien à l'utilisateur.
+
 Pour utiliser le backend local :
 
 ```bash
@@ -71,6 +104,17 @@ $env:BACKEND_API_KEY = "votre-cle"
 Ne commitez jamais cette valeur dans un script ou un fichier de configuration.
 Si une clé a déjà été exposée dans l'historique ou dans un terminal partagé,
 révoquez-la et générez-en une nouvelle côté backend.
+
+### Affichage des erreurs du backend
+
+`ApiClient.errorMessage` lit désormais le champ `detail` de la réponse **avant**
+tout mapping générique par code HTTP. Le mapping par statut écrasait
+précédemment des messages actionnables du backend : une génération IA
+interrompue par quota s'affichait « Service indisponible » au lieu de la raison
+réelle. Le code machine, lui, passe par l'en-tête `X-Error-Code`
+(`ApiClient.errorCode`) — `SESSION_NOT_ACTIVE`, `SESSION_CANCELLED`,
+`AI_QUOTA_EXCEEDED`, `STORAGE_UNAVAILABLE` — pour que l'interface puisse
+réagir sans couplage au texte.
 
 ## 🚀 Lancer l'Application
 
