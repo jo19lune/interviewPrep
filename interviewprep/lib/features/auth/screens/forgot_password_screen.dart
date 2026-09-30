@@ -1,7 +1,9 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/utils/app_dialog.dart';
 import '../providers/auth_provider.dart';
 
@@ -27,26 +29,46 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitted = true);
+    final email = _emailController.text.trim();
     try {
+      // Le dialogue de succès n'est affiché qu'après un 2xx réel : le backend
+      // renvoie 503 si le transport d'email a échoué, ce qui était masqué
+      // par un message « Code envoyé » affiché dans tous les cas.
       await ref
           .read(forgotPasswordProvider.notifier)
-          .requestCode(_emailController.text.trim());
-      if (mounted) {
-        await AppDialog.success(
-          context,
-          title: 'Code envoyé',
-          message:
-              'Un code a été envoyé à votre adresse email. '
-              'Il est valable 30 minutes.',
-        );
-        if (!mounted) return;
-        if (_emailController.text.trim().isNotEmpty) {
-          final email = _emailController.text.trim();
-          context.go(
-            '/reset-password?email=${Uri.encodeQueryComponent(email)}',
-          );
-        }
+          .requestCode(email);
+      if (!mounted) return;
+      await AppDialog.success(
+        context,
+        title: 'Code envoyé',
+        message:
+            'Un code a été envoyé à votre adresse email. '
+            'Il est valable 30 minutes.',
+      );
+      if (!mounted) return;
+      if (email.isNotEmpty) {
+        context.go('/reset-password?email=${Uri.encodeQueryComponent(email)}');
       }
+    } on DioException catch (e) {
+      if (!mounted) return;
+      if (ApiClient.errorCode(e) == 'EMAIL_UNAVAILABLE' ||
+          e.response?.statusCode == 503) {
+        await AppDialog.showException(
+          context,
+          ApiClient.errorMessage(
+            e,
+            "L'envoi de l'email est momentanément indisponible. "
+            'Aucun code n\'a été envoyé, réessayez dans quelques instants.',
+          ),
+          fallback: "L'envoi de l'email est indisponible",
+        );
+        return;
+      }
+      await AppDialog.showException(
+        context,
+        ApiClient.errorMessage(e, 'Erreur lors de la demande de réinitialisation'),
+        fallback: 'Erreur lors de la demande de réinitialisation',
+      );
     } catch (e) {
       if (mounted) {
         await AppDialog.showException(

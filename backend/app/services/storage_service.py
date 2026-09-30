@@ -9,6 +9,16 @@ from starlette.concurrency import run_in_threadpool
 
 logger = logging.getLogger(__name__)
 
+
+class StorageServiceError(Exception):
+    """Le stockage distant a refusé ou n'a pas pu traiter le fichier.
+
+    Wrappe les exceptions des SDK (Cloudinary, boto3, azure) afin qu'aucune
+    traceback de fournisseur ne remonte jusqu'au client : le routeur la
+    convertit en réponse HTTP propre.
+    """
+
+
 @dataclass(frozen=True)
 class StorageUploadResult:
     url: str
@@ -38,11 +48,20 @@ class StorageService:
     ) -> StorageUploadResult:
         provider = cls.get_provider()
         filename = file.filename or "avatar.png"
-        
+
         # Read file contents for remote storage or validation
         content = await file.read()
         await file.seek(0)
-        
+
+        # Garde-fou avant tout envoi réseau : le fichier est lu intégralement
+        # en mémoire, un téléversement non borné est un vecteur de saturation.
+        max_bytes = settings.max_upload_bytes
+        if len(content) > max_bytes:
+            raise StorageServiceError(
+                f"Fichier trop volumineux : {len(content)} octets "
+                f"(maximum {max_bytes})."
+            )
+
         if provider == "s3":
             return StorageUploadResult(url=await cls._upload_to_s3(content, filename))
         elif provider == "azure":
@@ -99,7 +118,7 @@ class StorageService:
             import cloudinary
             import cloudinary.uploader
         except ImportError as exc:
-            raise RuntimeError(
+            raise StorageServiceError(
                 "cloudinary is required for Cloudinary storage. "
                 "Install it using 'pip install cloudinary'"
             ) from exc
@@ -111,7 +130,7 @@ class StorageService:
                 settings.cloudinary_api_secret,
             )
         ):
-            raise RuntimeError(
+            raise StorageServiceError(
                 "CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and "
                 "CLOUDINARY_API_SECRET are required for Cloudinary storage"
             )
@@ -133,15 +152,26 @@ class StorageService:
             "overwrite": False,
             "transformation": cls._cloudinary_transformations(),
         }
-        result = await run_in_threadpool(
-            cloudinary.uploader.upload,
-            io.BytesIO(content),
-            **upload_options,
-        )
+        try:
+            result = await run_in_threadpool(
+                cloudinary.uploader.upload,
+                io.BytesIO(content),
+                **upload_options,
+            )
+        except Exception as exc:
+            # ex: cloudinary.exceptions.AuthorizationRequired: Invalid cloud_name
+            # -> message propre au client, détails réservés aux logs.
+            logger.exception(
+                "Cloudinary upload failed (cloud_name=%s)", settings.cloudinary_cloud_name
+            )
+            raise StorageServiceError(
+                f"Cloudinary a refusé le téléversement : {exc}"
+            ) from exc
+
         secure_url = result.get("secure_url") or result.get("url")
         public_id = result.get("public_id")
         if not secure_url or not public_id:
-            raise RuntimeError("Cloudinary returned an incomplete upload response")
+            raise StorageServiceError("Cloudinary returned an incomplete upload response")
 
         # Le secure_url renvoyé par l'upload inclut déjà la transformation
         # entrante (512x512, q_auto, f_webp) : pas de reconstruction via
@@ -228,8 +258,10 @@ class StorageService:
     async def _upload_to_s3(cls, content: bytes, filename: str) -> str:
         try:
             import boto3
-        except ImportError:
-            raise RuntimeError("boto3 is required for S3 storage. Install it using 'pip install boto3'")
+        except ImportError as exc:
+            raise StorageServiceError(
+                "boto3 is required for S3 storage. Install it using 'pip install boto3'"
+            ) from exc
             
         file_extension = Path(filename).suffix or ".png"
         unique_name = f"{uuid.uuid4().hex}{file_extension}"
@@ -243,13 +275,17 @@ class StorageService:
         )
         
         import io
-        s3_client.upload_fileobj(
-            io.BytesIO(content),
-            settings.s3_bucket,
-            unique_name,
-            ExtraArgs={"ContentType": cls._guess_mime_type(filename)}
-        )
-        
+        try:
+            s3_client.upload_fileobj(
+                io.BytesIO(content),
+                settings.s3_bucket,
+                unique_name,
+                ExtraArgs={"ContentType": cls._guess_mime_type(filename)}
+            )
+        except Exception as exc:
+            logger.exception("S3 upload failed (bucket=%s)", settings.s3_bucket)
+            raise StorageServiceError(f"S3 a refusé le téléversement : {exc}") from exc
+
         if settings.s3_endpoint:
             return f"{settings.s3_endpoint.rstrip('/')}/{settings.s3_bucket}/{unique_name}"
         return f"https://{settings.s3_bucket}.s3.amazonaws.com/{unique_name}"
@@ -277,18 +313,29 @@ class StorageService:
     async def _upload_to_azure(cls, content: bytes, filename: str) -> str:
         try:
             from azure.storage.blob import BlobServiceClient, ContentSettings
-        except ImportError:
-            raise RuntimeError("azure-storage-blob is required for Azure storage. Install it using 'pip install azure-storage-blob'")
-            
+        except ImportError as exc:
+            raise StorageServiceError(
+                "azure-storage-blob is required for Azure storage. "
+                "Install it using 'pip install azure-storage-blob'"
+            ) from exc
+
         file_extension = Path(filename).suffix or ".png"
         unique_name = f"{uuid.uuid4().hex}{file_extension}"
-        
+
         blob_service_client = BlobServiceClient.from_connection_string(settings.azure_connection_string)
         blob_client = blob_service_client.get_blob_client(container=settings.azure_container, blob=unique_name)
-        
+
         content_settings = ContentSettings(content_type=cls._guess_mime_type(filename))
-        blob_client.upload_blob(content, content_settings=content_settings)
-        
+        try:
+            blob_client.upload_blob(content, content_settings=content_settings)
+        except Exception as exc:
+            logger.exception(
+                "Azure upload failed (container=%s)", settings.azure_container
+            )
+            raise StorageServiceError(
+                f"Azure a refusé le téléversement : {exc}"
+            ) from exc
+
         return blob_client.url
 
     @classmethod

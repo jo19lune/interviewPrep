@@ -17,7 +17,11 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config.settings import settings
 from app.core.exceptions import AppException
-from app.core.app_key import verify_backend_api_key, validate_production_application_key
+from app.core.app_key import (
+    validate_ai_configuration,
+    validate_production_application_key,
+    verify_backend_api_key,
+)
 from app.data.database import close_db, init_db
 from app.routers import activity_history, auth, dashboard, exercices, password_reset, profile, simulation, simulation_audio, qa
 
@@ -48,6 +52,7 @@ async def lifespan(app: FastAPI):
     # Startup
     try:
         validate_production_application_key()
+        validate_ai_configuration()
         await init_db()
         logger.info("Database initialized")
         
@@ -123,17 +128,49 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
 
 # Health check
 @app.get("/health", tags=["health"])
-async def health_check() -> dict[str, str]:
+async def health_check() -> dict:
     """
     Vérifie l'état de l'API.
 
-    Endpoint de diagnostic utilisé pour s'assurer que le service fonctionne 
-    correctement.
-
-    Returns:
-        dict[str, str]: Un dictionnaire contenant le statut ("ok") et la version de l'application.
+    Endpoint de diagnostic : expose la configuration résolue des intégrations
+    externes (transport d'email, fournisseur IA, stockage). Les secrets ne sont
+    jamais renvoyés — seule la présence des identifiants l'est. C'est ce qui
+    permet de distinguer « clé absente » de « service injoignable » sans
+    fouiller les logs de déploiement.
     """
-    return {"status": "ok", "version": settings.app_version}
+    return {
+        "status": "ok",
+        "version": settings.app_version,
+        "integrations": {
+            "email": {
+                "provider": settings.resolved_email_provider,
+                "configured": settings.email_configured,
+                "from": settings.default_from_email or None,
+            },
+            "ai": {
+                "provider": settings.resolved_ai_provider,
+                "base_url": settings.resolved_ai_base_url or "https://api.openai.com/v1",
+                "primary_model": settings.ai_primary_model,
+                "fallback_model": settings.ai_fallback_model,
+                "configured": bool(settings.resolved_ai_api_key),
+                "fallback_provider": settings.ai_has_fallback_provider,
+            },
+            "storage": {
+                "provider": settings.storage_provider,
+                "cloudinary_cloud_name": settings.cloudinary_cloud_name or None,
+                "configured": (
+                    bool(
+                        settings.cloudinary_cloud_name
+                        and settings.cloudinary_api_key
+                        and settings.cloudinary_api_secret
+                    )
+                    if settings.storage_provider == "cloudinary"
+                    else True
+                ),
+            },
+            "google_sign_in": bool(settings.google_client_id),
+        },
+    }
 
 
 # Inclure les routers sous le préfixe /api/v1

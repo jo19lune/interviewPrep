@@ -3,10 +3,12 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:dio/dio.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import '../services/simulation_service.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/models/exercise.dart';
 import '../../qa/models/chat_message.dart';
 

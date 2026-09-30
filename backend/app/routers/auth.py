@@ -11,7 +11,6 @@ import logging
 
 from fastapi import (
     APIRouter,
-    BackgroundTasks,
     Depends,
     HTTPException,
     Request,
@@ -44,6 +43,7 @@ from app.services.auth_service import (
     revoke_token,
 )
 from app.services.otp_service import consume_otp, issue_otp
+from app.services.email_service import EmailDeliveryError
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 logger = logging.getLogger(__name__)
@@ -75,9 +75,8 @@ async def register(
 
 @router.post("/login", response_model=LoginResponse)
 async def login(
-    request: UserLoginRequest, 
-    request_info: Request, 
-    background_tasks: BackgroundTasks,
+    request: UserLoginRequest,
+    request_info: Request,
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -86,7 +85,7 @@ async def login(
     client_ip = request_info.client.host if request_info.client else "unknown"
     rate_limit_key = f"{request.courriel}_{client_ip}"
     check_rate_limit(rate_limit_key)
-    
+
     try:
         user, tokens = await authenticate_user(
             db, request.courriel, request.mot_de_passe
@@ -101,8 +100,21 @@ async def login(
         )
 
     if settings.email_2fa_enabled:
-        await issue_otp(db, user.courriel, "login_2fa", background_tasks=background_tasks, user_id=user.id,
-                        ttl_minutes=settings.email_2fa_otp_ttl_minutes)
+        try:
+            await issue_otp(
+                db,
+                user.courriel,
+                "login_2fa",
+                user_id=user.id,
+                ttl_minutes=settings.email_2fa_otp_ttl_minutes,
+            )
+        except EmailDeliveryError:
+            logger.exception("Failed to send 2FA OTP for %s", user.courriel)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Le service d'envoi d'email est indisponible. Réessayez dans quelques instants.",
+                headers={"Retry-After": "60"},
+            )
         return LoginResponse(requires_2fa=True, challenge_expires_in_seconds=settings.email_2fa_otp_ttl_minutes * 60,
                              user=UserResponse.model_validate(user))
     return LoginResponse(**tokens.model_dump(), user=UserResponse.model_validate(user))
@@ -122,7 +134,6 @@ async def verify_login_otp(request: LoginOTPRequest, db: AsyncSession = Depends(
 @router.post("/google", response_model=LoginResponse)
 async def google_login(
     request: GoogleLoginRequest,
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     try:
@@ -141,14 +152,21 @@ async def google_login(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google identity token") from exc
 
     if settings.email_2fa_enabled:
-        await issue_otp(
-            db,
-            user.courriel,
-            "login_2fa",
-            background_tasks=background_tasks,
-            user_id=user.id,
-            ttl_minutes=settings.email_2fa_otp_ttl_minutes,
-        )
+        try:
+            await issue_otp(
+                db,
+                user.courriel,
+                "login_2fa",
+                user_id=user.id,
+                ttl_minutes=settings.email_2fa_otp_ttl_minutes,
+            )
+        except EmailDeliveryError:
+            logger.exception("Failed to send 2FA OTP for %s", user.courriel)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Le service d'envoi d'email est indisponible. Réessayez dans quelques instants.",
+                headers={"Retry-After": "60"},
+            )
         return LoginResponse(
             requires_2fa=True,
             challenge_expires_in_seconds=settings.email_2fa_otp_ttl_minutes * 60,

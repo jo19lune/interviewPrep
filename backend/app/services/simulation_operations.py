@@ -1,4 +1,10 @@
-"""Opérations de persistance des simulations."""
+"""Opérations de persistance des simulations.
+
+`cancel`, `finish` et `answer` sont **idempotents** côté état : rejouer la même
+requête ne doit pas produire une erreur. Un client qui appuie deux fois sur
+« Terminer », ou qui envoie une réponse après la fin de la session, obtient
+l'état courant plutôt qu'un 400 ambigu que l'application ne sait pas interpréter.
+"""
 
 from uuid import UUID
 
@@ -18,8 +24,33 @@ from app.models.user import User
 from app.services.simulation_ai import generate_feedback, generate_next_question
 from app.services.simulation_helpers import score_answer, session_config, user_responses
 
+SESSION_NOT_ACTIVE_CODE = "SESSION_NOT_ACTIVE"
+
+
+def _session_not_active(session) -> HTTPException:
+    """409 + code machine : le client peut distinguer « session morte » d'une
+    erreur de validation, qui renvoie 400/422."""
+    return HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail=(
+            f"Session {session.statut.lower()} : elle n'accepte plus de réponse."
+        ),
+        headers={"X-Error-Code": SESSION_NOT_ACTIVE_CODE},
+    )
+
 
 async def create_simulation_session(db, current_user, request):
+    # Une session EN_COURS déjà ouverte est une session orpheline : l'utilisateur
+    # en relance une sans avoir terminé la précédente. On la clôture pour éviter
+    # d'accumuler des sessions mortes (source des 400 en rafale observés).
+    stale = (await db.execute(select(Session).where(
+        (Session.utilisateur_id == current_user.id) & (Session.statut == "EN_COURS")
+    ))).scalars().all()
+    for session in stale:
+        session.statut, session.termine_le = "ANNULEE", utc_now()
+    if stale:
+        await db.commit()
+
     result = await db.execute(select(Exercice).where(Exercice.id == request.exercice_id))
     exercice = result.scalars().first()
     if not exercice:
@@ -63,7 +94,7 @@ async def process_user_answer(db, current_user, session_id: UUID, reponse: str):
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if session.statut != "EN_COURS":
-        raise HTTPException(status_code=400, detail="Session is not active")
+        raise _session_not_active(session)
     ex_res = await db.execute(select(Exercice).where(Exercice.id == session.exercice_id))
     exercice = ex_res.scalars().first()
     if not exercice:
@@ -94,27 +125,47 @@ async def cancel_active_session(db, current_user, session_id):
     session = result.scalars().first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    # Idempotence : annuler une session déjà annulée ou terminée est un succès.
+    # L'ancien 400 « Only active sessions can be cancelled » était levé alors que
+    # la session avait bien été close — le client ne pouvait rien en faire.
     if session.statut != "EN_COURS":
-        raise HTTPException(status_code=400, detail="Only active sessions can be cancelled")
+        return {
+            "session_id": str(session.id),
+            "status": "already_cancelled" if session.statut == "ANNULEE" else "already_finished",
+            "session_status": session.statut,
+        }
     session.statut, session.termine_le = "ANNULEE", utc_now()
     await db.commit()
-    return {"session_id": str(session.id), "status": "cancelled"}
+    return {"session_id": str(session.id), "status": "cancelled", "session_status": session.statut}
 
 
 async def finish_session_and_generate_feedback(db, current_user, session_id):
+    # Verrou de ligne : deux `finish` quasi simultanés (double appui, retry
+    # réseau, onglet dupliqué) lisent sinon tous deux « EN_COURS » et déclenchent
+    # chacun une génération IA — double coût et double incrément de progression.
+    # Le perdant attend le commit, relit la ligne à jour et retombe sur le
+    # chemin idempotent ci-dessous.
     result = await db.execute(select(Session).options(
         selectinload(Session.ia_simulation),
         selectinload(Session.retour),
     ).where(
         (Session.id == session_id) & (Session.utilisateur_id == current_user.id)
-    ))
+    ).with_for_update())
     session = result.scalars().first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if session.statut == "TERMINEE" and session.retour:
         return _feedback_response(session)
+    if session.statut == "ANNULEE":
+        # Une session annulée ne produit pas de bilan : le client doit afficher
+        # l'écran d'annulation, pas une erreur opaque.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cette session a été annulée : aucun bilan ne peut être généré.",
+            headers={"X-Error-Code": "SESSION_CANCELLED"},
+        )
     if session.statut != "EN_COURS":
-        raise HTTPException(status_code=400, detail="Session is not active")
+        raise _session_not_active(session)
     session.statut, session.termine_le = "TERMINEE", utc_now()
     responses = user_responses(session.reponses or [])
     scores = [

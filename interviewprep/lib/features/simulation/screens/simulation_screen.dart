@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../core/network/api_client.dart';
 import '../../exercises/providers/exercise_provider.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
 import '../providers/simulation_provider.dart';

@@ -2,15 +2,27 @@ import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/models/session_models.dart';
 
+/// Service de simulation.
+///
+/// Les `DioException` sont **relancées telles quelles** : le code HTTP et les
+/// en-têtes (`X-Error-Code`) portent l'information exploitable — un 409
+/// `SESSION_NOT_ACTIVE` n'est pas la même chose qu'un 500 réseau. Les
+/// remplacer par un `Exception` générique rendait toute gestion d'état
+/// impossible côté notifier.
 class SimulationService {
   final ApiClient _apiClient = ApiClient();
+
+  Never _reraise(Object error, String fallback) {
+    if (error is DioException) throw error;
+    throw Exception(fallback);
+  }
 
   Future<Map<String, dynamic>> getAvailableModels() async {
     try {
       final response = await _apiClient.dio.get('/simulation/models');
       return response.data as Map<String, dynamic>;
     } catch (e) {
-      throw Exception('Erreur lors de la récupération des modèles');
+      _reraise(e, 'Erreur lors de la récupération des modèles');
     }
   }
 
@@ -32,7 +44,7 @@ class SimulationService {
       );
       return response.data as Map<String, dynamic>;
     } catch (e) {
-      throw Exception('Erreur lors du démarrage de la simulation');
+      _reraise(e, 'Erreur lors du démarrage de la simulation');
     }
   }
 
@@ -47,7 +59,7 @@ class SimulationService {
       );
       return response.data as Map<String, dynamic>;
     } catch (e) {
-      throw Exception('Erreur lors de l\'envoi de la réponse');
+      _reraise(e, 'Erreur lors de l\'envoi de la réponse');
     }
   }
 
@@ -68,7 +80,7 @@ class SimulationService {
       );
       return response.data as Map<String, dynamic>;
     } catch (e) {
-      throw Exception('Erreur lors de l\'envoi de la réponse audio');
+      _reraise(e, 'Erreur lors de l\'envoi de la réponse audio');
     }
   }
 
@@ -84,7 +96,7 @@ class SimulationService {
         yield String.fromCharCodes(chunk);
       }
     } catch (e) {
-      throw Exception('Erreur lors de la connexion au stream');
+      _reraise(e, 'Erreur lors de la connexion au stream');
     }
   }
 
@@ -92,7 +104,7 @@ class SimulationService {
     try {
       await _apiClient.dio.post('/simulation/cancel/$sessionId');
     } catch (e) {
-      throw Exception('Erreur lors de l\'annulation de la simulation');
+      _reraise(e, 'Erreur lors de l\'annulation de la simulation');
     }
   }
 
@@ -103,7 +115,12 @@ class SimulationService {
       );
       return FeedbackResponse.fromJson(response.data['feedback']);
     } catch (e) {
-      throw Exception('Erreur lors de la fin de la simulation');
+      _reraise(e, 'Erreur lors de la fin de la simulation');
     }
+  }
+
+  /// Relit une session close (bilan existant) après un conflit d'état.
+  Future<Response<dynamic>> getSessionConversation(String sessionId) async {
+    return _apiClient.dio.get('/simulation/sessions/$sessionId');
   }
 }

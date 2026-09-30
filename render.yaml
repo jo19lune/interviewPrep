@@ -76,20 +76,45 @@ services:
       - key: FRONTEND_URL
         value: https://your-frontend.example.com
 
-      # --- IA (OpenAI) ---
-      - key: OPENAI_API_KEY
-        sync: false
+      # --- IA (fournisseur compatible OpenAI) ---
+      # AI_PROVIDER est enfin consommé par le code : il selects presets
+      # openai | groq | openrouter | together | cerebras | deepseek |
+      # sambanova | mistral. AI_BASE_URL reste prioritaire pour un endpoint
+      # personnalisé ; AI_API_KEY est prioritaire sur la clé du preset.
       - key: AI_PROVIDER
         value: openai
+      - key: OPENAI_API_KEY
+        sync: false            # requis si AI_PROVIDER=openai
+      # Clé du fournisseur alternative (requis si AI_PROVIDER≠openai) :
+      # GROQ_API_KEY / OPENROUTER_API_KEY / TOGETHER_API_KEY / …
+      # - key: GROQ_API_KEY
+      #   sync: false
+      # - key: OPENAI_API_KEY              # secours si le preset tombe en panne
+      #   sync: false
+      # - key: AI_FALLBACK_BASE_URL       # fournisseur de secours distinct
+      #   sync: false
+      # - key: AI_FALLBACK_API_KEY
+      #   sync: false
       - key: AI_PRIMARY_MODEL
         value: gpt-4o
       - key: AI_FALLBACK_MODEL
         value: gpt-4o-mini
+      # Un quota facturé épuisé (insufficient_quota / credit_balance_exhausted)
+      # n'est PAS un rate-limit : aucun retry ne peut aboutir. Après
+      # AI_QUOTA_CIRCUIT_THRESHOLD échecs, les requêtes échouent en ~0 ms
+      # pendant AI_QUOTA_CIRCUIT_COOLDOWN_SECONDS au lieu de payer ~7 s d'appels.
+      - key: AI_MAX_RETRIES
+        value: "0"
+      - key: AI_QUOTA_CIRCUIT_THRESHOLD
+        value: "3"
+      - key: AI_QUOTA_CIRCUIT_COOLDOWN_SECONDS
+        value: "120"
       - key: AI_FEATURE_GENERATE_EXERCISES
         value: "true"
       - key: AI_FEATURE_TRANSCRIBE_AUDIO
         value: "true"
-      # Modèles proposés au sélecteur (GET /api/v1/simulation/models)
+      # Modèles proposés au sélecteur (GET /api/v1/simulation/models).
+      # AI_MODEL_ID_* comme OPENAI_MODEL_ID_* sont tous deux acceptés.
       - key: OPENAI_MODEL_ID_1
         value: gpt-4o
       - key: OPENAI_MODEL_ID_2
@@ -113,9 +138,27 @@ services:
       - key: OPENAI_MODEL_ID_11
         value: gpt-5-nano
 
-      # --- Email (SMTP — Brevo recommandé) ---
+      # --- Email (Brevo HTTPS — strongly recommandé) ---
+      # Render (et la plupart des hébergeurs cloud) bloquent les ports SMTP
+      # sortants : le SMTP y échoue silencieusement. L'API REST Brevo passe par
+      # HTTPS/443 et n'est pas bloquée. 300 emails/jour en formule gratuite.
+      #
+      # L'envoi est désormais AWAITED : POST /api/v1/auth/forgot-password
+      # renvoie 503 si la livraison échoue, au lieu d'un « Code envoyé »
+      # mensonger. Ne remettez pas l'envoi en tâche de fond.
+      - key: EMAIL_PROVIDER
+        value: brevo
+      - key: BREVO_API_KEY
+        sync: false            # xkeysib-… (Brevo > SMTP > API Keys)
+      - key: BREVO_API_URL
+        value: https://api.brevo.com/v3/smtp/email
+      - key: EMAIL_HTTP_TIMEOUT_SECONDS
+        value: "8"
+      - key: DEFAULT_FROM_EMAIL
+        sync: false            # expéditeur vérifié chez Brevo
+      # Repli SMTP (si EMAIL_PROVIDER=smtp) : ports 587/465 souvent bloqués.
       - key: SMTP_HOST
-        sync: false
+        value: smtp-relay.brevo.com
       - key: SMTP_PORT
         value: "587"
       - key: SMTP_USER
@@ -126,8 +169,6 @@ services:
         value: "true"
       - key: EMAIL_USE_SSL
         value: "false"
-      - key: DEFAULT_FROM_EMAIL
-        sync: false
 
       # --- OAuth Google (GOOGLE_REDIRECT_URI = URL du service + /auth/google/callback) ---
       - key: GOOGLE_CLIENT_ID
@@ -146,20 +187,29 @@ services:
         value: "5"
       - key: EMAIL_2FA_OTP_TTL_MINUTES
         value: "10"
+      - key: PASSWORD_RESET_CODE_TTL_MINUTES
+        value: "30"
 
       # --- Stockage images (Cloudinary) ---
       - key: STORAGE_PROVIDER
         value: cloudinary
       - key: UPLOAD_DIR
         value: /app/media
+      # ATTENTION : Cloudinary n'attribue que des noms alphanumériques courts
+      # du type « dab1234xy ». Un nom lisible comme « interviewprep_storage »
+      # est INVALIDE et provoque un échec d'upload.
       - key: CLOUDINARY_CLOUD_NAME
-        sync: false
+        sync: false            # Dashboard Cloudinary → nom du cloud
       - key: CLOUDINARY_API_KEY
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
       - key: CLOUDINARY_FOLDER
         value: interviewprep/avatars
+      # Bornage avant envoi réseau : le fichier est lu en mémoire, un
+      # téléversement non borné saturerait le service.
+      - key: MAX_UPLOAD_BYTES
+        value: "5242880"
 
   # ---------------- Redis managé (même projet) ----------------
   - type: keyvalue

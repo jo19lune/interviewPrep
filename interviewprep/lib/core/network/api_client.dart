@@ -7,44 +7,62 @@ class ApiClient {
   static String get baseUrl =>
       '${Env.apiBaseUrl}/api/v1';
 
-  static String errorMessage(DioException error, String fallback) {
-    final statusCode = error.response?.statusCode;
-    if (statusCode == 401) return 'Non autorisé';
-    if (statusCode == 429) return 'Trop de requêtes, veuillez patienter';
-    if (statusCode == 503) return 'Service indisponible';
+  /// Code machine renvoyé par le backend via l'en-tête `X-Error-Code`
+  /// (ex: `SESSION_NOT_ACTIVE`, `AI_QUOTA_EXCEEDED`).
+  static String? errorCode(DioException error) {
+    final headers = error.response?.headers;
+    if (headers == null) return null;
+    final value = headers.value('x-error-code');
+    return (value == null || value.isEmpty) ? null : value;
+  }
 
+  /// Extrait le message lisible d'une réponse d'erreur, quel que soit sa forme.
+  ///
+  /// Le `detail` du backend est prioritaire : sans cela, le mapping générique
+  /// par code HTTP écrasait des messages actionnables (« quota OpenAI
+  /// épuisé… ») au profit de « Service indisponible ».
+  static String? _detailMessage(DioException error) {
     final data = error.response?.data;
     if (data is Map) {
       final detail = data['detail'];
       if (detail is List) {
-        return detail.map((item) => item.toString()).join('\n');
+        final joined = detail.map((item) => item.toString()).join('\n');
+        if (joined.trim().isNotEmpty) return joined;
       }
       if (detail is Map) {
-        final code = detail['code'];
         final msg = detail['message'] ?? detail['msg'] ?? detail['detail'];
-        if (msg != null) {
-          if (code != null) {
-            return '[$code] $msg';
-          }
-          return msg.toString();
-        }
+        if (msg != null) return msg.toString();
       }
-      if (detail != null) {
+      if (detail != null && detail.toString().trim().isNotEmpty) {
         return detail.toString();
       }
-      final code = data['code'];
       final message = data['message'];
-      if (message != null) {
-        if (code != null) {
-          return '[$code] $message';
-        }
-        return message.toString();
-      }
+      if (message != null) return message.toString();
     }
     if (data is String && data.trim().isNotEmpty) {
       return data;
     }
-    return fallback;
+    return null;
+  }
+
+  static String errorMessage(DioException error, String fallback) {
+    final detail = _detailMessage(error);
+    if (detail != null) return detail;
+
+    final statusCode = error.response?.statusCode;
+    switch (statusCode) {
+      case 401:
+        return 'Non autorisé';
+      case 409:
+        return 'Conflit d\'état : la ressource a déjà été modifiée.';
+      case 429:
+        return 'Trop de requêtes, veuillez patienter';
+      case 502:
+      case 503:
+        return 'Service indisponible';
+      default:
+        return fallback;
+    }
   }
 
   final Dio dio;
