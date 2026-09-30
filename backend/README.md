@@ -284,7 +284,33 @@ fournisseur compatible OpenAI :
 `AI_API_KEY` prioritaire sur la clé du preset. `OPENAI_API_KEY` n'est donc plus
 obligatoire : une bascule de fournisseur ne casse plus le chargement des
 settings. Les modèles du sélecteur frontend sont lus depuis `AI_MODEL_ID_*`
-comme `OPENAI_MODEL_ID_*`.
+comme `OPENAI_MODEL_ID_*` — **les deux préfixes sont fusionnés, pas
+remplacés** : n'en définir qu'un seul, sinon le sélecteur exposerait `gpt-4o` à
+une API Groq et chaque choix échouerait.
+
+`AI_PRIMARY_MODEL` est envoyé tel quel à l'API : il doit appartenir au
+catalogue de `AI_PROVIDER`. `GET /health` → `integrations.ai.primary_model`
+permet de vérifier la cohérence d'un coup d'œil.
+
+### Ces variables ne sont pas déclarées au schéma
+
+Les clés de fournisseur et les `AI_MODEL_ID_*` ne sont **pas** des champs de
+`Settings` : elles sont lues dans `os.environ` (avec repli sur un éventuel
+`.env`, l'environnement du processus restant prioritaire).
+
+Le détail compte, car il a coûté un déploiement : avec
+`SettingsConfigDict(extra="allow")`, pydantic ne remonte dans `model_extra`
+les variables inconnues que si elles viennent d'un **fichier** `.env`.
+L'environnement du processus, lui, n'alimente jamais les extras — vérifié sur
+un modèle minimal, `model_extra == {}`. En local tout fonctionnait puisqu'un
+`.env` existe ; en production (Render, conteneur Docker) il n'y a aucun
+`.env` et ces variables étaient **invisibles** : l'application refusait de
+démarrer sur « No API key for AI provider 'groq' », et le sélecteur de
+modèles retombait silencieusement sur sa liste OpenAI codée en dur.
+
+Conséquence pour toute variable ajoutée à l'avenir : si elle n'est pas
+déclarée au schéma, elle ne fonctionnera pas en production tant que la
+lecture via `extra_env` ne sera pas en place.
 
 ### Distinguer quota facturé et rate-limit
 

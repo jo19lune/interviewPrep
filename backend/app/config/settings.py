@@ -3,6 +3,7 @@ Module de configuration de l'application.
 """
 
 import json
+import os
 from typing import List
 
 from pydantic import Field, field_validator, AliasChoices
@@ -106,8 +107,24 @@ class Settings(BaseSettings):
 
     @property
     def extra_env(self) -> dict:
-        """Variables d'environnement connues mais hors schéma (`extra="allow"`)."""
-        return {key.upper(): str(value) for key, value in (self.model_extra or {}).items()}
+        """Variables d'environnement hors schéma, tous mécanismes confondus.
+
+        ⚠️ `extra="allow"` ne collecte que les extras d'un FICHIER `.env` :
+        pydantic-settings ignore les variables d'environnement du *processus*
+        qui ne sont pas déclarées au schéma (vérifié même sur un modèle
+        minimal : `model_extra == {}`). En production il n'existe aucun `.env`
+        — Render n'injecte que l'environnement — donc `model_extra` y est vide
+        et toute variable lue par ce moyen reste invisible.
+
+        Conséquence réelle : `GROQ_API_KEY` (clé du preset) et `AI_MODEL_ID_*`
+        (sélecteur de modèles) disparaissaient en prod alors qu'elles
+        fonctionnaient en local. On lit donc aussi `os.environ`, avec la
+        priorité habituelle de pydantic : environnement > `.env`.
+        """
+        merged: dict[str, str] = {key.upper(): value for key, value in os.environ.items()}
+        for key, value in (self.model_extra or {}).items():
+            merged.setdefault(key.upper(), str(value))
+        return merged
 
     @property
     def resolved_ai_provider(self) -> str:
