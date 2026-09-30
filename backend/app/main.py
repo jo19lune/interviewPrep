@@ -143,8 +143,9 @@ async def health_check() -> dict:
         "version": settings.app_version,
         "integrations": {
             "email": {
-                "provider": settings.resolved_email_provider,
                 "configured": settings.email_configured,
+                "host": settings.email_host,
+                "port": settings.email_port,
                 "from": settings.default_from_email or None,
             },
             "ai": {

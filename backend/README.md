@@ -131,18 +131,41 @@ supprimer le faux « Code envoyé ». Même règle sur le challenge 2FA de
 `/auth/login` et `/auth/google` : si l'OTP ne part pas, la réponse est `503` et
 aucun challenge n'est annoncé.
 
-Transport (`EMAIL_PROVIDER` = `brevo` | `smtp` | `auto`) :
+### Transport SMTP
 
-* **Brevo** (recommandé) — API REST en HTTPS/443. Render et la plupart des
-  hébergeurs cloud bloquent les ports SMTP sortants, ce qui rend le SMTP
-  inutilisable en production. 300 emails/jour en formule gratuite.
-* **SMTP** — conservé pour le développement local. `EMAIL_PROVIDER=auto` choisit
-  Brevo dès que `BREVO_API_KEY` est défini, sinon SMTP.
+Transport unique : soumission authentifiée sur le port **587 + STARTTLS**.
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=votre-adresse-gmail
+SMTP_PASSWORD=<mot de passe d'application Gmail>
+EMAIL_USE_TLS=True
+EMAIL_USE_SSL=False
+EMAIL_TIMEOUT_SECONDS=8
+DEFAULT_FROM_EMAIL=votre-adresse-gmail
+```
+
+**Ports.** Le 25 est bloqué par tous les hébergeurs cloud. Les ports 465 et 587
+sont également bloqués sur le **free tier** de Render — ce service est en plan
+`starter`, où ils sont ouverts. C'est ce qui rend le SMTP utilisable ici en
+production, et non un contournement.
+
+**Gmail impose un mot de passe d'application.** Le mot de passe du compte est
+rejeté par `smtp.gmail.com` depuis 2022 ; il faut un mot de passe d'application
+à 16 caractères (Compte Google → Sécurité → Validation en 2 étapes → Mots de
+passe d'application). Un mot de passe de compte produit un **535**, classé
+définitif : aucun retry, et l'utilisateur reçoit un `503` explicite plutôt qu'un
+faux « Code envoyé ». `DEFAULT_FROM_EMAIL` doit correspondre au compte authentifié.
+
+Plafond Google : ~500 messages/jour. Un quota dépassé renvoie un 4xx, également
+classé définitif — c'est le comportement voulu, un retry n'y changerait rien.
 
 Seules les erreurs **transitoires** sont réessayées (3 tentatives, backoff
-exponentiel) : un 4xx, une clé absente ou un mot de passe SMTP invalide échoue
-immédiatement. `GET /health` expose `integrations.email` (provider, configured,
-from) pour diagnostiquer sans lire les logs de déploiement.
+exponentiel) : `421`, `450`, `451`, et les erreurs de connexion ou de timeout.
+Un `535`/`534` (authentification) ou un autre 5xx échoue immédiatement.
+`GET /health` expose `integrations.email` (`configured`, `host`, `port`, `from`)
+pour diagnostiquer sans lire les logs de déploiement.
 
 ## PostgreSQL Neon et déploiement Render
 
@@ -183,7 +206,8 @@ des intégrations externes — jamais aucun secret :
 {
   "status": "ok",
   "integrations": {
-    "email":  { "provider": "brevo", "configured": true, "from": "..." },
+    "email":  { "configured": true, "host": "smtp.gmail.com", "port": 587,
+                "from": "..." },
     "ai":     { "provider": "groq", "base_url": "...", "configured": true,
                 "fallback_provider": false },
     "storage":{ "provider": "cloudinary", "configured": true },
@@ -195,7 +219,8 @@ des intégrations externes — jamais aucun secret :
 C'est le premier réflexe lorsqu'un « Code envoyé » n'arrive pas, qu'une
 génération échoue en 503 ou qu'un avatar renvoie une erreur : `configured:
 false` distingue une clé absente d'un service injoignable, ce que les logs de
-requête ne permettent pas.
+requête ne permettent pas. Pour l'email, `host` et `port` permettent de voir
+immédiatement que l'envoi part vers le mauvais serveur.
 
 ## Clé d'application Flutter
 

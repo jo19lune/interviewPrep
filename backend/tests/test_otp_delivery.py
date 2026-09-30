@@ -73,7 +73,7 @@ async def test_failed_delivery_invalidates_the_otp_and_raises():
     with patch.object(
         otp_service,
         "send_otp_email",
-        AsyncMock(side_effect=EmailDeliveryError("Brevo a refusé l'envoi (HTTP 401)")),
+        AsyncMock(side_effect=EmailDeliveryError("SMTP 535")),
     ):
         with pytest.raises(EmailDeliveryError):
             await issue_otp(db, "user@example.com", "login_2fa")

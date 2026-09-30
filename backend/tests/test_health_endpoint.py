@@ -32,7 +32,8 @@ async def test_health_reports_status_and_integration_configuration(client):
     integrations = body["integrations"]
     assert set(integrations) == {"email", "ai", "storage", "google_sign_in"}
 
-    assert integrations["email"]["provider"] in {"brevo", "smtp"}
+    assert integrations["email"]["host"]
+    assert isinstance(integrations["email"]["port"], int)
     assert isinstance(integrations["email"]["configured"], bool)
 
     assert integrations["ai"]["provider"] == "groq"
@@ -63,7 +64,7 @@ async def test_health_never_leaks_secrets(client):
     raw = response.text
 
     for secret_marker in (
-        "gsk_", "sk-", "xkeysib-", "API_KEY", "SECRET",
-        "cloudinary_api_secret", "BREVO_API_KEY", "OPENAI_API_KEY",
+        "gsk_", "sk-", "API_KEY", "SECRET", "PASSWORD",
+        "cloudinary_api_secret", "SMTP_PASSWORD", "OPENAI_API_KEY",
     ):
         assert secret_marker not in raw, f"{secret_marker} exposé par /health"

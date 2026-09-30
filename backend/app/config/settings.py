@@ -140,14 +140,15 @@ class Settings(BaseSettings):
     ai_feature_generate_exercises: bool = Field(default=True, validation_alias="AI_FEATURE_GENERATE_EXERCISES")
     ai_feature_transcribe_audio: bool = Field(default=True, validation_alias="AI_FEATURE_TRANSCRIBE_AUDIO")
 
-    # Email — transport
-    # `EMAIL_PROVIDER=auto` choisit Brevo si BREVO_API_KEY est défini, sinon SMTP.
-    # Brevo passe par HTTPS (port 443) : les hébergeurs cloud (Render) bloquent
-    # fréquemment les ports SMTP sortants (587/465), ce qui rend le SMTP inutilisable.
-    email_provider: str = Field(default="auto", validation_alias="EMAIL_PROVIDER")
-    email_http_timeout_seconds: float = Field(default=8.0, validation_alias="EMAIL_HTTP_TIMEOUT_SECONDS")
+    # Email — SMTP, unique transport.
+    # Le port 587 (soumission authentifiée, STARTTLS) est le port IANA standard.
+    # Le port 25 est bloqué par tous les hébergeurs cloud, ports 465 et 587
+    # également sur le free tier de Render — d'où le choix d'un plan payant.
+    email_timeout_seconds: float = Field(
+        default=8.0,
+        validation_alias=AliasChoices("EMAIL_TIMEOUT_SECONDS", "EMAIL_HTTP_TIMEOUT_SECONDS"),
+    )
 
-    # Email — SMTP (fallback / développement local)
     email_host: str = Field(default="smtp.gmail.com", validation_alias="SMTP_HOST")
     email_port: int = Field(default=587, validation_alias="SMTP_PORT")
     email_username: str = Field(default="", validation_alias=AliasChoices("SMTP_USER", "EMAIL_USERNAME"))
@@ -155,13 +156,11 @@ class Settings(BaseSettings):
     email_use_tls: bool = Field(default=True, validation_alias="EMAIL_USE_TLS")
     email_use_ssl: bool = Field(default=False, validation_alias="EMAIL_USE_SSL")
 
-    # Email — Brevo (API REST v3)
-    brevo_api_key: str = Field(default="", validation_alias="BREVO_API_KEY")
-    brevo_api_url: str = Field(
-        default="https://api.brevo.com/v3/smtp/email",
-        validation_alias="BREVO_API_URL",
-    )
-
+    # Gmail refuse l'authentification par mot de passe du compte : il faut un
+    # mot de passe d'application à 16 caractères
+    # (Compte Google → Sécurité → Validation en 2 étapes → Mots de passe
+    # d'application). Un mauvais mot de passe produit un 535, classé permanent :
+    # aucun retry, échec remonté immédiatement.
     default_from_email: str = Field(default="", validation_alias="DEFAULT_FROM_EMAIL")
     google_client_id: str = Field(default="", validation_alias="GOOGLE_CLIENT_ID")
     email_otp_ttl_minutes: int = Field(default=10, validation_alias="EMAIL_OTP_TTL_MINUTES")
@@ -201,21 +200,16 @@ class Settings(BaseSettings):
         return parse_frontend_urls(self.frontend_url)
 
     @property
-    def resolved_email_provider(self) -> str:
-        """Transport d'email effectif après résolution de `EMAIL_PROVIDER=auto`."""
-        provider = (self.email_provider or "auto").strip().lower()
-        if provider in ("brevo", "smtp"):
-            return provider
-        return "brevo" if self.brevo_api_key else "smtp"
-
-    @property
     def email_configured(self) -> bool:
-        """Vrai si le transport d'email sélectionné dispose de ses identifiants."""
-        if not self.default_from_email:
-            return False
-        if self.resolved_email_provider == "brevo":
-            return bool(self.brevo_api_key)
-        return bool(self.email_username and self.email_password)
+        """Vrai si le transport SMTP dispose de ses identifiants.
+
+        `default_from_email` est exigé : un émetteur absent fait échouer la
+        session SMTP au moment de l'envoi, bien plus tard et bien plus
+        obscurément qu'un contrôle ici.
+        """
+        return bool(
+            self.default_from_email and self.email_username and self.email_password
+        )
 
     # Serveur
     port: int = Field(default=8000, validation_alias="PORT")

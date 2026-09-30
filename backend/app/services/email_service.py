@@ -1,12 +1,7 @@
 """Envoi d'emails transactionnels.
 
-Deux transports sont supportés :
-
-* **Brevo** (par défaut dès que ``BREVO_API_KEY`` est défini) — API REST en
-  HTTPS/443. Les plateformes cloud (Render, Railway…) bloquent fréquemment les
-  ports SMTP sortants, ce qui rend le SMTP inutilisable en production.
-* **SMTP** — conservé pour le développement local et les déploiements où le
-  port 587 est autorisé.
+Transport unique : SMTP en soumission authentifiée (port 587 + STARTTLS par
+défaut, `smtp.gmail.com` en production).
 
 Invariant central : toute erreur de livraison est **propagée** via
 ``EmailDeliveryError``. Le code appelant doit pouvoir distinguer « envoyé » de
@@ -21,7 +16,6 @@ from email.message import EmailMessage
 from email.utils import formataddr, parseaddr
 
 import aiosmtplib
-import httpx
 
 from app.config.settings import settings
 
@@ -51,7 +45,11 @@ class EmailNotConfiguredError(EmailDeliveryError):
 # Erreurs SMTP qui justifient un nouvel essai : réseau instable, indisponibilité
 # temporaire, limite de débit. Les erreurs d'authentification (535/534) en sont
 # exclues : réessayer trois fois un mot de passe invalide n'aide personne.
-_TRANSIENT_SMTP_CODES = {
+#
+# Doit être un **tuple** : `isinstance()` refuse un set en second argument et
+# lèverait TypeError, avalé en « erreur inattendue » — donc aucun retry, et la
+# cause réelle (connexion refusée, port bloqué) perdue dans les logs.
+_TRANSIENT_SMTP_ERRORS = (
     aiosmtplib.SMTPConnectError,
     aiosmtplib.SMTPServerDisconnected,
     aiosmtplib.SMTPResponseException,
@@ -59,14 +57,14 @@ _TRANSIENT_SMTP_CODES = {
     ConnectionError,
     asyncio.TimeoutError,
     OSError,
-}
+)
 
 
 def _is_transient_smtp_error(exc: Exception) -> bool:
     if isinstance(exc, aiosmtplib.SMTPResponseException):
         # 4xx = erreur temporaire (421, 450, 451…) ; 5xx = rejet définitif.
         return 400 <= exc.code < 500
-    return isinstance(exc, _TRANSIENT_SMTP_CODES)
+    return isinstance(exc, _TRANSIENT_SMTP_ERRORS)
 
 
 def _message_from_name_setting() -> str:
@@ -85,66 +83,9 @@ def _require_smtp_credentials() -> None:
     if not settings.email_username or not settings.email_password:
         raise EmailNotConfiguredError(
             "SMTP_USER / SMTP_PASSWORD ne sont pas configurés "
-            "(ou definez EMAIL_PROVIDER=brevo avec BREVO_API_KEY)."
+            "(pour Gmail : un mot de passe d'application, pas le mot de passe "
+            "du compte)."
         )
-
-
-async def _send_via_brevo(msg: EmailMessage, recipient: str) -> None:
-    """Remet l'email via l'API REST Brevo (HTTPS/443)."""
-    if not settings.brevo_api_key:
-        raise EmailNotConfiguredError("BREVO_API_KEY n'est pas configuré.")
-    if not settings.default_from_email:
-        raise EmailNotConfiguredError("DEFAULT_FROM_EMAIL n'est pas configuré.")
-
-    payload = {
-        "sender": {
-            "name": _message_from_name_setting(),
-            "email": settings.default_from_email,
-        },
-        "to": [{"email": recipient}],
-        "subject": msg["Subject"] or "",
-        "text": msg.get_content(),
-    }
-    headers = {
-        "api-key": settings.brevo_api_key,
-        "accept": "application/json",
-        "content-type": "application/json",
-    }
-
-    try:
-        async with httpx.AsyncClient(
-            timeout=settings.email_http_timeout_seconds
-        ) as client:
-            response = await client.post(
-                settings.brevo_api_url, json=payload, headers=headers
-            )
-    except (httpx.TimeoutException, httpx.HTTPError, OSError) as exc:
-        raise EmailDeliveryError(
-            f"Échec de l'appel Brevo : {exc}", transient=True
-        ) from exc
-
-    if response.status_code >= 400:
-        # 429 et 5xx sont transitoires ; 4xx (clé invalide, expéditeur non
-        # vérifié) ne se répare pas en réessayant.
-        transient = response.status_code == 429 or response.status_code >= 500
-        raise EmailDeliveryError(
-            f"Brevo a refusé l'envoi (HTTP {response.status_code}) : "
-            f"{_brevo_error_detail(response)}",
-            transient=transient,
-        )
-
-
-def _brevo_error_detail(response: httpx.Response) -> str:
-    """Extrait le champ ``message`` d'une réponse d'erreur Brevo, si présent."""
-    try:
-        body = response.json()
-    except ValueError:
-        return response.text[:300]
-    if isinstance(body, dict):
-        message = body.get("message") or body.get("code")
-        if message:
-            return str(message)[:300]
-    return str(body)[:300]
 
 
 async def _send_via_smtp(msg: EmailMessage, recipient: str) -> None:
@@ -158,20 +99,13 @@ async def _send_via_smtp(msg: EmailMessage, recipient: str) -> None:
             password=settings.email_password,
             start_tls=settings.email_use_tls,
             use_tls=settings.email_use_ssl,
-            timeout=settings.email_http_timeout_seconds,
+            timeout=settings.email_timeout_seconds,
         )
     except (aiosmtplib.SMTPException, asyncio.TimeoutError, OSError) as exc:
         raise EmailDeliveryError(
-            f"Échec de l'envoi SMTP : {exc}",
+            f"Échec de l'envoi SMTP ({settings.email_host}:{settings.email_port}) : {exc}",
             transient=_is_transient_smtp_error(exc),
         ) from exc
-
-
-async def _dispatch(msg: EmailMessage, recipient: str) -> None:
-    if settings.resolved_email_provider == "brevo":
-        await _send_via_brevo(msg, recipient)
-    else:
-        await _send_via_smtp(msg, recipient)
 
 
 async def _send(msg: EmailMessage, recipient: str, max_retries: int = 3) -> None:
@@ -183,33 +117,34 @@ async def _send(msg: EmailMessage, recipient: str, max_retries: int = 3) -> None
     if not settings.email_configured:
         logger.error("Email skipped: no transport configured")
         raise EmailNotConfiguredError(
-            "Aucun transport d'email configuré "
-            "(BREVO_API_KEY ou SMTP_USER/SMTP_PASSWORD + DEFAULT_FROM_EMAIL)."
+            "Transport SMTP incomplet : SMTP_USER, SMTP_PASSWORD et "
+            "DEFAULT_FROM_EMAIL doivent être définis."
         )
 
-    provider = settings.resolved_email_provider
     last_error: EmailDeliveryError | None = None
 
     for attempt in range(1, max_retries + 1):
         try:
             logger.info(
-                "Sending email attempt %d/%d to %s via %s",
+                "Sending email attempt %d/%d to %s via %s:%s",
                 attempt,
                 max_retries,
                 recipient,
-                provider,
+                settings.email_host,
+                settings.email_port,
             )
-            await _dispatch(msg, recipient)
-            logger.info("Email sent to %s via %s", recipient, provider)
+            await _send_via_smtp(msg, recipient)
+            logger.info("Email sent to %s", recipient)
             return
         except EmailDeliveryError as exc:
             if isinstance(exc, EmailNotConfiguredError) or not exc.transient:
                 # Un défaut de configuration ou un rejet définitif ne se
                 # répare pas en réessayant : on échoue immédiatement.
                 logger.error(
-                    "Email permanently failed for %s via %s: %s",
+                    "Email permanently failed for %s via %s:%s: %s",
                     recipient,
-                    provider,
+                    settings.email_host,
+                    settings.email_port,
                     exc,
                 )
                 raise

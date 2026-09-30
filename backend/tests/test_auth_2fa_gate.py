@@ -152,7 +152,7 @@ async def test_google_login_reports_503_when_otp_email_fails(stub_google_sdk):
         patch.object(
             auth_router,
             "issue_otp",
-            AsyncMock(side_effect=EmailDeliveryError("Brevo HTTP 401")),
+            AsyncMock(side_effect=EmailDeliveryError("SMTP 535")),
         ),
     ):
         with pytest.raises(HTTPException) as excinfo:

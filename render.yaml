@@ -138,37 +138,36 @@ services:
       - key: OPENAI_MODEL_ID_11
         value: gpt-5-nano
 
-      # --- Email (Brevo HTTPS — strongly recommandé) ---
-      # Render (et la plupart des hébergeurs cloud) bloquent les ports SMTP
-      # sortants : le SMTP y échoue silencieusement. L'API REST Brevo passe par
-      # HTTPS/443 et n'est pas bloquée. 300 emails/jour en formule gratuite.
+      # --- Email (SMTP, soumission authentifiée) ---
+      # Port 587 + STARTTLS. Le port 25 est bloqué par tous les hébergeurs, et
+      # les ports 465/587 aussi sur le free tier de Render : ce service est en
+      # plan `starter`, où ils sont ouverts.
       #
-      # L'envoi est désormais AWAITED : POST /api/v1/auth/forgot-password
-      # renvoie 503 si la livraison échoue, au lieu d'un « Code envoyé »
-      # mensonger. Ne remettez pas l'envoi en tâche de fond.
-      - key: EMAIL_PROVIDER
-        value: brevo
-      - key: BREVO_API_KEY
-        sync: false            # xkeysib-… (Brevo > SMTP > API Keys)
-      - key: BREVO_API_URL
-        value: https://api.brevo.com/v3/smtp/email
-      - key: EMAIL_HTTP_TIMEOUT_SECONDS
-        value: "8"
-      - key: DEFAULT_FROM_EMAIL
-        sync: false            # expéditeur vérifié chez Brevo
-      # Repli SMTP (si EMAIL_PROVIDER=smtp) : ports 587/465 souvent bloqués.
+      # ⚠️ Gmail refuse le mot de passe du compte sur smtp.gmail.com.
+      # SMTP_PASSWORD doit être un MOT DE PASSE D'APPLICATION à 16 caractères
+      # (Compte Google → Sécurité → Validation en 2 étapes → Mots de passe
+      # d'application). Un mot de passe de compte produit un 535, classé
+      # permanent : aucun retry, aucun email, 503 visible par l'utilisateur.
+      #
+      # L'envoi est AWAITED : POST /api/v1/auth/forgot-password renvoie 503 si
+      # la livraison échoue, au lieu d'un « Code envoyé » mensonger. Ne remettez
+      # pas l'envoi en tâche de fond.
       - key: SMTP_HOST
-        value: smtp-relay.brevo.com
+        value: smtp.gmail.com
       - key: SMTP_PORT
         value: "587"
       - key: SMTP_USER
-        sync: false
+        sync: false            # adresse Gmail émettrice
       - key: SMTP_PASSWORD
-        sync: false
+        sync: false            # mot de passe d'application (16 car., avec espace)
       - key: EMAIL_USE_TLS
-        value: "true"
+        value: "true"           # STARTTLS sur 587
       - key: EMAIL_USE_SSL
-        value: "false"
+        value: "false"          # SSL direct réservé au port 465
+      - key: EMAIL_TIMEOUT_SECONDS
+        value: "8"
+      - key: DEFAULT_FROM_EMAIL
+        sync: false            # doit correspondre au compte authentifié
 
       # --- OAuth Google (GOOGLE_REDIRECT_URI = URL du service + /auth/google/callback) ---
       - key: GOOGLE_CLIENT_ID

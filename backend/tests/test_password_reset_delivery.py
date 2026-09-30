@@ -79,7 +79,7 @@ async def test_delivery_failure_returns_503_instead_of_false_success():
         patch.object(
             reset_router,
             "send_password_reset_code_if_user_exists",
-            AsyncMock(side_effect=EmailDeliveryError("Brevo HTTP 401")),
+            AsyncMock(side_effect=EmailDeliveryError("SMTP 535")),
         ),
     ):
         with pytest.raises(HTTPException) as excinfo:
